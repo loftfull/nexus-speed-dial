@@ -39,17 +39,21 @@ export function StructureEditor() {
     event.preventDefault();
     const clean = name.trim();
     if (!clean) return;
+
     if (isProject) {
-      target.id ? updateProject(target.id, { name: clean }) : addProject({ id: slug(clean), name: clean, icon: 'folder' });
+      if (target.id) updateProject(target.id, { name: clean });
+      else addProject({ id: slug(clean), name: clean, icon: 'folder' });
     } else {
       const safeParentId = hasChildren ? undefined : parentId || undefined;
-      target.id ? updateCategory(target.id, { name: clean, projectId, parentId: safeParentId }) : addCategory({ id: slug(clean), name: clean, projectId, parentId: safeParentId, icon: 'tag' });
+      if (target.id) updateCategory(target.id, { name: clean, projectId, parentId: safeParentId });
+      else addCategory({ id: slug(clean), name: clean, projectId, parentId: safeParentId, icon: 'tag' });
     }
     close();
   };
   const destroy = () => {
     if (!target.id) return;
-    isProject ? removeProject(target.id) : removeCategory(target.id);
+    if (isProject) removeProject(target.id);
+    else removeCategory(target.id);
     close();
   };
 
