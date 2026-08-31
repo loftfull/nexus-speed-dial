@@ -1,6 +1,6 @@
 import { Trash2, X } from 'lucide-react';
 import type { ChangeEvent, FormEvent, MouseEvent } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '../../state/useAppStore.ts';
 import { GlassSurface } from '../primitives/GlassSurface.tsx';
 import styles from './StructureEditor.module.css';
@@ -19,16 +19,17 @@ export function StructureEditor() {
   const updateCategory = useAppStore(state => state.updateCategory);
   const removeCategory = useAppStore(state => state.removeCategory);
   const activeProject = useAppStore(state => state.activeProjectId);
-  const existing = useMemo(() => target?.kind === 'project' ? projects.find(item => item.id === target.id) : categories.find(item => item.id === target?.id), [target, projects, categories]);
+  const existingProject = target?.kind === 'project' && target.id ? projects.find(item => item.id === target.id) : undefined;
+  const existingCategory = target?.kind === 'category' && target.id ? categories.find(item => item.id === target.id) : undefined;
   const [name, setName] = useState('');
   const [projectId, setProjectId] = useState(activeProject);
   const [parentId, setParentId] = useState('');
 
   useEffect(() => {
-    setName(existing?.name ?? '');
-    setProjectId(target?.kind === 'category' && existing && 'projectId' in existing ? existing.projectId : activeProject);
-    setParentId(target?.kind === 'category' && existing && 'parentId' in existing ? existing.parentId ?? '' : '');
-  }, [target, existing, activeProject]);
+    setName(existingProject?.name ?? existingCategory?.name ?? '');
+    setProjectId(existingCategory?.projectId ?? activeProject);
+    setParentId(existingCategory?.parentId ?? '');
+  }, [existingProject, existingCategory, activeProject]);
 
   if (!target) return null;
   const isProject = target.kind === 'project';
@@ -39,7 +40,6 @@ export function StructureEditor() {
     event.preventDefault();
     const clean = name.trim();
     if (!clean) return;
-
     if (isProject) {
       if (target.id) updateProject(target.id, { name: clean });
       else addProject({ id: slug(clean), name: clean, icon: 'folder' });
