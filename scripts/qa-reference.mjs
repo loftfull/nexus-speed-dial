@@ -72,7 +72,8 @@ export async function runReferenceQa(root) {
   check(checks, failures, 'persistent-history-notes', ['nexus.history','nexus.notes','recordVisit','addNote','updateNote','removeNote'].every(token => appStore.includes(token)), 'History and notes must be persisted through the application store');
   check(checks, failures, 'no-seed-recent-notes', !sections.includes('seedRecent') && !sections.includes('seedNotes') && !sections.includes('seedSites'), 'Favorites, Recent and Notes must use persistent app state rather than demo seeds');
   check(checks, failures, 'functional-omnibox', ['resolveOmnibox','suggestSites','recordVisit','omnibox-suggestions'].every(token => omniboxUi.includes(token)), 'Omnibox must resolve local sites, show suggestions and record visits');
-  check(checks, failures, 'omnibox-domain-model', omniboxDomain.includes('https://www.google.com/search') && omniboxDomain.includes('suggestSites') && omniboxDomain.includes("['http:','https:']"), 'Omnibox URL/search behavior must live in the domain model and reject unsafe schemes');
+  const omniboxRestrictsProtocols = omniboxDomain.includes("'http:'") && omniboxDomain.includes("'https:'") && omniboxDomain.includes('url.protocol');
+  check(checks, failures, 'omnibox-domain-model', omniboxDomain.includes('https://www.google.com/search') && omniboxDomain.includes('suggestSites') && omniboxRestrictsProtocols, 'Omnibox URL/search behavior must live in the domain model and reject unsafe schemes');
 
   const interactionSignals = ['calendar opens as overlay','tile settings update CSS immediately','mobile navigation replaces persistent sidebar','dock opens dedicated sections','notes are stored and survive reload','omnibox shows local suggestions'];
   check(checks, failures, 'interaction-e2e', interactionSignals.every(signal => e2e.includes(signal)), 'Playwright interaction suite must cover the approved core flows');
