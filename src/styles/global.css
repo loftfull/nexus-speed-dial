@@ -1,0 +1,6 @@
+@import './tokens.css';
+* { box-sizing: border-box; }
+html { min-width:320px; min-height:100%; background:var(--nexus-bg-bottom); }
+body { margin:0; min-width:320px; min-height:100vh; color:var(--nexus-text); background:radial-gradient(circle at 82% 6%,rgba(178,213,255,.44),transparent 31%),radial-gradient(circle at 44% 96%,rgba(255,223,215,.32),transparent 30%),linear-gradient(160deg,var(--nexus-bg-top),var(--nexus-bg-bottom)); font-family:Onest,Inter,Manrope,"Segoe UI",system-ui,sans-serif; text-rendering:optimizeLegibility; -webkit-font-smoothing:antialiased; }
+button,input,select,textarea { font:inherit; } button { color:inherit; } :focus-visible { outline:2px solid color-mix(in srgb,var(--nexus-accent) 70%,white); outline-offset:2px; }
+@media (prefers-reduced-motion:reduce) { :root { --nexus-motion-fast:0ms; --nexus-motion-normal:0ms; --tile-transition:0ms; --tile-hover-lift:0px; --tile-hover-scale:1; --tile-pressed-scale:1; } }
