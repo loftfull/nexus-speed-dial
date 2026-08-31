@@ -4,9 +4,47 @@ import { buildMonthGrid } from './calendarModel.ts';
 import { GlassSurface } from '../primitives/GlassSurface.tsx';
 import { useAppStore } from '../../state/useAppStore.ts';
 import styles from './CalendarPopover.module.css';
-const sameDay=(a:Date,b:Date)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
-export function CalendarPopover(){
- const open=useAppStore(state=>state.calendarOpen);const setOpen=useAppStore(state=>state.setCalendarOpen);const ref=useRef<HTMLDivElement>(null);const [view,setView]=useState(()=>new Date());const [selected,setSelected]=useState(()=>new Date());const grid=useMemo(()=>buildMonthGrid(view.getFullYear(),view.getMonth()),[view]);
- useEffect(()=>{if(!open)return;const key=(event:KeyboardEvent)=>event.key==='Escape'&&setOpen(false);const pointer=(event:PointerEvent)=>{const target=event.target as Node;if(ref.current&&!ref.current.contains(target)&&!(target instanceof Element&&target.closest('[data-testid="date-button"]')))setOpen(false)};document.addEventListener('keydown',key);document.addEventListener('pointerdown',pointer);return()=>{document.removeEventListener('keydown',key);document.removeEventListener('pointerdown',pointer)}},[open,setOpen]);
- if(!open)return null;const shift=(delta:number)=>setView(current=>new Date(current.getFullYear(),current.getMonth()+delta,1));
- return <GlassSurface role="popover" className={styles.popover}><div ref={ref} data-testid="calendar-popover"><header><div className={styles.monthNav}><button aria-label="Предыдущий месяц" onClick={()=>shift(-1)}><ChevronLeft size={17}/></button><b>{grid.label}</b><button aria-label="Следующий месяц" onClick={()=>shift(1)}><ChevronRight size={17}/></button></div><button aria-label="Закрыть календарь" onClick={()=>setOpen(false)}><X size={18}/></button></header><div className={styles.week}>{['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(day=><span key={day}>{day}</span>)}</div><div className={styles.grid}>{grid.days.map(item=><button key={item.key} className={`${!item.inMonth?styles.outside:''} ${sameDay(item.date,selected)?styles.selected:''}`} onClick={()=>{setSelected(item.date);if(!item.inMonth)setView(new Date(item.date.getFullYear(),item.date.getMonth(),1))}}>{item.day}</button>)}</div><div className={styles.note}><small>{selected.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}</small><p>Заметок нет</p></div></div></GlassSurface>}
+
+const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+export function CalendarPopover() {
+  const open = useAppStore(state => state.calendarOpen);
+  const setOpen = useAppStore(state => state.setCalendarOpen);
+  const ref = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState(() => new Date());
+  const [selected, setSelected] = useState(() => new Date());
+  const grid = useMemo(() => buildMonthGrid(view.getFullYear(), view.getMonth()), [view]);
+
+  useEffect(() => {
+    if (!open) return;
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    const pointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      const isTrigger = target instanceof Element && Boolean(target.closest('[data-calendar-trigger]'));
+      if (ref.current && !ref.current.contains(target) && !isTrigger) setOpen(false);
+    };
+    document.addEventListener('keydown', key);
+    document.addEventListener('pointerdown', pointer);
+    return () => {
+      document.removeEventListener('keydown', key);
+      document.removeEventListener('pointerdown', pointer);
+    };
+  }, [open, setOpen]);
+
+  if (!open) return null;
+  const shift = (delta: number) => setView(current => new Date(current.getFullYear(), current.getMonth() + delta, 1));
+
+  return <GlassSurface role="popover" className={styles.popover}>
+    <div ref={ref} data-testid="calendar-popover">
+      <header>
+        <div className={styles.monthNav}><button aria-label="Предыдущий месяц" onClick={() => shift(-1)}><ChevronLeft size={17}/></button><b>{grid.label}</b><button aria-label="Следующий месяц" onClick={() => shift(1)}><ChevronRight size={17}/></button></div>
+        <button aria-label="Закрыть календарь" onClick={() => setOpen(false)}><X size={18}/></button>
+      </header>
+      <div className={styles.week}>{['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => <span key={day}>{day}</span>)}</div>
+      <div className={styles.grid}>{grid.days.map(item => <button key={item.key} className={`${!item.inMonth ? styles.outside : ''} ${sameDay(item.date, selected) ? styles.selected : ''}`} onClick={() => { setSelected(item.date); if (!item.inMonth) setView(new Date(item.date.getFullYear(), item.date.getMonth(), 1)); }}>{item.day}</button>)}</div>
+      <div className={styles.note}><small>{selected.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</small><p>Заметок нет</p></div>
+    </div>
+  </GlassSurface>;
+}
