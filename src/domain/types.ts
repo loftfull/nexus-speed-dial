@@ -37,9 +37,15 @@ export interface TileAppearanceSettings {
   glassOpacity: number;
   blur: number;
   saturation: number;
+  borderEnabled: boolean;
   borderOpacity: number;
+  borderHighlight: boolean;
   shadowEnabled: boolean;
   shadowOpacity: number;
+  shadowSoftness: number;
+  shadowDepth: number;
+  backgroundMode: 'transparent' | 'neutral' | 'tinted';
+  iconTreatment: 'original' | 'soft' | 'transparent';
   hoverGlow: boolean;
   hoverGlowIntensity: number;
   selectedGlowIntensity: number;
@@ -49,5 +55,8 @@ export interface TileAppearanceSettings {
   pressedScale: number;
   transitionMs: number;
   easing: 'standard' | 'soft' | 'snappy';
+  loadAnimation: 'none' | 'fade' | 'rise';
+  focusRingStyle: 'minimal' | 'standard' | 'strong';
+  dragFeedback: boolean;
   reducedMotion: boolean;
 }

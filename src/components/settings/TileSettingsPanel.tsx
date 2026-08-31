@@ -1,11 +1,125 @@
 import { X } from 'lucide-react';
-import type { ChangeEvent } from 'react';
-import { GlassSurface } from '../primitives/GlassSurface.tsx';
-import { useAppStore } from '../../state/useAppStore.ts';
+import { useState } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
 import type { TileAppearanceSettings, TilePreset, TileSize } from '../../domain/types.ts';
+import { useAppStore } from '../../state/useAppStore.ts';
+import { GlassSurface } from '../primitives/GlassSurface.tsx';
 import { TilePreview } from './TilePreview.tsx';
+import { getSizePatch, settingsTabs } from './tileSettingsPanelModel.ts';
+import type { SettingsTab } from './tileSettingsPanelModel.ts';
 import styles from './TileSettingsPanel.module.css';
-const sizeMap:Record<TileSize,Partial<TileAppearanceSettings>>={S:{size:'S',width:128,height:132,iconSize:48},M:{size:'M',width:170,height:180,iconSize:58},L:{size:'L',width:196,height:206,iconSize:66},XL:{size:'XL',width:220,height:224,iconSize:74}};
-function Range({label,value,min,max,step=1,onChange,suffix=''}:{label:string;value:number;min:number;max:number;step?:number;onChange:(v:number)=>void;suffix?:string}){return <label className={styles.range}><span>{label}</span><input type="range" min={min} max={max} step={step} value={value} onChange={(e:ChangeEvent<HTMLInputElement>)=>onChange(Number(e.target.value))}/><output>{value}{suffix}</output></label>}
-function Toggle({label,checked,onChange}:{label:string;checked:boolean;onChange:(v:boolean)=>void}){return <label className={styles.toggle}><span>{label}</span><input type="checkbox" checked={checked} onChange={(e:ChangeEvent<HTMLInputElement>)=>onChange(e.target.checked)}/></label>}
-export function TileSettingsPanel(){const open=useAppStore(s=>s.settingsOpen);const setOpen=useAppStore(s=>s.setSettingsOpen);const settings=useAppStore(s=>s.tileSettings);const set=useAppStore(s=>s.setTileSetting);const preset=useAppStore(s=>s.applyTilePreset);const reset=useAppStore(s=>s.resetTileSettings);if(!open)return null;const setSize=(size:TileSize)=>{const values=sizeMap[size];for(const[k,v]of Object.entries(values))set(k as keyof TileAppearanceSettings,v as never)};return <GlassSurface as="aside" role="popover" className={styles.panel}><header><div><b>Настройки плиток сайтов</b><small>Живое отображение изменений</small></div><button onClick={()=>setOpen(false)}><X size={19}/></button></header><TilePreview/><nav className={styles.tabbar}><button className={styles.active}>Базовые</button><button>Расширенные</button><button>Анимация</button></nav><section><h4>Представление</h4><div className={styles.presets}>{(['minimal','standard','expanded','large','list'] as TilePreset[]).map(p=><button key={p} onClick={()=>preset(p)} className={settings.preset===p?styles.active:''}>{({minimal:'Минимальный',standard:'Стандарт',expanded:'Расширенный',large:'Крупный',list:'Список'} as const)[p]}</button>)}</div><label className={styles.selectRow}>Размер<select value={settings.size} onChange={(e:ChangeEvent<HTMLSelectElement>)=>setSize(e.target.value as TileSize)}><option>S</option><option>M</option><option>L</option><option>XL</option></select></label></section><section><h4>Стекло и геометрия</h4><Range label="Размытие" value={settings.blur} min={8} max={28} onChange={v=>set('blur',v)} suffix=" px"/><Range label="Прозрачность" value={Math.round(settings.glassOpacity*100)} min={42} max={86} onChange={v=>set('glassOpacity',v/100)} suffix="%"/><Range label="Радиус" value={settings.radius} min={10} max={30} onChange={v=>set('radius',v)} suffix=" px"/><Range label="Иконка" value={settings.iconSize} min={32} max={84} onChange={v=>set('iconSize',v)} suffix=" px"/><Range label="Тень" value={Math.round(settings.shadowOpacity*100)} min={0} max={18} onChange={v=>set('shadowOpacity',v/100)} suffix="%"/></section><section><h4>Реакции</h4><Range label="Подъём hover" value={settings.hoverLift} min={0} max={6} onChange={v=>set('hoverLift',v)} suffix=" px"/><Range label="Scale hover" value={settings.hoverScale} min={1} max={1.04} step={.005} onChange={v=>set('hoverScale',v)}/><Range label="Сжатие click" value={settings.pressedScale} min={.94} max={1} step={.01} onChange={v=>set('pressedScale',v)}/><Range label="Скорость" value={settings.transitionMs} min={80} max={400} step={10} onChange={v=>set('transitionMs',v)} suffix=" ms"/></section><section><h4>Данные плитки</h4><Toggle label="Подзаголовок" checked={settings.showSubtitle} onChange={v=>set('showSubtitle',v)}/><Toggle label="Домен сайта" checked={settings.showDomain} onChange={v=>set('showDomain',v)}/><Toggle label="Счётчики" checked={settings.showBadge} onChange={v=>set('showBadge',v)}/><Toggle label="Уменьшение движения" checked={settings.reducedMotion} onChange={v=>set('reducedMotion',v)}/></section><footer><button onClick={reset}>Сбросить</button><span>Сохраняется автоматически</span></footer></GlassSurface>}
+
+type Setter = <K extends keyof TileAppearanceSettings>(key: K, value: TileAppearanceSettings[K]) => void;
+
+function Range({ label, value, min, max, step = 1, onChange, suffix = '' }: {
+  label: string; value: number; min: number; max: number; step?: number; onChange: (value: number) => void; suffix?: string;
+}) {
+  return <label className={styles.range}><span>{label}</span><input type="range" min={min} max={max} step={step} value={value} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(Number(event.target.value))}/><output>{value}{suffix}</output></label>;
+}
+
+function Toggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (value: boolean) => void }) {
+  return <label className={styles.toggle}><span>{label}{hint && <small>{hint}</small>}</span><input type="checkbox" checked={checked} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(event.target.checked)}/></label>;
+}
+
+function SelectRow({ label, value, onChange, children }: { label: string; value: string | number; onChange: (value: string) => void; children: ReactNode }) {
+  return <label className={styles.selectRow}><span>{label}</span><select value={value} onChange={(event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)}>{children}</select></label>;
+}
+
+function BasicSettings({ settings, set, applyPreset }: { settings: TileAppearanceSettings; set: Setter; applyPreset: (preset: TilePreset) => void }) {
+  const setSize = (size: TileSize) => {
+    const patch = getSizePatch(size);
+    (Object.entries(patch) as Array<[keyof typeof patch, typeof patch[keyof typeof patch]]>).forEach(([key, value]) => set(key, value as never));
+  };
+  return <>
+    <section>
+      <h4>Представление</h4>
+      <div className={styles.presets}>{(['minimal','standard','expanded','large','list'] as TilePreset[]).map(preset => <button key={preset} onClick={() => applyPreset(preset)} className={settings.preset === preset ? styles.active : ''}>{({ minimal:'Минимальный', standard:'Стандарт', expanded:'Расширенный', large:'Крупный', list:'Список' } as const)[preset]}</button>)}</div>
+      <div className={styles.segmented}>{(['S','M','L','XL'] as TileSize[]).map(size => <button key={size} className={settings.size === size ? styles.active : ''} onClick={() => setSize(size)}>{size}</button>)}</div>
+      <SelectRow label="Колонки" value={settings.columns} onChange={value => set('columns', value === 'auto' ? 'auto' : Number(value))}><option value="auto">Авто</option>{[2,3,4,5,6,7,8].map(value => <option key={value}>{value}</option>)}</SelectRow>
+      <Range label="Ширина" value={settings.width} min={112} max={260} onChange={value => set('width', value)} suffix=" px"/>
+      <Range label="Высота" value={settings.height} min={76} max={240} onChange={value => set('height', value)} suffix=" px"/>
+      <Range label="Отступ" value={settings.gap} min={8} max={32} onChange={value => set('gap', value)} suffix=" px"/>
+      <Range label="Радиус" value={settings.radius} min={10} max={30} onChange={value => set('radius', value)} suffix=" px"/>
+      <Range label="Иконка" value={settings.iconSize} min={32} max={84} onChange={value => set('iconSize', value)} suffix=" px"/>
+    </section>
+    <section>
+      <h4>Содержимое</h4>
+      <Toggle label="Заголовок" checked={settings.showTitle} onChange={value => set('showTitle', value)}/>
+      <Toggle label="Подзаголовок" checked={settings.showSubtitle} onChange={value => set('showSubtitle', value)}/>
+      <Toggle label="Домен сайта" checked={settings.showDomain} onChange={value => set('showDomain', value)}/>
+      <Toggle label="Категория" checked={settings.showCategory} onChange={value => set('showCategory', value)}/>
+      <Toggle label="Счётчики" checked={settings.showBadge} onChange={value => set('showBadge', value)}/>
+    </section>
+  </>;
+}
+
+function AdvancedSettings({ settings, set }: { settings: TileAppearanceSettings; set: Setter }) {
+  return <>
+    <section>
+      <h4>Стекло</h4>
+      <Range label="Прозрачность" value={Math.round(settings.glassOpacity * 100)} min={42} max={86} onChange={value => set('glassOpacity', value / 100)} suffix="%"/>
+      <Range label="Размытие" value={settings.blur} min={8} max={28} onChange={value => set('blur', value)} suffix=" px"/>
+      <Range label="Насыщенность" value={settings.saturation} min={100} max={140} onChange={value => set('saturation', value)} suffix="%"/>
+      <SelectRow label="Фон плитки" value={settings.backgroundMode} onChange={value => set('backgroundMode', value as TileAppearanceSettings['backgroundMode'])}><option value="transparent">Прозрачный</option><option value="neutral">Нейтральное стекло</option><option value="tinted">Мягкий оттенок</option></SelectRow>
+      <SelectRow label="Иконка" value={settings.iconTreatment} onChange={value => set('iconTreatment', value as TileAppearanceSettings['iconTreatment'])}><option value="original">Оригинальная</option><option value="soft">Мягкая подложка</option><option value="transparent">Без подложки</option></SelectRow>
+    </section>
+    <section>
+      <h4>Границы и тени</h4>
+      <Toggle label="Граница" checked={settings.borderEnabled} onChange={value => set('borderEnabled', value)}/>
+      <Range label="Интенсивность границы" value={Math.round(settings.borderOpacity * 100)} min={0} max={80} onChange={value => set('borderOpacity', value / 100)} suffix="%"/>
+      <Toggle label="Верхний блик" checked={settings.borderHighlight} onChange={value => set('borderHighlight', value)}/>
+      <Toggle label="Тень" checked={settings.shadowEnabled} onChange={value => set('shadowEnabled', value)}/>
+      <Range label="Прозрачность тени" value={Math.round(settings.shadowOpacity * 100)} min={0} max={18} onChange={value => set('shadowOpacity', value / 100)} suffix="%"/>
+      <Range label="Мягкость тени" value={settings.shadowSoftness} min={8} max={40} onChange={value => set('shadowSoftness', value)} suffix=" px"/>
+      <Range label="Глубина тени" value={settings.shadowDepth} min={0} max={18} onChange={value => set('shadowDepth', value)} suffix=" px"/>
+    </section>
+    <section>
+      <h4>Свечение</h4>
+      <Toggle label="Свечение при наведении" checked={settings.hoverGlow} onChange={value => set('hoverGlow', value)}/>
+      <Range label="Hover glow" value={Math.round(settings.hoverGlowIntensity * 100)} min={0} max={24} onChange={value => set('hoverGlowIntensity', value / 100)} suffix="%"/>
+      <Range label="Selected glow" value={Math.round(settings.selectedGlowIntensity * 100)} min={0} max={30} onChange={value => set('selectedGlowIntensity', value / 100)} suffix="%"/>
+    </section>
+  </>;
+}
+
+function MotionSettings({ settings, set }: { settings: TileAppearanceSettings; set: Setter }) {
+  return <>
+    <section>
+      <h4>Наведение и нажатие</h4>
+      <Toggle label="Анимация наведения" checked={settings.hoverEnabled} onChange={value => set('hoverEnabled', value)}/>
+      <Range label="Подъём" value={settings.hoverLift} min={0} max={6} onChange={value => set('hoverLift', value)} suffix=" px"/>
+      <Range label="Scale hover" value={settings.hoverScale} min={1} max={1.04} step={0.005} onChange={value => set('hoverScale', value)}/>
+      <Range label="Сжатие click" value={settings.pressedScale} min={0.94} max={1} step={0.01} onChange={value => set('pressedScale', value)}/>
+      <Range label="Скорость" value={settings.transitionMs} min={80} max={400} step={10} onChange={value => set('transitionMs', value)} suffix=" ms"/>
+      <SelectRow label="Характер движения" value={settings.easing} onChange={value => set('easing', value as TileAppearanceSettings['easing'])}><option value="standard">Стандартный</option><option value="soft">Мягкий</option><option value="snappy">Быстрый</option></SelectRow>
+    </section>
+    <section>
+      <h4>Появление и доступность</h4>
+      <SelectRow label="Появление" value={settings.loadAnimation} onChange={value => set('loadAnimation', value as TileAppearanceSettings['loadAnimation'])}><option value="none">Без анимации</option><option value="fade">Плавное</option><option value="rise">Подъём</option></SelectRow>
+      <SelectRow label="Контур фокуса" value={settings.focusRingStyle} onChange={value => set('focusRingStyle', value as TileAppearanceSettings['focusRingStyle'])}><option value="minimal">Минимальный</option><option value="standard">Стандартный</option><option value="strong">Выраженный</option></SelectRow>
+      <Toggle label="Drag & Drop feedback" checked={settings.dragFeedback} onChange={value => set('dragFeedback', value)}/>
+      <Toggle label="Уменьшение движения" hint="Отключает несущественные эффекты" checked={settings.reducedMotion} onChange={value => set('reducedMotion', value)}/>
+    </section>
+  </>;
+}
+
+export function TileSettingsPanel() {
+  const open = useAppStore(state => state.settingsOpen);
+  const setOpen = useAppStore(state => state.setSettingsOpen);
+  const settings = useAppStore(state => state.tileSettings);
+  const set = useAppStore(state => state.setTileSetting) as Setter;
+  const applyPreset = useAppStore(state => state.applyTilePreset);
+  const reset = useAppStore(state => state.resetTileSettings);
+  const [tab, setTab] = useState<SettingsTab>('basic');
+  if (!open) return null;
+
+  return <GlassSurface as="aside" role="popover" className={styles.panel}>
+    <header><div><b>Настройки плиток сайтов</b><small>Изменения сразу видны на главном экране</small></div><button aria-label="Закрыть настройки" onClick={() => setOpen(false)}><X size={19}/></button></header>
+    <TilePreview/>
+    <nav className={styles.tabbar} aria-label="Группы настроек">{settingsTabs.map(item => <button key={item.id} onClick={() => setTab(item.id)} className={tab === item.id ? styles.active : ''}>{item.label}</button>)}</nav>
+    {tab === 'basic' && <BasicSettings settings={settings} set={set} applyPreset={applyPreset}/>} 
+    {tab === 'advanced' && <AdvancedSettings settings={settings} set={set}/>} 
+    {tab === 'motion' && <MotionSettings settings={settings} set={set}/>} 
+    <footer><button onClick={reset}>Сбросить</button><span>Сохраняется автоматически</span></footer>
+  </GlassSurface>;
+}
