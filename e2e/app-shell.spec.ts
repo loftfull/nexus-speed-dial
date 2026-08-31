@@ -18,6 +18,8 @@ test('calendar opens as overlay without changing workspace width', async ({ page
 
 test('tile settings update CSS immediately and persist after reload', async ({ page }) => {
   await page.getByRole('button', { name: 'Настройки' }).click();
+  await expect(page.getByRole('heading', { name: 'Настройки', level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Открыть' }).click();
   await expect(page.getByTestId('tile-settings-panel')).toBeVisible();
   const radius = page.getByLabel('Радиус');
   await radius.evaluate((element) => {
@@ -40,7 +42,7 @@ test('mobile navigation replaces persistent sidebar', async ({ page }) => {
 });
 
 test('dock opens dedicated sections', async ({ page }) => {
-  for (const section of ['Избранное', 'Недавние', 'Загрузки', 'Заметки'] as const) {
+  for (const section of ['Избранное', 'Недавние', 'Загрузки', 'Заметки', 'Настройки'] as const) {
     await page.getByRole('button', { name: section }).click();
     await expect(page.getByRole('heading', { name: section, level: 1 })).toBeVisible();
   }
@@ -63,4 +65,22 @@ test('omnibox shows local suggestions before web search', async ({ page }) => {
   const suggestions = page.getByTestId('omnibox-suggestions');
   await expect(suggestions).toBeVisible();
   await expect(suggestions.getByText('GitHub')).toBeVisible();
+});
+
+test('backup import restores validated Nexus data', async ({ page }) => {
+  await page.getByRole('button', { name: 'Настройки' }).click();
+  const controls = page.getByTestId('data-controls');
+  await expect(controls).toBeVisible();
+  const payload = {
+    schema: 'nexus-speed-dial', version: 1, exportedAt: '2026-08-31T12:00:00.000Z', data: {
+      tileSettings: {},
+      projects: [{ id: 'home', name: 'Дом', icon: 'home' }], categories: [], sites: [], history: [],
+      notes: [{ id: 'imported', title: 'Импортировано', body: 'Резервная копия работает', projectId: 'home', createdAt: '2026-08-31T12:00:00.000Z', updatedAt: '2026-08-31T12:00:00.000Z' }],
+      weatherLocation: { mode: 'city', city: 'Минск' },
+    },
+  };
+  await controls.locator('input[type="file"]').setInputFiles({ name: 'nexus.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(payload)) });
+  await expect(page.getByRole('status')).toHaveText('Данные восстановлены');
+  await page.getByRole('button', { name: 'Заметки' }).click();
+  await expect(page.getByRole('heading', { name: 'Импортировано', level: 3 })).toBeVisible();
 });
