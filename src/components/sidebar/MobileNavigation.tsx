@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, ChevronRight, CircleDollarSign, FolderKanban, Grid2X2, Home, Menu, MessageCircle, Pencil, Plus, ShoppingCart, Tag, Users, Wrench, X } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, ChevronRight, CircleDollarSign, FolderKanban, Grid2X2, Home, Menu, MessageCircle, Pencil, Plus, ShoppingCart, Tag, Users, Wrench, X } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import { navigationIconKey } from '../../domain/navigationIcon.ts';
 import { useAppStore } from '../../state/useAppStore.ts';
@@ -25,7 +25,9 @@ export function MobileNavigation() {
   const clock = useLiveClock();
   const weather = useWeather();
   const open = useAppStore(state => state.mobileNavOpen);
+  const calendarOpen = useAppStore(state => state.calendarOpen);
   const setOpen = useAppStore(state => state.setMobileNavOpen);
+  const setCalendarOpen = useAppStore(state => state.setCalendarOpen);
   const setWeatherOpen = useAppStore(state => state.setWeatherOpen);
   const projects = useAppStore(state => state.projects);
   const categories = useAppStore(state => state.categories);
@@ -41,7 +43,11 @@ export function MobileNavigation() {
     <GlassSurface role="control" className={styles.bar}>
       <button aria-label="Открыть разделы" onClick={() => setOpen(true)}><Menu size={20}/></button>
       <div className={styles.brand}><span>N</span><strong>Nexus</strong></div>
-      <div className={styles.compactStatus}><b>{clock.time}</b><button className={styles.weatherButton} onClick={() => setWeatherOpen(true)}>{temp}</button></div>
+      <div className={styles.compactStatus}>
+        <b>{clock.time}</b>
+        <button className={styles.calendarButton} aria-label="Открыть календарь" aria-expanded={calendarOpen} title={clock.date} onClick={() => setCalendarOpen(calendarOpen === false)}><CalendarDays size={15}/></button>
+        <button className={styles.weatherButton} aria-label="Открыть погоду" onClick={() => setWeatherOpen(true)}>{temp}</button>
+      </div>
     </GlassSurface>
     {open && <div className={styles.layer} role="presentation" onMouseDown={() => setOpen(false)}>
       <GlassSurface as="aside" role="popover" className={styles.drawer} onMouseDown={(event: MouseEvent<HTMLElement>) => event.stopPropagation()}>
