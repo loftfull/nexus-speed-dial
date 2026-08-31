@@ -45,7 +45,7 @@ export function MobileNavigation() {
       <div className={styles.brand}><span>N</span><strong>Nexus</strong></div>
       <div className={styles.compactStatus}>
         <b>{clock.time}</b>
-        <button className={styles.calendarButton} aria-label="Открыть календарь" aria-expanded={calendarOpen} title={clock.date} onClick={() => setCalendarOpen(calendarOpen === false)}><CalendarDays size={15}/></button>
+        <button data-calendar-trigger className={styles.calendarButton} aria-label="Открыть календарь" aria-expanded={calendarOpen} title={clock.date} onClick={() => setCalendarOpen(!calendarOpen)}><CalendarDays size={15}/></button>
         <button className={styles.weatherButton} aria-label="Открыть погоду" onClick={() => setWeatherOpen(true)}>{temp}</button>
       </div>
     </GlassSurface>
