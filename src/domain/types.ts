@@ -12,7 +12,7 @@ export interface StoredNote { id:string; title:string; body:string; projectId?:s
 
 export interface TileAppearanceSettings {
   preset:TilePreset; size:TileSize; columns:'auto'|number; width:number; height:number; gap:number; radius:number; iconSize:number;
-  showTitle:boolean; showSubtitle:boolean; showDomain:boolean; showCategory:boolean; showBadge:boolean;
+  showTitle:boolean; showSubtitle:boolean; showDomain:boolean; showCategory:boolean; showBadge:boolean; labelAlignment:'left'|'center'|'right';
   glassOpacity:number; blur:number; saturation:number; borderEnabled:boolean; borderOpacity:number; borderHighlight:boolean;
   shadowEnabled:boolean; shadowOpacity:number; shadowSoftness:number; shadowDepth:number;
   backgroundMode:'transparent'|'neutral'|'tinted'; iconTreatment:'original'|'soft'|'transparent';
