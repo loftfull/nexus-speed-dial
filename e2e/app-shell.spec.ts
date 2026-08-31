@@ -5,13 +5,18 @@ test.beforeEach(async ({ page }) => { await resetApp(page); });
 
 test('calendar opens as overlay without changing workspace width', async ({ page }) => {
   const shell = page.getByTestId('app-shell');
+  const dateButton = page.getByTestId('date-button');
   const before = await shell.boundingBox();
-  await page.getByTestId('date-button').click();
+  await dateButton.click();
   await expect(page.getByTestId('calendar-popover')).toBeVisible();
   const after = await shell.boundingBox();
   expect(before).not.toBeNull();
   expect(after).not.toBeNull();
   expect(Math.abs((before?.width ?? 0) - (after?.width ?? 0))).toBeLessThan(1);
+  await dateButton.click();
+  await expect(page.getByTestId('calendar-popover')).toBeHidden();
+  await dateButton.click();
+  await expect(page.getByTestId('calendar-popover')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('calendar-popover')).toBeHidden();
 });
@@ -39,6 +44,16 @@ test('mobile navigation replaces persistent sidebar', async ({ page }) => {
   await page.getByRole('button', { name: 'Открыть разделы' }).click();
   await expect(page.getByText('Разделы и категории')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Добавить категорию' })).toBeVisible();
+});
+
+test('mobile status bar opens the shared calendar bottom sheet', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  const calendarButton = page.getByRole('button', { name: 'Открыть календарь' });
+  await calendarButton.click();
+  await expect(page.getByTestId('calendar-popover')).toBeVisible();
+  await calendarButton.click();
+  await expect(page.getByTestId('calendar-popover')).toBeHidden();
 });
 
 test('dock opens dedicated sections', async ({ page }) => {
