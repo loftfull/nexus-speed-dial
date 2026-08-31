@@ -28,6 +28,7 @@ export function Sidebar() {
   const sites = useAppStore(state => state.sites);
   const activeProjectId = useAppStore(state => state.activeProjectId);
   const activeCategoryId = useAppStore(state => state.activeCategoryId);
+  const calendarOpen = useAppStore(state => state.calendarOpen);
   const setActiveProject = useAppStore(state => state.setActiveProject);
   const setActiveCategory = useAppStore(state => state.setActiveCategory);
   const setCalendarOpen = useAppStore(state => state.setCalendarOpen);
@@ -45,7 +46,7 @@ export function Sidebar() {
     <div className={styles.brand}><span className={styles.brandMark}>N</span><div><strong>Nexus</strong><small>Speed Dial</small></div></div>
     <GlassSurface role="control" className={styles.clockCard}>
       <div className={styles.clockTop}>
-        <div><div className={styles.clock}>{clock.time}</div><button data-testid="date-button" onClick={() => setCalendarOpen(true)}>{clock.date}</button></div>
+        <div><div className={styles.clock}>{clock.time}</div><button data-testid="date-button" aria-expanded={calendarOpen} onClick={() => setCalendarOpen(calendarOpen === false)}>{clock.date}</button></div>
         <span className={styles.dateGlyph} aria-hidden="true"><CalendarDays size={21}/></span>
       </div>
       <button className={styles.weather} onClick={() => setWeatherOpen(true)}><span className={styles.weatherIcon}>{current?.icon ?? '🌤️'}</span><span className={styles.temp}>{current ? `${current.temperature}°` : '--°'}</span><span><b>{current?.label ?? (weather.status === 'loading' ? 'Загрузка…' : 'Нет данных')}</b><small>{current ? `Ощущается как ${current.apparent}°` : weather.label}</small></span></button>
