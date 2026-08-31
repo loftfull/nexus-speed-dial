@@ -28,12 +28,10 @@ test('tile settings update CSS immediately and persist after reload', async ({ p
   await page.getByRole('button', { name: 'Открыть' }).click();
   await expect(page.getByTestId('tile-settings-panel')).toBeVisible();
   const radius = page.getByLabel('Радиус');
-  await radius.evaluate((element) => {
-    const input = element as HTMLInputElement;
-    input.value = '24';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+  await expect(radius).toHaveValue('20');
+  await radius.focus();
+  for (let step = 0; step < 4; step += 1) await radius.press('ArrowRight');
+  await expect(radius).toHaveValue('24');
   await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--tile-radius'))).toBe('24px');
   await page.reload();
   await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--tile-radius'))).toBe('24px');
