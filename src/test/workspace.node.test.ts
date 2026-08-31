@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { selectWorkspaceSites } from '../domain/workspace.ts';
 import type { Category, HistoryEntry, Site } from '../domain/types.ts';
 
@@ -35,4 +36,10 @@ test('parent category includes its direct children while project scope remains s
 test('favorites and search compose with project/category filters', () => {
   const result = selectWorkspaceSites({ sites, categories, history, projectId:'home', categoryId:'social', tab:'favorites', query:'рб' });
   assert.deepEqual(result.map(site => site.id), ['rbk']);
+});
+
+test('workspace does not mark the first tile selected without a user selection', async () => {
+  const source = await readFile(new URL('../components/tiles/SpeedDialGrid.tsx', import.meta.url), 'utf8');
+  assert.equal(source.includes('selected={index === 0}'), false);
+  assert.equal(source.includes('selected={index===0}'), false);
 });
