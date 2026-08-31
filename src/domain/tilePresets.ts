@@ -14,6 +14,7 @@ const base: Omit<TileAppearanceSettings, 'preset' | 'size' | 'width' | 'height' 
   showTitle: true,
   showCategory: false,
   showBadge: true,
+  labelAlignment: 'center',
   glassOpacity: 0.68,
   blur: 18,
   saturation: 122,
@@ -46,7 +47,7 @@ const presets: Record<TilePreset, TileAppearanceSettings> = {
   standard: { ...base, preset: 'standard', size: 'M', width: 170, height: 180, iconSize: 58, showSubtitle: true, showDomain: false },
   expanded: { ...base, preset: 'expanded', size: 'L', width: 188, height: 204, iconSize: 64, showSubtitle: true, showDomain: true },
   large: { ...base, preset: 'large', size: 'XL', width: 220, height: 224, iconSize: 74, showSubtitle: true, showDomain: true, gap: 20 },
-  list: { ...base, preset: 'list', size: 'M', width: 260, height: 76, iconSize: 40, showSubtitle: false, showDomain: true, gap: 10, columns: 1 },
+  list: { ...base, preset: 'list', size: 'M', width: 260, height: 76, iconSize: 40, showSubtitle: false, showDomain: true, gap: 10, columns: 1, labelAlignment: 'left' },
 };
 
 function clamp(value: number, [min, max]: readonly [number, number]) {
@@ -58,8 +59,10 @@ export function getTilePreset(preset: TilePreset): TileAppearanceSettings {
 }
 
 export function normalizeTileSettings(settings: TileAppearanceSettings): TileAppearanceSettings {
+  const labelAlignment = ['left', 'center', 'right'].includes(settings.labelAlignment) ? settings.labelAlignment : 'center';
   return {
     ...settings,
+    labelAlignment,
     columns: settings.columns === 'auto' ? 'auto' : Math.round(clamp(Number(settings.columns), [2, 8])),
     width: clamp(settings.width, tileBounds.width),
     height: clamp(settings.height, tileBounds.height),
