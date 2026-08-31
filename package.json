@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test e2e/app-shell.spec.ts",
-    "test:visual": "playwright test e2e/visual.spec.ts"
+    "test:visual": "playwright test e2e/visual.spec.ts",
+    "qa:reference": "node scripts/qa-reference.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
