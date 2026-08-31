@@ -11,6 +11,7 @@ test('desktop tile settings glass reference', async ({ page }) => {
   await page.setViewportSize({ width: 1536, height: 1024 });
   await resetApp(page);
   await page.getByRole('button', { name: 'Настройки' }).click();
+  await page.getByRole('button', { name: 'Открыть' }).click();
   await expect(page.getByTestId('tile-settings-panel')).toBeVisible();
   await expect(page).toHaveScreenshot('desktop-tile-settings.png', { fullPage: true, animations: 'disabled' });
 });
