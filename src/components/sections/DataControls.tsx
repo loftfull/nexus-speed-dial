@@ -24,8 +24,11 @@ export function DataControls() {
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = `nexus-speed-dial-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.hidden = true;
+    document.body.append(anchor);
     anchor.click();
-    URL.revokeObjectURL(url);
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
     setStatus('Резервная копия создана');
   };
 
