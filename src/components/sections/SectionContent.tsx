@@ -76,13 +76,13 @@ function NotesSection() {
 function SettingsSection() {
   const openSettings = useAppStore(state => state.setSettingsOpen);
   const cards = [
-    ['Оформление','Стекло, прозрачность, тени и фон'],
-    ['Плитки сайтов','Размер, данные, эффекты и анимации'],
-    ['Sidebar','Часы, погода, проекты и категории'],
-    ['Поиск','Поисковик, подсказки и локальный поиск'],
-    ['Приватность','История и локальные данные'],
+    { title: 'Оформление', subtitle: 'Стекло, прозрачность, тени и фон', enabled: false },
+    { title: 'Плитки сайтов', subtitle: 'Размер, данные, эффекты и анимации', enabled: true },
+    { title: 'Sidebar', subtitle: 'Часы, погода, проекты и категории', enabled: false },
+    { title: 'Поиск', subtitle: 'Поисковик, подсказки и локальный поиск', enabled: false },
+    { title: 'Приватность', subtitle: 'История и локальные данные', enabled: false },
   ] as const;
-  return <><SectionTitle section="settings"/><div className={styles.settingsGrid}>{cards.map(([title, subtitle], index) => <GlassSurface key={title} className={styles.settingCard}><Settings2 size={19}/><div><strong>{title}</strong><p>{subtitle}</p></div>{index === 1 && <button onClick={() => openSettings(true)}>Открыть</button>}</GlassSurface>)}<GlassSurface className={`${styles.settingCard} ${styles.dataCard}`}><Settings2 size={19}/><div><strong>Данные</strong><p>Резервная копия всех локальных данных Nexus</p><DataControls/></div></GlassSurface></div></>;
+  return <><SectionTitle section="settings"/><div className={styles.settingsGrid}>{cards.map(card => <GlassSurface key={card.title} aria-disabled={!card.enabled || undefined} className={`${styles.settingCard} ${card.enabled ? styles.settingActive : styles.settingDisabled}`}><Settings2 size={19}/><div><strong>{card.title}</strong><p>{card.subtitle}</p></div>{card.enabled ? <button onClick={() => openSettings(true)}>Открыть</button> : <span className={styles.statusBadge}>Позже</span>}</GlassSurface>)}<GlassSurface className={`${styles.settingCard} ${styles.settingActive} ${styles.dataCard}`}><Settings2 size={19}/><div><strong>Данные</strong><p>Резервная копия всех локальных данных Nexus</p><DataControls/></div></GlassSurface></div></>;
 }
 
 function EmptyState({ text, icon = 'note' }: { text: string; icon?: 'note' | 'download' }) {
