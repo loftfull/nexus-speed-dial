@@ -1,6 +1,9 @@
-import type { AppSection, TileAppearanceSettings, TilePreset, ViewMode, WorkspaceTab } from '../domain/types.ts';
+import type { AppSection, Category, Project, Site, TileAppearanceSettings, TilePreset, ViewMode, WorkspaceTab } from '../domain/types.ts';
 import { getTilePreset, normalizeTileSettings } from '../domain/tilePresets.ts';
+import { seedCategories, seedProjects, seedSites } from '../data/seed.ts';
 import type { StorageAdapter } from '../storage/StorageAdapter.ts';
+
+export type StructureEditorTarget = { kind: 'project' | 'category'; id?: string } | null;
 
 export interface AppStoreState {
   section: AppSection;
@@ -10,6 +13,11 @@ export interface AppStoreState {
   activeCategoryId: string | null;
   bookmarkQuery: string;
   tileSettings: TileAppearanceSettings;
+  projects: Project[];
+  categories: Category[];
+  sites: Site[];
+  structureEditor: StructureEditorTarget;
+  siteEditor: 'new' | string | null;
   calendarOpen: boolean;
   settingsOpen: boolean;
   mobileNavOpen: boolean;
@@ -22,65 +30,105 @@ export interface AppStoreState {
   setTileSetting<K extends keyof TileAppearanceSettings>(key: K, value: TileAppearanceSettings[K]): void;
   applyTilePreset(preset: TilePreset): void;
   resetTileSettings(): void;
+  addProject(project: Project): void;
+  updateProject(id: string, patch: Partial<Omit<Project, 'id'>>): void;
+  removeProject(id: string): void;
+  addCategory(category: Category): void;
+  updateCategory(id: string, patch: Partial<Omit<Category, 'id'>>): void;
+  removeCategory(id: string): void;
+  addSite(site: Site): void;
+  updateSite(id: string, patch: Partial<Omit<Site, 'id'>>): void;
+  removeSite(id: string): void;
+  toggleFavorite(id: string): void;
+  setStructureEditor(target: StructureEditorTarget): void;
+  setSiteEditor(target: 'new' | string | null): void;
   setCalendarOpen(open: boolean): void;
   setSettingsOpen(open: boolean): void;
   setMobileNavOpen(open: boolean): void;
 }
 
-export interface AppStore {
-  getState(): AppStoreState;
-  subscribe(listener: () => void): () => void;
-}
+export interface AppStore { getState(): AppStoreState; subscribe(listener: () => void): () => void }
 
-const TILE_SETTINGS_KEY = 'nexus.tileSettings';
+const KEYS = { tiles: 'nexus.tileSettings', projects: 'nexus.projects', categories: 'nexus.categories', sites: 'nexus.sites' } as const;
 
 export function createAppStore(storage: StorageAdapter): AppStore {
   const listeners = new Set<() => void>();
-  const stored = storage.get<TileAppearanceSettings | null>(TILE_SETTINGS_KEY, null);
-  let tileSettings = stored ? normalizeTileSettings(stored) : getTilePreset('standard');
+  let tileSettings = normalizeTileSettings(storage.get<TileAppearanceSettings>(KEYS.tiles, getTilePreset('standard')));
+  let projects = storage.get<Project[]>(KEYS.projects, seedProjects);
+  let categories = storage.get<Category[]>(KEYS.categories, seedCategories);
+  let sites = storage.get<Site[]>(KEYS.sites, seedSites);
+  const home = seedProjects.find(project => project.id === 'home');
+  if (!projects.some(project => project.id === 'home') && home) projects = [home, ...projects];
 
   let state: AppStoreState;
   const emit = () => listeners.forEach(listener => listener());
-  const patch = (partial: Partial<AppStoreState>) => {
-    state = { ...state, ...partial };
-    emit();
-  };
-  const persistTiles = (next: TileAppearanceSettings) => {
-    tileSettings = normalizeTileSettings(next);
-    storage.set(TILE_SETTINGS_KEY, tileSettings);
-    patch({ tileSettings });
-  };
+  const patchState = (partial: Partial<AppStoreState>) => { state = { ...state, ...partial }; emit(); };
+  const persistTiles = (next: TileAppearanceSettings) => { tileSettings = normalizeTileSettings(next); storage.set(KEYS.tiles, tileSettings); patchState({ tileSettings }); };
+  const persistProjects = (next: Project[]) => { projects = next; storage.set(KEYS.projects, projects); patchState({ projects }); };
+  const persistCategories = (next: Category[]) => { categories = next; storage.set(KEYS.categories, categories); patchState({ categories }); };
+  const persistSites = (next: Site[]) => { sites = next; storage.set(KEYS.sites, sites); patchState({ sites }); };
+  const uniqueId = (prefix: string, requested?: string) => requested && ![...projects, ...categories, ...sites].some(item => item.id === requested) ? requested : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   state = {
-    section: 'home',
-    workspaceTab: 'quick',
-    viewMode: 'grid',
-    activeProjectId: 'home',
-    activeCategoryId: null,
-    bookmarkQuery: '',
-    tileSettings,
-    calendarOpen: false,
-    settingsOpen: false,
-    mobileNavOpen: false,
-    setSection: section => patch({ section }),
-    setWorkspaceTab: workspaceTab => patch({ workspaceTab }),
-    setViewMode: viewMode => patch({ viewMode }),
-    setActiveProject: activeProjectId => patch({ activeProjectId, activeCategoryId: null }),
-    setActiveCategory: activeCategoryId => patch({ activeCategoryId }),
-    setBookmarkQuery: bookmarkQuery => patch({ bookmarkQuery }),
+    section: 'home', workspaceTab: 'quick', viewMode: 'grid', activeProjectId: 'home', activeCategoryId: null, bookmarkQuery: '', tileSettings, projects, categories, sites,
+    structureEditor: null, siteEditor: null, calendarOpen: false, settingsOpen: false, mobileNavOpen: false,
+    setSection: section => patchState({ section }),
+    setWorkspaceTab: workspaceTab => patchState({ workspaceTab }),
+    setViewMode: viewMode => patchState({ viewMode }),
+    setActiveProject: activeProjectId => patchState({ activeProjectId, activeCategoryId: null }),
+    setActiveCategory: activeCategoryId => patchState({ activeCategoryId }),
+    setBookmarkQuery: bookmarkQuery => patchState({ bookmarkQuery }),
     setTileSetting: (key, value) => persistTiles({ ...tileSettings, [key]: value }),
     applyTilePreset: preset => persistTiles(getTilePreset(preset)),
     resetTileSettings: () => persistTiles(getTilePreset('standard')),
-    setCalendarOpen: calendarOpen => patch({ calendarOpen }),
-    setSettingsOpen: settingsOpen => patch({ settingsOpen }),
-    setMobileNavOpen: mobileNavOpen => patch({ mobileNavOpen }),
+    addProject: project => persistProjects([...projects, { ...project, id: uniqueId('project', project.id) }]),
+    updateProject: (id, projectPatch) => persistProjects(projects.map(project => project.id === id ? { ...project, ...projectPatch } : project)),
+    removeProject: id => {
+      if (id === 'home' || !projects.some(project => project.id === id)) return;
+      persistSites(sites.map(site => site.projectId === id ? { ...site, projectId: 'home', categoryId: undefined } : site));
+      persistCategories(categories.filter(category => category.projectId !== id));
+      persistProjects(projects.filter(project => project.id !== id));
+      if (state.activeProjectId === id) patchState({ activeProjectId: 'home', activeCategoryId: null });
+    },
+    addCategory: category => {
+      const parent = category.parentId ? categories.find(item => item.id === category.parentId) : undefined;
+      const safeParentId = parent && !parent.parentId && parent.projectId === category.projectId ? parent.id : undefined;
+      persistCategories([...categories, { ...category, id: uniqueId('category', category.id), parentId: safeParentId }]);
+    },
+    updateCategory: (id, categoryPatch) => {
+      const current = categories.find(category => category.id === id);
+      if (!current) return;
+      const nextProjectId = categoryPatch.projectId ?? current.projectId;
+      const requestedParent = Object.prototype.hasOwnProperty.call(categoryPatch, 'parentId') ? categoryPatch.parentId : current.parentId;
+      const parent = requestedParent ? categories.find(category => category.id === requestedParent) : undefined;
+      const parentId = parent && parent.id !== id && !parent.parentId && parent.projectId === nextProjectId ? parent.id : undefined;
+      const childIds = current.parentId ? [] : categories.filter(category => category.parentId === id).map(category => category.id);
+      persistCategories(categories.map(category => {
+        if (category.id === id) return { ...category, ...categoryPatch, projectId: nextProjectId, parentId };
+        if (childIds.includes(category.id) && nextProjectId !== current.projectId) return { ...category, projectId: nextProjectId };
+        return category;
+      }));
+      if (nextProjectId !== current.projectId) {
+        const movedIds = new Set([id, ...childIds]);
+        persistSites(sites.map(site => site.categoryId && movedIds.has(site.categoryId) ? { ...site, projectId: nextProjectId } : site));
+      }
+    },
+    removeCategory: id => {
+      const ids = new Set([id, ...categories.filter(category => category.parentId === id).map(category => category.id)]);
+      persistSites(sites.map(site => site.categoryId && ids.has(site.categoryId) ? { ...site, categoryId: undefined } : site));
+      persistCategories(categories.filter(category => !ids.has(category.id)));
+      if (state.activeCategoryId && ids.has(state.activeCategoryId)) patchState({ activeCategoryId: null });
+    },
+    addSite: site => persistSites([...sites, { ...site, id: uniqueId('site', site.id) }]),
+    updateSite: (id, sitePatch) => persistSites(sites.map(site => site.id === id ? { ...site, ...sitePatch } : site)),
+    removeSite: id => persistSites(sites.filter(site => site.id !== id)),
+    toggleFavorite: id => persistSites(sites.map(site => site.id === id ? { ...site, favorite: !site.favorite } : site)),
+    setStructureEditor: structureEditor => patchState({ structureEditor }),
+    setSiteEditor: siteEditor => patchState({ siteEditor }),
+    setCalendarOpen: calendarOpen => patchState({ calendarOpen }),
+    setSettingsOpen: settingsOpen => patchState({ settingsOpen }),
+    setMobileNavOpen: mobileNavOpen => patchState({ mobileNavOpen }),
   };
 
-  return {
-    getState: () => state,
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
+  return { getState: () => state, subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); } };
 }
