@@ -35,9 +35,13 @@ function RecentSection() {
   const history = useAppStore(state => state.history);
   const sites = useAppStore(state => state.sites);
   const clearHistory = useAppStore(state => state.clearHistory);
+  const recordVisit = useAppStore(state => state.recordVisit);
   const byId = new Map(sites.map(site => [site.id, site]));
-  const rows = history.map(item => ({ item, site: byId.get(item.siteId) })).filter(row => row.site);
-  return <><div className={styles.titleRow}><SectionTitle section="recent"/>{history.length > 0 && <button className={styles.secondary} onClick={clearHistory}>Очистить</button>}</div>{rows.length === 0 ? <EmptyState text="История пока пуста"/> : <div className={styles.stack}>{(['Сегодня','Вчера','На этой неделе'] as const).map(group => { const items = rows.filter(row => groupFor(row.item.openedAt) === group); if (!items.length) return null; return <section key={group}><h3>{group}</h3><GlassSurface className={styles.table}>{items.map(({ item, site }) => <a key={item.id} href={site!.url} className={styles.row}><span className={styles.letter}>{site!.title.slice(0,1)}</span><strong>{site!.title}</strong><span>{site!.domain}</span><span>{site!.subtitle}</span><time>{new Date(item.openedAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</time></a>)}</GlassSurface></section>; })}</div>}</>;
+  const rows = history.flatMap(item => {
+    const site = byId.get(item.siteId);
+    return site ? [{ item, site }] : [];
+  });
+  return <><div className={styles.titleRow}><SectionTitle section="recent"/>{history.length > 0 && <button className={styles.secondary} onClick={clearHistory}>Очистить</button>}</div>{rows.length === 0 ? <EmptyState text="История пока пуста"/> : <div className={styles.stack}>{(['Сегодня','Вчера','На этой неделе'] as const).map(group => { const items = rows.filter(row => groupFor(row.item.openedAt) === group); if (!items.length) return null; return <section key={group}><h3>{group}</h3><GlassSurface className={styles.table}>{items.map(({ item, site }) => <a key={item.id} href={site.url} className={styles.row} onClick={() => recordVisit(site.id)}><span className={styles.letter}>{site.title.slice(0,1)}</span><strong>{site.title}</strong><span>{site.domain}</span><span>{site.subtitle}</span><time>{new Date(item.openedAt).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</time></a>)}</GlassSurface></section>; })}</div>}</>;
 }
 
 function DownloadsSection() {
