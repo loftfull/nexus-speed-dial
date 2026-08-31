@@ -20,9 +20,13 @@ interface BackupEnvelope {
 const homeProject: Project = { id: 'home', name: 'Дом', icon: 'home' };
 const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const isString = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
+const isSafeHttpUrl = (value: unknown): value is string => {
+  if (!isString(value)) return false;
+  try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
+};
 const isProject = (value: unknown): value is Project => isObject(value) && isString(value.id) && isString(value.name) && isString(value.icon);
 const isCategory = (value: unknown): value is Category => isObject(value) && isString(value.id) && isString(value.name) && isString(value.projectId) && isString(value.icon) && (value.parentId === undefined || typeof value.parentId === 'string');
-const isSite = (value: unknown): value is Site => isObject(value) && isString(value.id) && isString(value.title) && isString(value.url) && isString(value.domain) && isString(value.projectId) && typeof value.favorite === 'boolean';
+const isSite = (value: unknown): value is Site => isObject(value) && isString(value.id) && isString(value.title) && isSafeHttpUrl(value.url) && isString(value.domain) && isString(value.projectId) && typeof value.favorite === 'boolean';
 const isHistory = (value: unknown): value is HistoryEntry => isObject(value) && isString(value.id) && isString(value.siteId) && isString(value.openedAt);
 const isNote = (value: unknown): value is StoredNote => isObject(value) && isString(value.id) && typeof value.title === 'string' && typeof value.body === 'string' && isString(value.createdAt) && isString(value.updatedAt) && (value.projectId === undefined || typeof value.projectId === 'string');
 
