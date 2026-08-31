@@ -22,7 +22,8 @@ test('calendar opens as overlay without changing workspace width', async ({ page
 });
 
 test('tile settings update CSS immediately and persist after reload', async ({ page }) => {
-  await page.getByRole('button', { name: 'Настройки' }).click();
+  const dock = page.getByTestId('dock');
+  await dock.getByRole('button', { name: 'Настройки' }).click();
   await expect(page.getByRole('heading', { name: 'Настройки', level: 1 })).toBeVisible();
   await page.getByRole('button', { name: 'Открыть' }).click();
   await expect(page.getByTestId('tile-settings-panel')).toBeVisible();
@@ -57,21 +58,23 @@ test('mobile status bar opens the shared calendar bottom sheet', async ({ page }
 });
 
 test('dock opens dedicated sections', async ({ page }) => {
+  const dock = page.getByTestId('dock');
   for (const section of ['Избранное', 'Недавние', 'Загрузки', 'Заметки', 'Настройки'] as const) {
-    await page.getByRole('button', { name: section }).click();
+    await dock.getByRole('button', { name: section }).click();
     await expect(page.getByRole('heading', { name: section, level: 1 })).toBeVisible();
   }
 });
 
 test('notes are stored and survive reload', async ({ page }) => {
-  await page.getByRole('button', { name: 'Заметки' }).click();
+  const dock = page.getByTestId('dock');
+  await dock.getByRole('button', { name: 'Заметки' }).click();
   await page.getByRole('button', { name: 'Новая заметка' }).click();
   await page.getByPlaceholder('Заголовок').fill('Контрольный план');
   await page.getByPlaceholder('Текст заметки').fill('Проверить glass UI и release gate');
   await page.getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByRole('heading', { name: 'Контрольный план', level: 3 })).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: 'Заметки' }).click();
+  await page.getByTestId('dock').getByRole('button', { name: 'Заметки' }).click();
   await expect(page.getByRole('heading', { name: 'Контрольный план', level: 3 })).toBeVisible();
 });
 
@@ -79,7 +82,7 @@ test('omnibox shows local suggestions before web search', async ({ page }) => {
   await page.getByLabel('Введите запрос или адрес').fill('git');
   const suggestions = page.getByTestId('omnibox-suggestions');
   await expect(suggestions).toBeVisible();
-  await expect(suggestions.getByText('GitHub')).toBeVisible();
+  await expect(suggestions.getByRole('button', { name: /GitHub github\.com/i })).toBeVisible();
 });
 
 test('bookmark category filter uses real project categories', async ({ page }) => {
@@ -95,7 +98,8 @@ test('bookmark category filter uses real project categories', async ({ page }) =
 });
 
 test('backup import restores validated Nexus data', async ({ page }) => {
-  await page.getByRole('button', { name: 'Настройки' }).click();
+  const dock = page.getByTestId('dock');
+  await dock.getByRole('button', { name: 'Настройки' }).click();
   const controls = page.getByTestId('data-controls');
   await expect(controls).toBeVisible();
   const payload = {
@@ -108,6 +112,6 @@ test('backup import restores validated Nexus data', async ({ page }) => {
   };
   await controls.locator('input[type="file"]').setInputFiles({ name: 'nexus.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(payload)) });
   await expect(page.getByRole('status')).toHaveText('Данные восстановлены');
-  await page.getByRole('button', { name: 'Заметки' }).click();
+  await page.getByTestId('dock').getByRole('button', { name: 'Заметки' }).click();
   await expect(page.getByRole('heading', { name: 'Импортировано', level: 3 })).toBeVisible();
 });
