@@ -44,3 +44,14 @@ test('backup repairs required home project and removes invalid references', () =
   assert.equal(parsed.history.length, 0);
   assert.equal(parsed.notes[0].projectId, 'home');
 });
+
+test('backup removes imported sites with unsafe URL schemes', () => {
+  const text = JSON.stringify({ schema:'nexus-speed-dial', version:1, exportedAt:'2026-08-31T12:00:00Z', data:{
+    ...snapshot,
+    sites:[{ ...snapshot.sites[0], id:'unsafe', url:'javascript:alert(1)', domain:'unsafe.local' }],
+    history:[{ id:'unsafe-history', siteId:'unsafe', openedAt:'2026-08-31T12:00:00.000Z' }],
+  }});
+  const parsed = parseBackup(text);
+  assert.equal(parsed.sites.length, 0);
+  assert.equal(parsed.history.length, 0);
+});
