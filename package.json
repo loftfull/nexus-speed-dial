@@ -13,7 +13,8 @@
     "test:visual": "playwright test e2e/visual.spec.ts",
     "test:node": "node scripts/run-node-tests.mjs",
     "qa:data": "node scripts/qa-data.mjs",
-    "qa:reference": "node scripts/qa-reference.test.mjs && node scripts/qa-reference.mjs && npm run qa:data",
+    "qa:visual-contract": "node scripts/qa-visual.mjs",
+    "qa:reference": "node scripts/qa-reference.test.mjs && node scripts/qa-reference.mjs && npm run qa:data && npm run qa:visual-contract",
     "qa:local": "npm run test:node && npm run qa:reference",
     "qa": "npm run lint && npm run test && npm run build && npm run test:e2e && npm run test:visual && npm run qa:reference"
   },
