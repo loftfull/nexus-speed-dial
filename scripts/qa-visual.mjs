@@ -14,13 +14,17 @@ function add(checks, failures, name, pass, detail) {
 export async function runVisualQa(root) {
   const checks = [];
   const failures = [];
-  const [helpers, config, visual, tileCss, dockCss, previewCss] = await Promise.all([
+  const [helpers, config, visual, tileCss, dockCss, previewCss, sidebar, workspace, workspaceCss, omnibox] = await Promise.all([
     source(root, 'e2e/helpers.ts'),
     source(root, 'playwright.config.ts'),
     source(root, 'e2e/visual.spec.ts'),
     source(root, 'src/components/tiles/SiteTile.module.css'),
     source(root, 'src/components/dock/Dock.module.css'),
     source(root, 'src/components/settings/TilePreview.module.css'),
+    source(root, 'src/components/sidebar/Sidebar.tsx'),
+    source(root, 'src/components/workspace/WorkspaceHeader.tsx'),
+    source(root, 'src/components/workspace/WorkspaceHeader.module.css'),
+    source(root, 'src/components/omnibox/Omnibox.tsx'),
   ]);
 
   add(checks, failures, 'visual-fixed-clock', helpers.includes('page.clock.setFixedTime') && helpers.includes('2026-08-31T12:00:00+03:00'), 'Visual QA must freeze application time to an approved reference instant');
@@ -33,6 +37,9 @@ export async function runVisualQa(root) {
   add(checks, failures, 'tile-shadows-use-live-engine', tileCss.includes('var(--tile-shadow-depth') && tileCss.includes('var(--tile-shadow-softness') && tileCss.includes('var(--tile-shadow-opacity') && !tileCss.includes('.tile:hover{transform:translateY(var(--tile-hover-lift)) scale(var(--tile-hover-scale));box-shadow:0 14px 31px rgba(45,78,126,.12)'), 'Hover and selected tile depth must derive from the canonical live tile CSS variables instead of fixed shadows');
   add(checks, failures, 'dock-workspace-centering', dockCss.includes('left:calc(50% + 159px)') && dockCss.includes('left:calc(50% + 126px)') && !dockCss.includes('left:58%'), 'Dock must remain centered over the desktop/tablet workspace using the actual sidebar half-width, not percentage heuristics');
   add(checks, failures, 'tile-preview-targets-real-tile', previewCss.includes("[data-testid='site-tile']") && !previewCss.includes('.forceHover a') && !previewCss.includes('.forcePressed a') && previewCss.includes('var(--tile-shadow-depth'), 'Live settings preview must apply simulated interaction states to the same SiteTile surface and CSS variables as the workspace');
+  add(checks, failures, 'sidebar-no-fake-weather-symbol', !sidebar.includes('>☀<') && sidebar.includes('CalendarDays') && sidebar.includes('useWeather'), 'Sidebar clock card must not display a static weather symbol that can contradict live weather');
+  add(checks, failures, 'mobile-workspace-icon-forward', workspace.includes('aria-label={label}') && workspace.includes('tabLabel') && workspaceCss.includes('.tabLabel{display:none}') && workspaceCss.includes('@media(max-width:760px)'), 'Mobile workspace tabs must retain accessible icon-forward navigation without cramped text labels');
+  add(checks, failures, 'omnibox-truthful-status', omnibox.includes("resolution.kind === 'site'") && omnibox.includes("resolution.kind === 'url'") && omnibox.includes('secureAddress') && omnibox.includes('savedSite') && !omnibox.includes('className={styles.profile}>●⌄'), 'Omnibox security/favorite indicators must be contextual and the profile chip must not pretend to be an inactive button');
 
   return { checks, failures };
 }
