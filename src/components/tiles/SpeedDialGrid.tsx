@@ -29,7 +29,7 @@ export function SpeedDialGrid() {
 
   return <>
     <div className={`${styles.grid} ${view === 'list' ? styles.list : ''}`} data-testid="speed-grid">
-      {sites.map((site, index) => <SiteTile key={site.id} site={site} mode={mode} selected={index === 0}/>)}
+      {sites.map(site => <SiteTile key={site.id} site={site} mode={mode}/>)}
     </div>
     {sites.length === 0 && tab === 'recent' && <div className={styles.empty}>Недавних сайтов пока нет</div>}
     <button className={styles.add} onClick={() => setSiteEditor('new')}><Plus size={18}/>Добавить сайт</button>
