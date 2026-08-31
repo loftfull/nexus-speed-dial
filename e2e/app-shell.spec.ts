@@ -67,6 +67,18 @@ test('omnibox shows local suggestions before web search', async ({ page }) => {
   await expect(suggestions.getByText('GitHub')).toBeVisible();
 });
 
+test('bookmark category filter uses real project categories', async ({ page }) => {
+  const filterButton = page.getByRole('button', { name: 'Фильтр по категории' });
+  await filterButton.click();
+  const filter = page.getByTestId('bookmark-filter');
+  await expect(filter).toBeVisible();
+  await expect(filter.getByRole('button', { name: 'Все категории' })).toBeVisible();
+  const category = filter.getByRole('button').nth(1);
+  await category.click();
+  await expect(filter).toBeHidden();
+  await expect(filterButton).toHaveAttribute('aria-expanded', 'false');
+});
+
 test('backup import restores validated Nexus data', async ({ page }) => {
   await page.getByRole('button', { name: 'Настройки' }).click();
   const controls = page.getByTestId('data-controls');
