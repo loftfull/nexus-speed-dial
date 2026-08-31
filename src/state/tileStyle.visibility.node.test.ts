@@ -11,3 +11,10 @@ test('maps tile content visibility to the shared CSS contract', () => {
   assert.equal(vars['--tile-category-display'], 'block');
   assert.equal(vars['--tile-badge-display'], 'none');
 });
+
+test('maps label alignment through the canonical tile CSS contract', () => {
+  for (const alignment of ['left', 'center', 'right'] as const) {
+    const vars = toTileCssVariables({ ...getTilePreset('standard'), labelAlignment: alignment });
+    assert.equal(vars['--tile-label-align'], alignment);
+  }
+});
