@@ -14,13 +14,15 @@ function add(checks, failures, name, pass, detail) {
 export async function runVisualQa(root) {
   const checks = [];
   const failures = [];
-  const [helpers, config, visual, e2e, tileCss, dockCss, previewCss, sidebar, mobileNav, navigationIcon, workspace, workspaceCss, omnibox, siteEditorCss, structureEditorCss, weatherCss] = await Promise.all([
+  const [helpers, config, visual, e2e, tileCss, grid, dockCss, preview, previewCss, sidebar, mobileNav, navigationIcon, workspace, workspaceCss, omnibox, siteEditorCss, structureEditorCss, weatherCss] = await Promise.all([
     source(root, 'e2e/helpers.ts'),
     source(root, 'playwright.config.ts'),
     source(root, 'e2e/visual.spec.ts'),
     source(root, 'e2e/app-shell.spec.ts'),
     source(root, 'src/components/tiles/SiteTile.module.css'),
+    source(root, 'src/components/tiles/SpeedDialGrid.tsx'),
     source(root, 'src/components/dock/Dock.module.css'),
+    source(root, 'src/components/settings/TilePreview.tsx'),
     source(root, 'src/components/settings/TilePreview.module.css'),
     source(root, 'src/components/sidebar/Sidebar.tsx'),
     source(root, 'src/components/sidebar/MobileNavigation.tsx'),
@@ -41,8 +43,10 @@ export async function runVisualQa(root) {
   add(checks, failures, 'visual-reset-before-capture', (visual.match(/resetApp\(page\)/g) ?? []).length >= 4, 'Every visual surface must reset deterministic local state before capture');
 
   add(checks, failures, 'tile-shadows-use-live-engine', tileCss.includes('var(--tile-shadow-depth') && tileCss.includes('var(--tile-shadow-softness') && tileCss.includes('var(--tile-shadow-opacity') && !tileCss.includes('.tile:hover{transform:translateY(var(--tile-hover-lift)) scale(var(--tile-hover-scale));box-shadow:0 14px 31px rgba(45,78,126,.12)'), 'Hover and selected tile depth must derive from the canonical live tile CSS variables instead of fixed shadows');
+  add(checks, failures, 'workspace-no-default-selection', !grid.includes('selected={index === 0}') && !grid.includes('selected={index===0}'), 'Workspace must not visually select the first tile until the user actually selects something');
   add(checks, failures, 'dock-workspace-centering', dockCss.includes('left:calc(50% + 159px)') && dockCss.includes('left:calc(50% + 126px)') && !dockCss.includes('left:58%'), 'Dock must remain centered over the desktop/tablet workspace using the actual sidebar half-width, not percentage heuristics');
   add(checks, failures, 'tile-preview-targets-real-tile', previewCss.includes("[data-testid='site-tile']") && !previewCss.includes('.forceHover a') && !previewCss.includes('.forcePressed a') && previewCss.includes('var(--tile-shadow-depth'), 'Live settings preview must apply simulated interaction states to the same SiteTile surface and CSS variables as the workspace');
+  add(checks, failures, 'tile-preview-no-horizontal-scroll', preview.includes('stage') && previewCss.includes('.stage') && previewCss.includes('overflow:hidden') && !previewCss.includes('overflow-x:auto'), 'Tile preview must fit the settings panel without a horizontal scrollbar');
   add(checks, failures, 'sidebar-no-fake-weather-symbol', !sidebar.includes('>☀<') && sidebar.includes('CalendarDays') && sidebar.includes('useWeather'), 'Sidebar clock card must not display a static weather symbol that can contradict live weather');
   add(checks, failures, 'mobile-calendar-entrypoint', mobileNav.includes('CalendarDays') && mobileNav.includes('calendarOpen') && mobileNav.includes('setCalendarOpen') && mobileNav.includes('Открыть календарь') && e2e.includes('mobile status bar opens the shared calendar bottom sheet'), 'Mobile status bar must open the same calendar overlay state as desktop and keep the interaction covered by E2E');
   add(checks, failures, 'semantic-navigation-icons', navigationIcon.includes('navigationIconKey') && sidebar.includes('navigationIconKey') && mobileNav.includes('navigationIconKey'), 'Desktop and mobile project/category navigation must share the semantic icon resolver');
