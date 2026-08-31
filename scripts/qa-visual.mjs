@@ -14,10 +14,12 @@ function add(checks, failures, name, pass, detail) {
 export async function runVisualQa(root) {
   const checks = [];
   const failures = [];
-  const [helpers, config, visual] = await Promise.all([
+  const [helpers, config, visual, tileCss, dockCss] = await Promise.all([
     source(root, 'e2e/helpers.ts'),
     source(root, 'playwright.config.ts'),
     source(root, 'e2e/visual.spec.ts'),
+    source(root, 'src/components/tiles/SiteTile.module.css'),
+    source(root, 'src/components/dock/Dock.module.css'),
   ]);
 
   add(checks, failures, 'visual-fixed-clock', helpers.includes('page.clock.setFixedTime') && helpers.includes('2026-08-31T12:00:00+03:00'), 'Visual QA must freeze application time to an approved reference instant');
@@ -26,6 +28,9 @@ export async function runVisualQa(root) {
   const surfaces = ['desktop-main.png','desktop-tile-settings.png','tablet-main.png','mobile-main.png'];
   add(checks, failures, 'visual-approved-surfaces', surfaces.every(name => visual.includes(name)) && visual.includes("animations: 'disabled'"), 'Visual suite must retain four approved deterministic surfaces with animations disabled');
   add(checks, failures, 'visual-reset-before-capture', (visual.match(/resetApp\(page\)/g) ?? []).length >= 4, 'Every visual surface must reset deterministic local state before capture');
+
+  add(checks, failures, 'tile-shadows-use-live-engine', tileCss.includes('var(--tile-shadow-depth') && tileCss.includes('var(--tile-shadow-softness') && tileCss.includes('var(--tile-shadow-opacity') && !tileCss.includes('.tile:hover{transform:translateY(var(--tile-hover-lift)) scale(var(--tile-hover-scale));box-shadow:0 14px 31px rgba(45,78,126,.12)'), 'Hover and selected tile depth must derive from the canonical live tile CSS variables instead of fixed shadows');
+  add(checks, failures, 'dock-workspace-centering', dockCss.includes('left:calc(50% + 159px)') && dockCss.includes('left:calc(50% + 126px)') && !dockCss.includes('left:58%'), 'Dock must remain centered over the desktop/tablet workspace using the actual sidebar half-width, not percentage heuristics');
 
   return { checks, failures };
 }
