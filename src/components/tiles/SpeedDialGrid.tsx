@@ -1,0 +1,6 @@
+import { Plus } from 'lucide-react';
+import { seedSites } from '../../data/seed.ts';
+import { useAppStore } from '../../state/useAppStore.ts';
+import { SiteTile } from './SiteTile.tsx';
+import styles from './SpeedDialGrid.module.css';
+export function SpeedDialGrid(){const query=useAppStore(s=>s.bookmarkQuery.toLowerCase().trim());const tab=useAppStore(s=>s.workspaceTab);const view=useAppStore(s=>s.viewMode);const preset=useAppStore(s=>s.tileSettings.preset);const project=useAppStore(s=>s.activeProjectId);const category=useAppStore(s=>s.activeCategoryId);let sites=seedSites.filter(s=>!project||s.projectId===project||project==='home');if(category)sites=sites.filter(s=>s.categoryId===category||category==='social'&&['communication','news','social'].includes(s.categoryId??''));if(tab==='favorites')sites=sites.filter(s=>s.favorite);if(query)sites=sites.filter(s=>`${s.title} ${s.subtitle??''} ${s.domain}`.toLowerCase().includes(query));const mode=view==='list'?'list':preset;return <><div className={`${styles.grid} ${view==='list'?styles.list:''}`} data-testid="speed-grid">{sites.map((site,index)=><SiteTile key={site.id} site={site} mode={mode} selected={index===0}/>)}</div><button className={styles.add}><Plus size={18}/>Добавить сайт</button></>}
