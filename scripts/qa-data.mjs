@@ -14,7 +14,7 @@ function add(checks, failures, name, pass, detail) {
 export async function runDataQa(root) {
   const checks = [];
   const failures = [];
-  const [backup, store, dataControls, sections, dock, e2e, workspace, grid, siteTile] = await Promise.all([
+  const [backup, store, dataControls, sections, dock, e2e, workspace, grid, siteTile, workspaceHeader] = await Promise.all([
     source(root, 'src/domain/backup.ts'),
     source(root, 'src/state/appStore.ts'),
     source(root, 'src/components/sections/DataControls.tsx'),
@@ -24,6 +24,7 @@ export async function runDataQa(root) {
     source(root, 'src/domain/workspace.ts'),
     source(root, 'src/components/tiles/SpeedDialGrid.tsx'),
     source(root, 'src/components/tiles/SiteTile.tsx'),
+    source(root, 'src/components/workspace/WorkspaceHeader.tsx'),
   ]);
 
   add(checks, failures, 'backup-schema-v1', backup.includes("schema: 'nexus-speed-dial'") && backup.includes('version: 1') && backup.includes('parseBackup') && backup.includes("id: 'home'"), 'Backup must remain versioned, validated and able to repair the required home project');
@@ -35,6 +36,7 @@ export async function runDataQa(root) {
   add(checks, failures, 'backup-import-e2e', e2e.includes('backup import restores validated Nexus data') && e2e.includes('Данные восстановлены'), 'Playwright interaction suite must exercise validated backup restore');
   add(checks, failures, 'recent-workspace-uses-history', workspace.includes("input.tab === 'recent'") && workspace.includes('input.history') && grid.includes('selectWorkspaceSites') && grid.includes('state.history'), 'Top Recent workspace must be ordered from persisted visit history through the canonical selector');
   add(checks, failures, 'site-open-records-history', siteTile.includes('recordVisit(site.id)') && sections.includes('recordVisit'), 'Opening sites from tiles or Recent rows must update persisted visit history');
+  add(checks, failures, 'bookmark-filter-is-functional', workspaceHeader.includes('bookmark-filter') && workspaceHeader.includes('setActiveCategory') && workspaceHeader.includes('aria-expanded={filterOpen}') && e2e.includes('bookmark category filter uses real project categories'), 'Bookmark filter control must open a real category popover and update application category state');
 
   return { checks, failures };
 }
