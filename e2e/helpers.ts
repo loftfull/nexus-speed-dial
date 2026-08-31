@@ -24,7 +24,9 @@ export async function mockWeather(page: Page) {
 }
 
 export async function resetApp(page: Page) {
+  await page.clock.setFixedTime(new Date('2026-08-31T12:00:00+03:00'));
   await mockWeather(page);
+  await page.route('https://www.google.com/s2/favicons**', route => route.abort());
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
