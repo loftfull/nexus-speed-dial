@@ -58,6 +58,7 @@ export function toTileCssVariables(settings: TileAppearanceSettings): TileCssVar
     '--tile-focus-ring-width': focusRingWidth(settings.focusRingStyle),
     '--tile-drag-feedback': settings.dragFeedback ? '1' : '0',
     '--tile-columns': settings.columns === 'auto' ? '5' : String(settings.columns),
+    '--tile-label-align': settings.labelAlignment,
     '--tile-title-display': settings.showTitle ? 'block' : 'none',
     '--tile-subtitle-display': settings.showSubtitle ? 'block' : 'none',
     '--tile-domain-display': settings.showDomain ? 'block' : 'none',
