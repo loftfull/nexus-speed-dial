@@ -55,3 +55,24 @@ test('backup removes imported sites with unsafe URL schemes', () => {
   assert.equal(parsed.sites.length, 0);
   assert.equal(parsed.history.length, 0);
 });
+
+test('backup deduplicates entity ids and keeps the first valid occurrence', () => {
+  const text = JSON.stringify({ schema:'nexus-speed-dial', version:1, exportedAt:'2026-08-31T12:00:00Z', data:{
+    ...snapshot,
+    projects:[
+      { id:'home', name:'Дом', icon:'home' },
+      { id:'work', name:'Работа', icon:'briefcase' },
+      { id:'work', name:'Дубликат', icon:'x' },
+    ],
+    sites:[
+      { id:'same', title:'One', url:'https://one.example', domain:'one.example', projectId:'home', favorite:false },
+      { id:'same', title:'Two', url:'https://two.example', domain:'two.example', projectId:'home', favorite:false },
+    ],
+    history:[],
+  }});
+  const parsed = parseBackup(text);
+  assert.equal(parsed.projects.filter(project => project.id === 'work').length, 1);
+  assert.equal(parsed.projects.find(project => project.id === 'work')?.name, 'Работа');
+  assert.equal(parsed.sites.filter(site => site.id === 'same').length, 1);
+  assert.equal(parsed.sites[0].title, 'One');
+});
