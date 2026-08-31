@@ -13,7 +13,11 @@ export function SiteTile({ site, mode, selected = false }: { site: Site; mode: T
   const categories = useAppStore(store => store.categories);
   const setSiteEditor = useAppStore(store => store.setSiteEditor);
   const recordVisit = useAppStore(store => store.recordVisit);
-  useEffect(() => { if (state === 'normal' || state === 'selected') setState(selected ? 'selected' : 'normal'); }, [selected]);
+
+  useEffect(() => {
+    setState(current => current === 'normal' || current === 'selected' ? selected ? 'selected' : 'normal' : current);
+  }, [selected]);
+
   const transition = (event: TileInteractionEvent) => setState(current => nextTileState(current, event, selected));
   const enterDropTarget = (event: DragEvent<HTMLElement>) => { event.preventDefault(); transition('drag-enter'); };
   const label = categories.find(category => category.id === site.categoryId)?.name ?? '';
