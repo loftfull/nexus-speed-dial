@@ -16,5 +16,5 @@ const items: [AppSection, string, typeof Home][] = [
 export function Dock() {
   const section = useAppStore(state => state.section);
   const setSection = useAppStore(state => state.setSection);
-  return <GlassSurface as="nav" role="dock" className={styles.dock}>{items.map(([id, label, Icon]) => <button key={id} title={label} aria-label={label} className={section === id ? styles.active : ''} onClick={() => setSection(id)}><Icon size={21}/></button>)}</GlassSurface>;
+  return <GlassSurface as="nav" role="dock" className={styles.dock} data-testid="dock">{items.map(([id, label, Icon]) => <button key={id} title={label} aria-label={label} className={section === id ? styles.active : ''} onClick={() => setSection(id)}><Icon size={21}/></button>)}</GlassSurface>;
 }
