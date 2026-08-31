@@ -7,12 +7,39 @@ on:
   pull_request:
 
 jobs:
-  unit:
+  quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
-      - run: npm test -- GlassSurface.test.tsx
+      - name: Install dependencies
+        run: npm install
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Lint
+        run: npm run lint
+      - name: Node contracts
+        run: npm run test:node
+      - name: Unit and component tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Reference QA
+        run: npm run qa:reference
+      - name: Interaction E2E
+        run: npm run test:e2e
+      - name: Visual regression
+        run: npm run test:visual
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7
