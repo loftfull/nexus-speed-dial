@@ -1,16 +1,5 @@
 import type { BackupSnapshot } from '../domain/backup.ts';
-import type {
-  AppSection,
-  Category,
-  HistoryEntry,
-  Project,
-  Site,
-  StoredNote,
-  TileAppearanceSettings,
-  TilePreset,
-  ViewMode,
-  WorkspaceTab,
-} from '../domain/types.ts';
+import type { AppSection, Category, HistoryEntry, Project, Site, StoredNote, TileAppearanceSettings, TilePreset, ViewMode, WorkspaceTab } from '../domain/types.ts';
 import { getTilePreset, normalizeTileSettings } from '../domain/tilePresets.ts';
 import { seedCategories, seedProjects, seedSites } from '../data/seed.ts';
 import type { StorageAdapter } from '../storage/StorageAdapter.ts';
@@ -20,73 +9,15 @@ import type { WeatherLocation } from '../weather/weatherLocation.ts';
 export type StructureEditorTarget = { kind: 'project' | 'category'; id?: string } | null;
 
 export interface AppStoreState {
-  section: AppSection;
-  workspaceTab: WorkspaceTab;
-  viewMode: ViewMode;
-  activeProjectId: string;
-  activeCategoryId: string | null;
-  bookmarkQuery: string;
-  tileSettings: TileAppearanceSettings;
-  projects: Project[];
-  categories: Category[];
-  sites: Site[];
-  history: HistoryEntry[];
-  notes: StoredNote[];
-  structureEditor: StructureEditorTarget;
-  siteEditor: 'new' | string | null;
-  calendarOpen: boolean;
-  settingsOpen: boolean;
-  mobileNavOpen: boolean;
-  weatherOpen: boolean;
-  weatherLocation: WeatherLocation;
-  setSection(section: AppSection): void;
-  setWorkspaceTab(tab: WorkspaceTab): void;
-  setViewMode(mode: ViewMode): void;
-  setActiveProject(id: string): void;
-  setActiveCategory(id: string | null): void;
-  setBookmarkQuery(query: string): void;
-  setTileSetting<K extends keyof TileAppearanceSettings>(key: K, value: TileAppearanceSettings[K]): void;
-  applyTilePreset(preset: TilePreset): void;
-  resetTileSettings(): void;
-  addProject(project: Project): void;
-  updateProject(id: string, patch: Partial<Omit<Project, 'id'>>): void;
-  removeProject(id: string): void;
-  addCategory(category: Category): void;
-  updateCategory(id: string, patch: Partial<Omit<Category, 'id'>>): void;
-  removeCategory(id: string): void;
-  addSite(site: Site): void;
-  updateSite(id: string, patch: Partial<Omit<Site, 'id'>>): void;
-  removeSite(id: string): void;
-  toggleFavorite(id: string): void;
-  recordVisit(siteId: string, openedAt?: string): void;
-  clearHistory(): void;
-  addNote(input: { title: string; body: string; projectId?: string }, now?: string): void;
-  updateNote(id: string, patch: Partial<Pick<StoredNote, 'title' | 'body' | 'projectId'>>, now?: string): void;
-  removeNote(id: string): void;
-  restoreBackup(snapshot: BackupSnapshot): void;
-  setStructureEditor(target: StructureEditorTarget): void;
-  setSiteEditor(target: 'new' | string | null): void;
-  setCalendarOpen(open: boolean): void;
-  setSettingsOpen(open: boolean): void;
-  setMobileNavOpen(open: boolean): void;
-  setWeatherOpen(open: boolean): void;
-  setWeatherLocation(location: WeatherLocation): void;
+  section: AppSection; workspaceTab: WorkspaceTab; viewMode: ViewMode; activeProjectId: string; activeCategoryId: string | null; bookmarkQuery: string; tileSettings: TileAppearanceSettings; projects: Project[]; categories: Category[]; sites: Site[]; history: HistoryEntry[]; notes: StoredNote[]; structureEditor: StructureEditorTarget; siteEditor: 'new' | string | null; calendarOpen: boolean; settingsOpen: boolean; mobileNavOpen: boolean; weatherOpen: boolean; weatherLocation: WeatherLocation;
+  setSection(section: AppSection): void; setWorkspaceTab(tab: WorkspaceTab): void; setViewMode(mode: ViewMode): void; setActiveProject(id: string): void; setActiveCategory(id: string | null): void; setBookmarkQuery(query: string): void; setTileSetting<K extends keyof TileAppearanceSettings>(key: K, value: TileAppearanceSettings[K]): void; applyTilePreset(preset: TilePreset): void; resetTileSettings(): void;
+  addProject(project: Project): void; updateProject(id: string, patch: Partial<Omit<Project, 'id'>>): void; removeProject(id: string): void; addCategory(category: Category): void; updateCategory(id: string, patch: Partial<Omit<Category, 'id'>>): void; removeCategory(id: string): void; addSite(site: Site): void; updateSite(id: string, patch: Partial<Omit<Site, 'id'>>): void; removeSite(id: string): void; toggleFavorite(id: string): void; recordVisit(siteId: string, openedAt?: string): void; clearHistory(): void; addNote(input: { title: string; body: string; projectId?: string }, now?: string): void; updateNote(id: string, patch: Partial<Pick<StoredNote, 'title' | 'body' | 'projectId'>>, now?: string): void; removeNote(id: string): void; restoreBackup(snapshot: BackupSnapshot): void;
+  setStructureEditor(target: StructureEditorTarget): void; setSiteEditor(target: 'new' | string | null): void; setCalendarOpen(open: boolean): void; setSettingsOpen(open: boolean): void; setMobileNavOpen(open: boolean): void; setWeatherOpen(open: boolean): void; setWeatherLocation(location: WeatherLocation): void;
 }
 
-export interface AppStore {
-  getState(): AppStoreState;
-  subscribe(listener: () => void): () => void;
-}
+export interface AppStore { getState(): AppStoreState; subscribe(listener: () => void): () => void; }
 
-const KEYS = {
-  tiles: 'nexus.tileSettings',
-  projects: 'nexus.projects',
-  categories: 'nexus.categories',
-  sites: 'nexus.sites',
-  history: 'nexus.history',
-  notes: 'nexus.notes',
-  weatherLocation: 'nexus.weatherLocation',
-} as const;
+const KEYS = { tiles: 'nexus.tileSettings', projects: 'nexus.projects', categories: 'nexus.categories', sites: 'nexus.sites', history: 'nexus.history', notes: 'nexus.notes', weatherLocation: 'nexus.weatherLocation' } as const;
 
 export function createAppStore(storage: StorageAdapter): AppStore {
   const listeners = new Set<() => void>();
@@ -102,65 +33,17 @@ export function createAppStore(storage: StorageAdapter): AppStore {
 
   let state: AppStoreState;
   const emit = () => listeners.forEach(listener => listener());
-  const patchState = (partial: Partial<AppStoreState>) => {
-    state = { ...state, ...partial };
-    emit();
-  };
-  const persistTiles = (next: TileAppearanceSettings) => {
-    tileSettings = normalizeTileSettings(next);
-    storage.set(KEYS.tiles, tileSettings);
-    patchState({ tileSettings });
-  };
-  const persistProjects = (next: Project[]) => {
-    projects = next;
-    storage.set(KEYS.projects, projects);
-    patchState({ projects });
-  };
-  const persistCategories = (next: Category[]) => {
-    categories = next;
-    storage.set(KEYS.categories, categories);
-    patchState({ categories });
-  };
-  const persistSites = (next: Site[]) => {
-    sites = next;
-    storage.set(KEYS.sites, sites);
-    patchState({ sites });
-  };
-  const persistHistory = (next: HistoryEntry[]) => {
-    history = next;
-    storage.set(KEYS.history, history);
-    patchState({ history });
-  };
-  const persistNotes = (next: StoredNote[]) => {
-    notes = next;
-    storage.set(KEYS.notes, notes);
-    patchState({ notes });
-  };
-  const uniqueId = (prefix: string, requested?: string) =>
-    requested && ![...projects, ...categories, ...sites].some(item => item.id === requested)
-      ? requested
-      : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const patchState = (partial: Partial<AppStoreState>) => { state = { ...state, ...partial }; emit(); };
+  const persistTiles = (next: TileAppearanceSettings) => { tileSettings = normalizeTileSettings(next); storage.set(KEYS.tiles, tileSettings); patchState({ tileSettings }); };
+  const persistProjects = (next: Project[]) => { projects = next; storage.set(KEYS.projects, projects); patchState({ projects }); };
+  const persistCategories = (next: Category[]) => { categories = next; storage.set(KEYS.categories, categories); patchState({ categories }); };
+  const persistSites = (next: Site[]) => { sites = next; storage.set(KEYS.sites, sites); patchState({ sites }); };
+  const persistHistory = (next: HistoryEntry[]) => { history = next; storage.set(KEYS.history, history); patchState({ history }); };
+  const persistNotes = (next: StoredNote[]) => { notes = next; storage.set(KEYS.notes, notes); patchState({ notes }); };
+  const uniqueId = (prefix: string, requested?: string) => requested && ![...projects, ...categories, ...sites].some(item => item.id === requested) ? requested : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   state = {
-    section: 'home',
-    workspaceTab: 'quick',
-    viewMode: 'grid',
-    activeProjectId: 'home',
-    activeCategoryId: null,
-    bookmarkQuery: '',
-    tileSettings,
-    projects,
-    categories,
-    sites,
-    history,
-    notes,
-    structureEditor: null,
-    siteEditor: null,
-    calendarOpen: false,
-    settingsOpen: false,
-    mobileNavOpen: false,
-    weatherOpen: false,
-    weatherLocation,
+    section: 'home', workspaceTab: 'quick', viewMode: 'grid', activeProjectId: 'home', activeCategoryId: null, bookmarkQuery: '', tileSettings, projects, categories, sites, history, notes, structureEditor: null, siteEditor: null, calendarOpen: false, settingsOpen: false, mobileNavOpen: false, weatherOpen: false, weatherLocation,
     setSection: section => patchState({ section }),
     setWorkspaceTab: workspaceTab => patchState({ workspaceTab }),
     setViewMode: viewMode => patchState({ viewMode }),
@@ -190,9 +73,9 @@ export function createAppStore(storage: StorageAdapter): AppStore {
       if (!current) return;
       const nextProjectId = categoryPatch.projectId ?? current.projectId;
       const requestedParent = Object.prototype.hasOwnProperty.call(categoryPatch, 'parentId') ? categoryPatch.parentId : current.parentId;
-      const parent = requestedParent ? categories.find(category => category.id === requestedParent) : undefined;
-      const parentId = parent && parent.id !== id && !parent.parentId && parent.projectId === nextProjectId ? parent.id : undefined;
       const childIds = current.parentId ? [] : categories.filter(category => category.parentId === id).map(category => category.id);
+      const parent = requestedParent ? categories.find(category => category.id === requestedParent) : undefined;
+      const parentId = childIds.length === 0 && parent && parent.id !== id && !parent.parentId && parent.projectId === nextProjectId ? parent.id : undefined;
       persistCategories(categories.map(category => {
         if (category.id === id) return { ...category, ...categoryPatch, projectId: nextProjectId, parentId };
         if (childIds.includes(category.id) && nextProjectId !== current.projectId) return { ...category, projectId: nextProjectId };
@@ -211,10 +94,7 @@ export function createAppStore(storage: StorageAdapter): AppStore {
     },
     addSite: site => persistSites([...sites, { ...site, id: uniqueId('site', site.id) }]),
     updateSite: (id, sitePatch) => persistSites(sites.map(site => site.id === id ? { ...site, ...sitePatch } : site)),
-    removeSite: id => {
-      persistSites(sites.filter(site => site.id !== id));
-      persistHistory(history.filter(item => item.siteId !== id));
-    },
+    removeSite: id => { persistSites(sites.filter(site => site.id !== id)); persistHistory(history.filter(item => item.siteId !== id)); },
     toggleFavorite: id => persistSites(sites.map(site => site.id === id ? { ...site, favorite: !site.favorite } : site)),
     recordVisit: (siteId, openedAt = new Date().toISOString()) => {
       if (!sites.some(site => site.id === siteId)) return;
@@ -224,46 +104,14 @@ export function createAppStore(storage: StorageAdapter): AppStore {
     clearHistory: () => persistHistory([]),
     addNote: (input, now = new Date().toISOString()) => {
       const title = input.title.trim() || 'Без названия';
-      persistNotes([{
-        id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        title,
-        body: input.body.trim(),
-        projectId: input.projectId,
-        createdAt: now,
-        updatedAt: now,
-      }, ...notes]);
+      persistNotes([{ id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, title, body: input.body.trim(), projectId: input.projectId, createdAt: now, updatedAt: now }, ...notes]);
     },
     updateNote: (id, notePatch, now = new Date().toISOString()) => persistNotes(notes.map(note => note.id === id ? { ...note, ...notePatch, updatedAt: now } : note)),
     removeNote: id => persistNotes(notes.filter(note => note.id !== id)),
     restoreBackup: snapshot => {
-      tileSettings = normalizeTileSettings({ ...getTilePreset('standard'), ...snapshot.tileSettings });
-      projects = snapshot.projects;
-      categories = snapshot.categories;
-      sites = snapshot.sites;
-      history = snapshot.history;
-      notes = snapshot.notes;
-      weatherLocation = normalizeWeatherLocation(snapshot.weatherLocation);
-      storage.set(KEYS.tiles, tileSettings);
-      storage.set(KEYS.projects, projects);
-      storage.set(KEYS.categories, categories);
-      storage.set(KEYS.sites, sites);
-      storage.set(KEYS.history, history);
-      storage.set(KEYS.notes, notes);
-      storage.set(KEYS.weatherLocation, weatherLocation);
-      patchState({
-        tileSettings,
-        projects,
-        categories,
-        sites,
-        history,
-        notes,
-        weatherLocation,
-        activeProjectId: 'home',
-        activeCategoryId: null,
-        bookmarkQuery: '',
-        structureEditor: null,
-        siteEditor: null,
-      });
+      tileSettings = normalizeTileSettings({ ...getTilePreset('standard'), ...snapshot.tileSettings }); projects = snapshot.projects; categories = snapshot.categories; sites = snapshot.sites; history = snapshot.history; notes = snapshot.notes; weatherLocation = normalizeWeatherLocation(snapshot.weatherLocation);
+      storage.set(KEYS.tiles, tileSettings); storage.set(KEYS.projects, projects); storage.set(KEYS.categories, categories); storage.set(KEYS.sites, sites); storage.set(KEYS.history, history); storage.set(KEYS.notes, notes); storage.set(KEYS.weatherLocation, weatherLocation);
+      patchState({ tileSettings, projects, categories, sites, history, notes, weatherLocation, activeProjectId: 'home', activeCategoryId: null, bookmarkQuery: '', structureEditor: null, siteEditor: null });
     },
     setStructureEditor: structureEditor => patchState({ structureEditor }),
     setSiteEditor: siteEditor => patchState({ siteEditor }),
@@ -271,18 +119,8 @@ export function createAppStore(storage: StorageAdapter): AppStore {
     setSettingsOpen: settingsOpen => patchState({ settingsOpen }),
     setMobileNavOpen: mobileNavOpen => patchState({ mobileNavOpen }),
     setWeatherOpen: weatherOpen => patchState({ weatherOpen }),
-    setWeatherLocation: location => {
-      weatherLocation = normalizeWeatherLocation(location);
-      storage.set(KEYS.weatherLocation, weatherLocation);
-      patchState({ weatherLocation });
-    },
+    setWeatherLocation: location => { weatherLocation = normalizeWeatherLocation(location); storage.set(KEYS.weatherLocation, weatherLocation); patchState({ weatherLocation }); },
   };
 
-  return {
-    getState: () => state,
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
+  return { getState: () => state, subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); } };
 }
