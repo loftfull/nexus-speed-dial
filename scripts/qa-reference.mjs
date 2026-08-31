@@ -16,21 +16,9 @@ export async function runReferenceQa(root) {
   const failures = [];
 
   const [
-    shell,
-    calendarCss,
-    types,
-    settings,
-    settingsModel,
-    bridge,
-    shellCss,
-    gridCss,
-    tokens,
-    mobileNav,
-    sections,
-    sidebar,
-    weatherPopover,
-    useWeather,
-    weatherService,
+    shell, calendarCss, types, settings, settingsModel, bridge, shellCss, gridCss, tokens,
+    mobileNav, sections, sidebar, weatherPopover, useWeather, weatherService,
+    appStore, omniboxUi, omniboxDomain, e2e, visual, ci,
   ] = await Promise.all([
     source(root, 'src/components/shell/AppShell.tsx'),
     source(root, 'src/components/calendar/CalendarPopover.module.css'),
@@ -47,6 +35,12 @@ export async function runReferenceQa(root) {
     source(root, 'src/components/weather/WeatherPopover.tsx'),
     source(root, 'src/weather/useWeather.ts'),
     source(root, 'src/weather/weatherService.ts'),
+    source(root, 'src/state/appStore.ts'),
+    source(root, 'src/components/omnibox/Omnibox.tsx'),
+    source(root, 'src/domain/omnibox.ts'),
+    source(root, 'e2e/app-shell.spec.ts'),
+    source(root, 'e2e/visual.spec.ts'),
+    source(root, '.github/workflows/ci.yml'),
   ]);
 
   check(checks, failures, 'calendar-not-in-layout', !shell.includes('CalendarPopover'), 'AppShell must never reserve a calendar column');
@@ -74,6 +68,18 @@ export async function runReferenceQa(root) {
   check(checks, failures, 'weather-no-background-geolocation', !useWeather.includes('geolocation') && !sidebar.includes('geolocation') && !mobileNav.includes('geolocation'), 'Weather loading must never request geolocation implicitly');
   check(checks, failures, 'weather-explicit-geolocation', weatherPopover.includes('requestExplicitPosition(navigator.geolocation)') && weatherService.includes('getCurrentPosition'), 'Geolocation may only run from the explicit user action path');
   check(checks, failures, 'weather-open-meteo', weatherService.includes('api.open-meteo.com/v1/forecast') && weatherService.includes('geocoding-api.open-meteo.com/v1/search'), 'Live weather must use the configured Open-Meteo endpoints');
+
+  check(checks, failures, 'persistent-history-notes', ['nexus.history','nexus.notes','recordVisit','addNote','updateNote','removeNote'].every(token => appStore.includes(token)), 'History and notes must be persisted through the application store');
+  check(checks, failures, 'no-seed-recent-notes', !sections.includes('seedRecent') && !sections.includes('seedNotes') && !sections.includes('seedSites'), 'Favorites, Recent and Notes must use persistent app state rather than demo seeds');
+  check(checks, failures, 'functional-omnibox', ['resolveOmnibox','suggestSites','recordVisit','omnibox-suggestions'].every(token => omniboxUi.includes(token)), 'Omnibox must resolve local sites, show suggestions and record visits');
+  check(checks, failures, 'omnibox-domain-model', omniboxDomain.includes('https://www.google.com/search') && omniboxDomain.includes('suggestSites') && omniboxDomain.includes("['http:','https:']"), 'Omnibox URL/search behavior must live in the domain model and reject unsafe schemes');
+
+  const interactionSignals = ['calendar opens as overlay','tile settings update CSS immediately','mobile navigation replaces persistent sidebar','dock opens dedicated sections','notes are stored and survive reload','omnibox shows local suggestions'];
+  check(checks, failures, 'interaction-e2e', interactionSignals.every(signal => e2e.includes(signal)), 'Playwright interaction suite must cover the approved core flows');
+  const visualNames = ['desktop-main.png','desktop-tile-settings.png','tablet-main.png','mobile-main.png'];
+  check(checks, failures, 'visual-surfaces', visualNames.every(name => visual.includes(name)), 'Visual regression suite must define desktop, settings, tablet and mobile surfaces');
+  const ciCommands = ['npm run lint','npm run test:node','npm test','npm run build','npm run qa:reference','npm run test:e2e','npm run test:visual','playwright install --with-deps chromium'];
+  check(checks, failures, 'full-ci-gate', ciCommands.every(command => ci.includes(command)), 'CI must enforce lint, contracts, unit, build, reference, interaction and visual gates');
 
   return { checks, failures };
 }
