@@ -15,7 +15,23 @@ export async function runReferenceQa(root) {
   const checks = [];
   const failures = [];
 
-  const [shell, calendarCss, types, settings, settingsModel, bridge, shellCss, gridCss, tokens, mobileNav, sections] = await Promise.all([
+  const [
+    shell,
+    calendarCss,
+    types,
+    settings,
+    settingsModel,
+    bridge,
+    shellCss,
+    gridCss,
+    tokens,
+    mobileNav,
+    sections,
+    sidebar,
+    weatherPopover,
+    useWeather,
+    weatherService,
+  ] = await Promise.all([
     source(root, 'src/components/shell/AppShell.tsx'),
     source(root, 'src/components/calendar/CalendarPopover.module.css'),
     source(root, 'src/domain/types.ts'),
@@ -27,6 +43,10 @@ export async function runReferenceQa(root) {
     source(root, 'src/styles/tokens.css'),
     source(root, 'src/components/sidebar/MobileNavigation.tsx'),
     source(root, 'src/components/sections/SectionContent.tsx'),
+    source(root, 'src/components/sidebar/Sidebar.tsx'),
+    source(root, 'src/components/weather/WeatherPopover.tsx'),
+    source(root, 'src/weather/useWeather.ts'),
+    source(root, 'src/weather/weatherService.ts'),
   ]);
 
   check(checks, failures, 'calendar-not-in-layout', !shell.includes('CalendarPopover'), 'AppShell must never reserve a calendar column');
@@ -47,6 +67,13 @@ export async function runReferenceQa(root) {
   check(checks, failures, 'mobile-navigation-drawer', mobileNav.includes('mobileNavOpen') && mobileNav.includes('Разделы и категории'), 'Mobile layout must use a dedicated project/category drawer instead of the desktop sidebar');
   check(checks, failures, 'settings-three-tabs', ['basic','advanced','motion'].every(tab => settingsModel.includes(`'${tab}'`)), 'Tile settings must retain Basic, Advanced and Motion tabs');
   check(checks, failures, 'dock-section-screens', ['FavoritesSection','RecentSection','DownloadsSection','NotesSection','SettingsSection'].every(name => sections.includes(name)), 'All non-home Dock sections must have dedicated workspace content');
+
+  check(checks, failures, 'live-weather-single-source', sidebar.includes('useWeather') && mobileNav.includes('useWeather') && weatherPopover.includes('useWeather'), 'Sidebar, mobile header and WeatherPopover must use the same runtime weather hook');
+  check(checks, failures, 'no-fake-weather', !sidebar.includes('22°') && !mobileNav.includes('22°') && !weatherPopover.includes('22°'), 'No static demo temperature may remain in production weather UI');
+  check(checks, failures, 'weather-manual-city', weatherPopover.includes('Введите город') && weatherPopover.includes('setWeatherLocation'), 'Manual city selection must remain available');
+  check(checks, failures, 'weather-no-background-geolocation', !useWeather.includes('geolocation') && !sidebar.includes('geolocation') && !mobileNav.includes('geolocation'), 'Weather loading must never request geolocation implicitly');
+  check(checks, failures, 'weather-explicit-geolocation', weatherPopover.includes('requestExplicitPosition(navigator.geolocation)') && weatherService.includes('getCurrentPosition'), 'Geolocation may only run from the explicit user action path');
+  check(checks, failures, 'weather-open-meteo', weatherService.includes('api.open-meteo.com/v1/forecast') && weatherService.includes('geocoding-api.open-meteo.com/v1/search'), 'Live weather must use the configured Open-Meteo endpoints');
 
   return { checks, failures };
 }
