@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getSectionPresentation, seedDownloads, seedNotes } from './sectionModel.ts';
+import { readFile } from 'node:fs/promises';
+import { getSectionPresentation } from './sectionModel.ts';
 
 test('top-level sections expose stable Russian presentation metadata', () => {
   assert.equal(getSectionPresentation('favorites').title, 'Избранное');
@@ -8,8 +9,9 @@ test('top-level sections expose stable Russian presentation metadata', () => {
   assert.equal(getSectionPresentation('notes').title, 'Заметки');
 });
 
-test('downloads and notes have useful first-launch content instead of empty demo shells', () => {
-  assert.ok(seedDownloads.some(item => item.status === 'active'));
-  assert.ok(seedDownloads.some(item => item.status === 'completed'));
-  assert.ok(seedNotes.length >= 3);
+test('section metadata module contains no demo user data', async () => {
+  const source = await readFile(new URL('./sectionModel.ts', import.meta.url), 'utf8');
+  for (const forbidden of ['seedDownloads', 'seedNotes', 'seedRecent']) {
+    assert.equal(source.includes(forbidden), false, `demo export must not return: ${forbidden}`);
+  }
 });
