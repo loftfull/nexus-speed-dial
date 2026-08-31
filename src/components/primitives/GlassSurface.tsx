@@ -1,15 +1,16 @@
-import type { ComponentPropsWithoutRef, ElementType } from 'react';
+import type { ElementType, HTMLAttributes, ReactNode } from 'react';
 import styles from './GlassSurface.module.css';
 
 type GlassRole = 'panel' | 'control' | 'dock' | 'popover';
 
-type GlassSurfaceProps<T extends ElementType> = {
-  as?: T;
+type GlassSurfaceProps = HTMLAttributes<HTMLElement> & {
+  as?: ElementType;
   role?: GlassRole;
-} & Omit<ComponentPropsWithoutRef<T>, 'as'>;
+  children?: ReactNode;
+};
 
-export function GlassSurface<T extends ElementType = 'div'>({ as, role = 'panel', className = '', children, ...rest }: GlassSurfaceProps<T>) {
-  const Tag: ElementType = as ?? 'div';
+export function GlassSurface({ as, role = 'panel', className = '', children, ...rest }: GlassSurfaceProps) {
+  const Tag = (as ?? 'div') as ElementType;
   const classes = [styles.surface, styles[role], className].filter(Boolean).join(' ');
   return <Tag {...rest} className={classes} data-glass-role={role}>{children}</Tag>;
 }
