@@ -7,7 +7,7 @@
   --nexus-shadow-panel: 0 8px 28px rgba(55,80,120,.08); --nexus-shadow-control: 0 3px 10px rgba(40,70,110,.07);
   --nexus-motion-fast: 180ms; --nexus-motion-normal: 210ms; --nexus-ease: cubic-bezier(.2,.8,.2,1);
   --nexus-shell-pad:14px; --nexus-layout-gap:16px; --nexus-sidebar-pad:16px 12px 12px; --nexus-nav-row:38px;
-  --nexus-tile-rgb:255,255,255; --nexus-tile-tint-rgb:235,244,255; --nexus-icon-surface-rgb:255,255,255; --nexus-icon-shadow:0 8px 18px rgba(40,72,118,.12);
+  --nexus-tile-rgb:255,255,255; --nexus-tile-tint-rgb:235,244,255; --nexus-icon-surface-rgb:255,255,255; --nexus-icon-shadow:0 8px 18px rgba(40,72,118,.12); --nexus-tile-border-rgb:255,255,255; --nexus-tile-border-scale:1; --nexus-tile-shadow-rgb:55,80,120;
   --tile-width:170px; --tile-height:180px; --tile-gap:18px; --tile-radius:20px; --tile-icon-size:58px; --tile-opacity:.68; --tile-blur:18px; --tile-saturation:122%;
   --tile-border-opacity:.6; --tile-shadow-opacity:.08; --tile-hover-glow:.08; --tile-selected-glow:.14; --tile-hover-lift:-3px; --tile-hover-scale:1.015; --tile-pressed-scale:.97; --tile-transition:200ms; --tile-columns:5; --tile-label-align:center;
 }
