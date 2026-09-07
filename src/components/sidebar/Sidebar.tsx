@@ -1,4 +1,5 @@
-import { BriefcaseBusiness, CalendarDays, ChevronDown, CircleDollarSign, FolderKanban, Grid2X2, Home, MessageCircle, Pencil, Plus, ShoppingCart, Tag, Users, Wrench } from 'lucide-react';
+import { BriefcaseBusiness, CircleDollarSign, FolderKanban, Grid2X2, Home, MessageCircle, MoreHorizontal, Plus, ShoppingCart, Tag, Users, Wrench } from 'lucide-react';
+import { useState } from 'react';
 import { navigationIconKey } from '../../domain/navigationIcon.ts';
 import { useAppStore } from '../../state/useAppStore.ts';
 import { useWeather } from '../../weather/useWeather.ts';
@@ -23,47 +24,114 @@ function iconFor(label: string, id = '') {
 export function Sidebar() {
   const clock = useLiveClock();
   const weather = useWeather();
-  const projects = useAppStore(state => state.projects);
+  const spaces = useAppStore(state => state.spaces);
   const categories = useAppStore(state => state.categories);
   const sites = useAppStore(state => state.sites);
-  const activeProjectId = useAppStore(state => state.activeProjectId);
+  const activeSpaceId = useAppStore(state => state.activeSpaceId);
   const activeCategoryId = useAppStore(state => state.activeCategoryId);
   const calendarOpen = useAppStore(state => state.calendarOpen);
-  const setActiveProject = useAppStore(state => state.setActiveProject);
+  const setActiveSpace = useAppStore(state => state.setActiveSpace);
   const setActiveCategory = useAppStore(state => state.setActiveCategory);
+  const removeSpace = useAppStore(state => state.removeSpace);
+  const removeCategory = useAppStore(state => state.removeCategory);
   const setCalendarOpen = useAppStore(state => state.setCalendarOpen);
   const setWeatherOpen = useAppStore(state => state.setWeatherOpen);
   const setStructureEditor = useAppStore(state => state.setStructureEditor);
-  const projectCategories = categories.filter(category => category.projectId === activeProjectId);
-  const roots = projectCategories.filter(category => !category.parentId);
+  const [menu, setMenu] = useState<string | null>(null);
+
+  const orderedSpaces = [...spaces].sort((a, b) => a.position - b.position);
+  const spaceCategories = categories
+    .filter(category => (category.spaceId ?? category.projectId) === activeSpaceId)
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const roots = spaceCategories.filter(category => !category.parentId);
+  const siteSpaceId = (projectId: string, spaceId?: string) => spaceId ?? projectId;
   const countFor = (id: string) => {
-    const childIds = projectCategories.filter(category => category.parentId === id).map(category => category.id);
-    return sites.filter(site => site.projectId === activeProjectId && [id, ...childIds].includes(site.categoryId ?? '')).length;
+    const childIds = spaceCategories.filter(category => category.parentId === id).map(category => category.id);
+    const allowed = new Set([id, ...childIds]);
+    return sites.filter(site => siteSpaceId(site.projectId, site.spaceId) === activeSpaceId && site.categoryId && allowed.has(site.categoryId)).length;
+  };
+  const spaceHasSites = (id: string) => sites.some(site => siteSpaceId(site.projectId, site.spaceId) === id);
+  const categoryHasSites = (id: string) => {
+    const childIds = spaceCategories.filter(category => category.parentId === id).map(category => category.id);
+    const allowed = new Set([id, ...childIds]);
+    return sites.some(site => site.categoryId && allowed.has(site.categoryId));
+  };
+  const confirmRemoveSpace = (id: string, name: string) => {
+    if (id === 'home') return;
+    if (spaceHasSites(id) && !window.confirm(`В пространстве «${name}» есть сайты. Они будут перемещены в «Дом». Продолжить?`)) return;
+    removeSpace(id);
+    setMenu(null);
+  };
+  const confirmRemoveCategory = (id: string, name: string) => {
+    if (categoryHasSites(id) && !window.confirm(`В категории «${name}» есть сайты. Они останутся в пространстве без категории. Продолжить?`)) return;
+    removeCategory(id);
+    setMenu(null);
   };
   const current = weather.data?.current;
 
   return <GlassSurface as="aside" role="panel" className={styles.sidebar}>
-    <div className={styles.brand}><span className={styles.brandMark}>N</span><div><strong>Nexus</strong><small>Speed Dial</small></div></div>
-    <GlassSurface role="control" className={styles.clockCard}>
-      <div className={styles.clockTop}>
-        <div><div className={styles.clock}>{clock.time}</div><button data-calendar-trigger data-testid="date-button" aria-expanded={calendarOpen} onClick={() => setCalendarOpen(!calendarOpen)}>{clock.date}</button></div>
-        <span className={styles.dateGlyph} aria-hidden="true"><CalendarDays size={21}/></span>
+    <div className={styles.brand}>
+      <span className={styles.brandMark}>N</span>
+      <div><strong>Nexus</strong><small>Speed Dial</small></div>
+    </div>
+
+    <section className={styles.navSection}>
+      <header><span>ПРОСТРАНСТВА</span><button aria-label="Добавить пространство" onClick={() => setStructureEditor({ kind: 'project' })}><Plus size={15}/></button></header>
+      <div className={styles.spaceList}>
+        {orderedSpaces.map(space => {
+          const Icon = iconFor(space.name, space.id);
+          const menuId = `space:${space.id}`;
+          return <div className={styles.navItem} key={space.id}>
+            <button className={`${styles.navMain} ${space.id === activeSpaceId ? styles.active : ''}`} onClick={() => { setActiveSpace(space.id); setMenu(null); }}><Icon size={16}/><span>{space.name}</span></button>
+            <button className={styles.more} aria-label={`Действия пространства ${space.name}`} aria-expanded={menu === menuId} onClick={() => setMenu(value => value === menuId ? null : menuId)}><MoreHorizontal size={16}/></button>
+            {menu === menuId && <GlassSurface role="popover" className={styles.itemMenu}>
+              <button onClick={() => { setMenu(null); setStructureEditor({ kind: 'project', id: space.id }); }}>Переименовать</button>
+              {space.id !== 'home' && <button className={styles.danger} onClick={() => confirmRemoveSpace(space.id, space.name)}>Удалить</button>}
+            </GlassSurface>}
+          </div>;
+        })}
       </div>
-      <button className={styles.weather} onClick={() => setWeatherOpen(true)}><span className={styles.weatherIcon}>{current?.icon ?? '🌤️'}</span><span className={styles.temp}>{current ? `${current.temperature}°` : '--°'}</span><span><b>{current?.label ?? (weather.status === 'loading' ? 'Загрузка…' : 'Нет данных')}</b><small>{current ? `Ощущается как ${current.apparent}°` : weather.label}</small></span></button>
-      {weather.data && <div className={styles.forecast}>{weather.data.daily.slice(0, 4).map(item => <span key={item.date}>{new Date(`${item.date}T12:00:00`).toLocaleDateString('ru-RU', { weekday: 'short' })}<b>{item.max}°</b></span>)}</div>}
-    </GlassSurface>
-    <section className={styles.section}>
-      <header>ПРОЕКТЫ <button aria-label="Добавить проект" onClick={() => setStructureEditor({ kind: 'project' })}><Plus size={15}/></button></header>
-      <div className={styles.chips}>{projects.map(project => { const Icon = iconFor(project.name, project.id); return <div className={styles.projectChip} key={project.id}><button className={project.id === activeProjectId ? styles.activeChip : ''} onClick={() => setActiveProject(project.id)}><Icon size={14}/>{project.name}</button><button className={styles.chipEdit} aria-label={`Изменить ${project.name}`} onClick={() => setStructureEditor({ kind: 'project', id: project.id })}><Pencil size={11}/></button></div>; })}</div>
     </section>
-    <section className={styles.section}>
-      <header>КАТЕГОРИИ <button aria-label="Добавить категорию" onClick={() => setStructureEditor({ kind: 'category' })}><Plus size={15}/></button></header>
-      <div className={styles.chips}>{roots.slice(0, 3).map(category => { const Icon = iconFor(category.name, category.id); return <button key={category.id} className={category.id === activeCategoryId ? styles.activeChip : ''} onClick={() => setActiveCategory(category.id)}><Icon size={13}/>{category.name}</button>; })}</div>
+
+    <section className={`${styles.navSection} ${styles.categories}`}>
+      <header><span>КАТЕГОРИИ</span><button aria-label="Добавить категорию" onClick={() => setStructureEditor({ kind: 'category' })}><Plus size={15}/></button></header>
+      <button className={`${styles.allSites} ${activeCategoryId === null ? styles.active : ''}`} onClick={() => { setActiveCategory(null); setMenu(null); }}><Grid2X2 size={16}/><span>Все сайты</span></button>
+      <div className={styles.tree}>
+        {roots.map(root => {
+          const RootIcon = iconFor(root.name, root.id);
+          const children = spaceCategories.filter(category => category.parentId === root.id);
+          const menuId = `category:${root.id}`;
+          return <div className={styles.branch} key={root.id}>
+            <div className={styles.navItem}>
+              <button className={`${styles.navMain} ${root.id === activeCategoryId ? styles.active : ''}`} onClick={() => { setActiveCategory(root.id); setMenu(null); }}><RootIcon size={16}/><span>{root.name}</span><em>{countFor(root.id)}</em></button>
+              <button className={styles.more} aria-label={`Действия категории ${root.name}`} aria-expanded={menu === menuId} onClick={() => setMenu(value => value === menuId ? null : menuId)}><MoreHorizontal size={16}/></button>
+              {menu === menuId && <GlassSurface role="popover" className={styles.itemMenu}>
+                <button onClick={() => { setMenu(null); setStructureEditor({ kind: 'category', id: root.id }); }}>Изменить</button>
+                <button className={styles.danger} onClick={() => confirmRemoveCategory(root.id, root.name)}>Удалить</button>
+              </GlassSurface>}
+            </div>
+            {children.length > 0 && <div className={styles.children}>{children.map(child => {
+              const ChildIcon = iconFor(child.name, child.id);
+              const childMenuId = `category:${child.id}`;
+              return <div className={styles.navItem} key={child.id}>
+                <button className={`${styles.navMain} ${child.id === activeCategoryId ? styles.active : ''}`} onClick={() => { setActiveCategory(child.id); setMenu(null); }}><ChildIcon size={14}/><span>{child.name}</span><em>{countFor(child.id)}</em></button>
+                <button className={styles.more} aria-label={`Действия категории ${child.name}`} aria-expanded={menu === childMenuId} onClick={() => setMenu(value => value === childMenuId ? null : childMenuId)}><MoreHorizontal size={15}/></button>
+                {menu === childMenuId && <GlassSurface role="popover" className={styles.itemMenu}>
+                  <button onClick={() => { setMenu(null); setStructureEditor({ kind: 'category', id: child.id }); }}>Изменить</button>
+                  <button className={styles.danger} onClick={() => confirmRemoveCategory(child.id, child.name)}>Удалить</button>
+                </GlassSurface>}
+              </div>;
+            })}</div>}
+          </div>;
+        })}
+      </div>
     </section>
-    <section className={`${styles.section} ${styles.explorer}`}>
-      <header>ПРОВОДНИК</header>
-      {roots.map(root => { const Icon = iconFor(root.name, root.id); const children = projectCategories.filter(category => category.parentId === root.id); return <div key={root.id}><div className={styles.treeLine}><button className={`${styles.treeRow} ${root.id === activeCategoryId ? styles.activeRow : ''}`} onClick={() => setActiveCategory(root.id)}><span><Icon size={15}/>{root.name}</span><em>{countFor(root.id)}</em><ChevronDown size={13}/></button><button className={styles.treeEdit} aria-label={`Изменить ${root.name}`} onClick={() => setStructureEditor({ kind: 'category', id: root.id })}><Pencil size={12}/></button></div>{children.length > 0 && <div className={styles.children}>{children.map(child => <button key={child.id} onClick={() => setActiveCategory(child.id)}><span>• {child.name}</span><em>{countFor(child.id)}</em></button>)}</div>}</div>; })}
-    </section>
-    <button className={styles.addCategory} onClick={() => setStructureEditor({ kind: 'category' })}><Plus size={16}/>Добавить категорию</button>
+
+    <div className={styles.utility}>
+      <button data-calendar-trigger data-testid="date-button" aria-expanded={calendarOpen} onClick={() => setCalendarOpen(!calendarOpen)}>
+        <strong>{clock.time}</strong><span>{clock.date}</span>
+      </button>
+      {current && <button className={styles.utilityWeather} aria-label="Открыть погоду" onClick={() => setWeatherOpen(true)}><span>{current.icon}</span><strong>{current.temperature}°</strong></button>}
+    </div>
   </GlassSurface>;
 }
