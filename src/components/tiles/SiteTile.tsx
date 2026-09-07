@@ -8,12 +8,20 @@ import { useAppStore } from '../../state/useAppStore.ts';
 import { SiteIcon } from './SiteIcon.tsx';
 import styles from './SiteTile.module.css';
 
-export function SiteTile({ site, mode, selected = false }: { site: Site; mode: TilePreset; selected?: boolean }) {
+type SiteTileProps = {
+  site: Site;
+  mode: TilePreset;
+  selected?: boolean;
+  reorderEnabled?: boolean;
+  onDragSiteStart?: (siteId: string) => void;
+  onDropSite?: (siteId: string) => void;
+};
+
+export function SiteTile({ site, mode, selected = false, reorderEnabled = false, onDragSiteStart, onDropSite }: SiteTileProps) {
   const [state, setState] = useState<TileInteractionState>(selected ? 'selected' : 'normal');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const categories = useAppStore(store => store.categories);
-  const contentMode = useAppStore(store => store.contentMode);
   const setSiteEditor = useAppStore(store => store.setSiteEditor);
   const recordVisit = useAppStore(store => store.recordVisit);
   const toggleFavorite = useAppStore(store => store.toggleFavorite);
@@ -33,7 +41,11 @@ export function SiteTile({ site, mode, selected = false }: { site: Site; mode: T
   }, [menuOpen]);
 
   const transition = (event: TileInteractionEvent) => setState(current => nextTileState(current, event, selected));
-  const enterDropTarget = (event: DragEvent<HTMLElement>) => { if (contentMode === 'recent') return; event.preventDefault(); transition('drag-enter'); };
+  const enterDropTarget = (event: DragEvent<HTMLElement>) => {
+    if (!reorderEnabled) return;
+    event.preventDefault();
+    transition('drag-enter');
+  };
   const label = categories.find(category => category.id === site.categoryId)?.name ?? '';
   const open = () => { recordVisit(site.id); window.location.assign(site.url); };
   const destroy = () => {
@@ -45,17 +57,29 @@ export function SiteTile({ site, mode, selected = false }: { site: Site; mode: T
   return <article
     className={`${styles.tile} ${styles[mode]} ${selected ? styles.selected : ''}`}
     data-testid="site-tile"
+    data-site-id={site.id}
     data-tile-state={state}
-    draggable={contentMode !== 'recent'}
+    draggable={reorderEnabled}
     onPointerDown={() => transition('pointer-down')}
     onPointerUp={() => transition('pointer-up')}
     onPointerCancel={() => transition('pointer-up')}
-    onDragStart={() => contentMode !== 'recent' && transition('drag-start')}
+    onDragStart={event => {
+      if (!reorderEnabled) return;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', site.id);
+      onDragSiteStart?.(site.id);
+      transition('drag-start');
+    }}
     onDragEnd={() => transition('drag-end')}
     onDragEnter={enterDropTarget}
-    onDragOver={(event: DragEvent<HTMLElement>) => contentMode !== 'recent' && event.preventDefault()}
+    onDragOver={(event: DragEvent<HTMLElement>) => reorderEnabled && event.preventDefault()}
     onDragLeave={() => transition('drag-leave')}
-    onDrop={() => transition('drop')}
+    onDrop={event => {
+      if (!reorderEnabled) return;
+      event.preventDefault();
+      onDropSite?.(site.id);
+      transition('drop');
+    }}
   >
     <a className={styles.hit} href={site.url} aria-label={site.title} onClick={() => recordVisit(site.id)} onFocus={() => transition('focus')} onBlur={() => transition('blur')}>
       {site.favorite && <Star className={styles.favorite} size={13} fill="currentColor" aria-label="В избранном"/>}
