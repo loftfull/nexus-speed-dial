@@ -1,4 +1,4 @@
-import type { Site } from './types.ts';
+import type { SearchEngine, Site } from './types.ts';
 
 export type OmniboxResolution =
   | { kind: 'empty' }
@@ -13,13 +13,29 @@ function normalizeUrl(input: string) {
   return url.toString();
 }
 
+function searchUrl(query: string, engine: SearchEngine): string {
+  if (engine === 'yandex') {
+    const url = new URL('https://yandex.ru/search/');
+    url.searchParams.set('text', query);
+    return url.toString();
+  }
+  if (engine === 'duckduckgo') {
+    const url = new URL('https://duckduckgo.com/');
+    url.searchParams.set('q', query);
+    return url.toString();
+  }
+  const url = new URL('https://www.google.com/search');
+  url.searchParams.set('q', query);
+  return url.toString();
+}
+
 export function suggestSites(query: string, sites: Site[]) {
   const q = query.trim().toLowerCase();
   if (!q) return [];
   return sites.filter(site => `${site.title} ${site.domain} ${site.subtitle ?? ''}`.toLowerCase().includes(q)).slice(0, 6);
 }
 
-export function resolveOmnibox(input: string, sites: Site[]): OmniboxResolution {
+export function resolveOmnibox(input: string, sites: Site[], engine: SearchEngine = 'google'): OmniboxResolution {
   const q = input.trim();
   if (!q) return { kind: 'empty' };
 
@@ -30,11 +46,9 @@ export function resolveOmnibox(input: string, sites: Site[]): OmniboxResolution 
     try {
       return { kind: 'url', url: normalizeUrl(q) };
     } catch {
-      // Invalid or unsafe URL-like input intentionally falls through to web search.
+      // Unsafe or malformed URL-like input intentionally falls through to web search.
     }
   }
 
-  const url = new URL('https://www.google.com/search');
-  url.searchParams.set('q', q);
-  return { kind: 'search', url: url.toString() };
+  return { kind: 'search', url: searchUrl(q, engine) };
 }
