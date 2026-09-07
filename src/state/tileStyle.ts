@@ -15,13 +15,13 @@ function focusRingWidth(style: TileAppearanceSettings['focusRingStyle']): string
 }
 
 function tileBackground(settings: TileAppearanceSettings): string {
-  if (settings.backgroundMode === 'transparent') return 'rgba(255,255,255,0)';
-  if (settings.backgroundMode === 'tinted') return `rgba(235,244,255,${settings.glassOpacity})`;
-  return `rgba(255,255,255,${settings.glassOpacity})`;
+  if (settings.backgroundMode === 'transparent') return 'rgba(var(--nexus-tile-rgb),0)';
+  if (settings.backgroundMode === 'tinted') return `rgba(var(--nexus-tile-tint-rgb),${settings.glassOpacity})`;
+  return `rgba(var(--nexus-tile-rgb),${settings.glassOpacity})`;
 }
 
 function iconSurface(settings: TileAppearanceSettings): { surface: string; shadow: string } {
-  if (settings.iconTreatment === 'soft') return { surface: 'rgba(255,255,255,.72)', shadow: '0 8px 18px rgba(40,72,118,.12)' };
+  if (settings.iconTreatment === 'soft') return { surface: 'rgba(var(--nexus-icon-surface-rgb),.72)', shadow: 'var(--nexus-icon-shadow)' };
   return { surface: 'transparent', shadow: 'none' };
 }
 
