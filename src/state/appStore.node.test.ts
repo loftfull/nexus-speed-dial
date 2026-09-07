@@ -60,6 +60,20 @@ test('legacy projects, categories and sites migrate to spaces without data loss'
   assert.equal(state.sites.length, 2);
 });
 
+test('user preferences persist independently from low-level tile settings', () => {
+  const storage = createMemoryStorage();
+  const first = createAppStore(storage);
+  first.getState().setPreference('theme', 'dark');
+  first.getState().setPreference('searchEngine', 'yandex');
+  first.getState().setPreference('omniboxSuggestions', false);
+
+  const restored = createAppStore(storage).getState();
+  assert.equal(restored.preferences.theme, 'dark');
+  assert.equal(restored.preferences.searchEngine, 'yandex');
+  assert.equal(restored.preferences.omniboxSuggestions, false);
+  assert.equal(restored.tileSettings.preset, 'standard');
+});
+
 test('mobile navigation drawer toggles without changing content mode', () => {
   const store = createAppStore(createMemoryStorage());
   store.getState().setContentMode('recent');
