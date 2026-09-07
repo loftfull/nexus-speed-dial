@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, CalendarDays, ChevronRight, CircleDollarSign, FolderKanban, Grid2X2, Home, Menu, MessageCircle, Pencil, Plus, ShoppingCart, Tag, Users, Wrench, X } from 'lucide-react';
+import { BriefcaseBusiness, CircleDollarSign, FolderKanban, Grid2X2, Home, Menu, MessageCircle, MoreHorizontal, Plus, ShoppingCart, Tag, Users, Wrench, X } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import { navigationIconKey } from '../../domain/navigationIcon.ts';
 import { useAppStore } from '../../state/useAppStore.ts';
@@ -29,36 +29,46 @@ export function MobileNavigation() {
   const setOpen = useAppStore(state => state.setMobileNavOpen);
   const setCalendarOpen = useAppStore(state => state.setCalendarOpen);
   const setWeatherOpen = useAppStore(state => state.setWeatherOpen);
-  const projects = useAppStore(state => state.projects);
+  const spaces = useAppStore(state => state.spaces);
   const categories = useAppStore(state => state.categories);
-  const activeProject = useAppStore(state => state.activeProjectId);
-  const activeCategory = useAppStore(state => state.activeCategoryId);
-  const setProject = useAppStore(state => state.setActiveProject);
-  const setCategory = useAppStore(state => state.setActiveCategory);
+  const activeSpaceId = useAppStore(state => state.activeSpaceId);
+  const activeCategoryId = useAppStore(state => state.activeCategoryId);
+  const setActiveSpace = useAppStore(state => state.setActiveSpace);
+  const setActiveCategory = useAppStore(state => state.setActiveCategory);
   const setStructureEditor = useAppStore(state => state.setStructureEditor);
-  const roots = categories.filter(category => category.projectId === activeProject && !category.parentId);
-  const temp = weather.data ? `${weather.data.current.temperature}°` : '--°';
+  const orderedSpaces = [...spaces].sort((a, b) => a.position - b.position);
+  const spaceCategories = categories
+    .filter(category => (category.spaceId ?? category.projectId) === activeSpaceId)
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const roots = spaceCategories.filter(category => !category.parentId);
+  const current = weather.data?.current;
+  const close = () => setOpen(false);
 
   return <>
     <GlassSurface role="control" className={styles.bar}>
-      <button aria-label="Открыть разделы" onClick={() => setOpen(true)}><Menu size={20}/></button>
+      <button aria-label="Открыть пространства и категории" onClick={() => setOpen(true)}><Menu size={20}/></button>
       <div className={styles.brand}><span>N</span><strong>Nexus</strong></div>
       <div className={styles.compactStatus}>
-        <b>{clock.time}</b>
-        <button data-calendar-trigger className={styles.calendarButton} aria-label="Открыть календарь" aria-expanded={calendarOpen} title={clock.date} onClick={() => setCalendarOpen(!calendarOpen)}><CalendarDays size={15}/></button>
-        <button className={styles.weatherButton} aria-label="Открыть погоду" onClick={() => setWeatherOpen(true)}>{temp}</button>
+        <button data-calendar-trigger className={styles.timeButton} aria-label="Открыть календарь" aria-expanded={calendarOpen} onClick={() => setCalendarOpen(!calendarOpen)}><b>{clock.time}</b><small>{clock.date}</small></button>
+        {current && <button className={styles.weatherButton} aria-label="Открыть погоду" onClick={() => setWeatherOpen(true)}><span>{current.icon}</span><b>{current.temperature}°</b></button>}
       </div>
     </GlassSurface>
-    {open && <div className={styles.layer} role="presentation" onMouseDown={() => setOpen(false)}>
+
+    {open && <div className={styles.layer} role="presentation" onMouseDown={close}>
       <GlassSurface as="aside" role="popover" className={styles.drawer} onMouseDown={(event: MouseEvent<HTMLElement>) => event.stopPropagation()}>
-        <header><div><strong>Nexus</strong><small>Разделы и категории</small></div><button aria-label="Закрыть разделы" onClick={() => setOpen(false)}><X size={20}/></button></header>
+        <header><div><strong>Навигация</strong><small>Пространства и категории</small></div><button aria-label="Закрыть навигацию" onClick={close}><X size={20}/></button></header>
+
         <section>
-          <h3>Проекты</h3>
-          <div className={styles.projects}>{projects.map(project => { const Icon = iconFor(project.name, project.id); return <div className={styles.projectItem} key={project.id}><button className={activeProject === project.id ? styles.active : ''} onClick={() => { setProject(project.id); setOpen(false); }}><Icon size={18}/><span>{project.name}</span></button><button className={styles.projectEdit} aria-label={`Изменить ${project.name}`} onClick={() => { setOpen(false); setStructureEditor({ kind: 'project', id: project.id }); }}><Pencil size={12}/></button></div>; })}<button onClick={() => { setOpen(false); setStructureEditor({ kind: 'project' }); }}><Plus size={18}/><span>Добавить</span></button></div>
+          <div className={styles.sectionHead}><h3>Пространства</h3><button aria-label="Добавить пространство" onClick={() => { close(); setStructureEditor({ kind: 'project' }); }}><Plus size={16}/></button></div>
+          <div className={styles.spaceList}>{orderedSpaces.map(space => { const Icon = iconFor(space.name, space.id); return <div className={styles.item} key={space.id}><button className={`${styles.itemMain} ${activeSpaceId === space.id ? styles.active : ''}`} onClick={() => { setActiveSpace(space.id); close(); }}><Icon size={18}/><span>{space.name}</span></button><button className={styles.more} aria-label={`Изменить пространство ${space.name}`} onClick={() => { close(); setStructureEditor({ kind: 'project', id: space.id }); }}><MoreHorizontal size={17}/></button></div>; })}</div>
         </section>
+
         <section>
-          <h3>Категории</h3>
-          <div className={styles.categories}>{roots.map(category => { const Icon = iconFor(category.name, category.id); return <button key={category.id} className={activeCategory === category.id ? styles.active : ''} onClick={() => { setCategory(category.id); setOpen(false); }}><Icon size={19}/><span>{category.name}</span><ChevronRight size={16}/></button>; })}<button onClick={() => { setOpen(false); setStructureEditor({ kind: 'category' }); }}><Plus size={18}/><span>Добавить категорию</span></button></div>
+          <div className={styles.sectionHead}><h3>Категории</h3><button aria-label="Добавить категорию" onClick={() => { close(); setStructureEditor({ kind: 'category' }); }}><Plus size={16}/></button></div>
+          <div className={styles.categoryList}>
+            <button className={`${styles.categoryMain} ${activeCategoryId === null ? styles.active : ''}`} onClick={() => { setActiveCategory(null); close(); }}><Grid2X2 size={18}/><span>Все сайты</span></button>
+            {roots.map(root => { const RootIcon = iconFor(root.name, root.id); const children = spaceCategories.filter(category => category.parentId === root.id); return <div className={styles.branch} key={root.id}><div className={styles.item}><button className={`${styles.itemMain} ${activeCategoryId === root.id ? styles.active : ''}`} onClick={() => { setActiveCategory(root.id); close(); }}><RootIcon size={18}/><span>{root.name}</span></button><button className={styles.more} aria-label={`Изменить категорию ${root.name}`} onClick={() => { close(); setStructureEditor({ kind: 'category', id: root.id }); }}><MoreHorizontal size={17}/></button></div>{children.length > 0 && <div className={styles.children}>{children.map(child => { const ChildIcon = iconFor(child.name, child.id); return <div className={styles.item} key={child.id}><button className={`${styles.itemMain} ${activeCategoryId === child.id ? styles.active : ''}`} onClick={() => { setActiveCategory(child.id); close(); }}><ChildIcon size={16}/><span>{child.name}</span></button><button className={styles.more} aria-label={`Изменить категорию ${child.name}`} onClick={() => { close(); setStructureEditor({ kind: 'category', id: child.id }); }}><MoreHorizontal size={16}/></button></div>; })}</div>}</div>; })}
+          </div>
         </section>
       </GlassSurface>
     </div>}
