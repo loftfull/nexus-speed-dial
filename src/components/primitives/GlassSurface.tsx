@@ -1,7 +1,7 @@
 import type { ElementType, HTMLAttributes, ReactNode } from 'react';
 import styles from './GlassSurface.module.css';
 
-type GlassRole = 'panel' | 'control' | 'dock' | 'popover';
+type GlassRole = 'panel' | 'control' | 'popover';
 
 type GlassSurfaceProps = HTMLAttributes<HTMLElement> & {
   as?: ElementType;
