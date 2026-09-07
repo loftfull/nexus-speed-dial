@@ -15,14 +15,14 @@ test('app shell has one workspace and no Dock navigation', async () => {
   assert.equal(app.includes("section!=='home'"), false);
 });
 
-test('workspace header has one content mode control and no duplicate bookmark search/filter', async () => {
+test('workspace header has only the one content mode control', async () => {
   const source = await read('../components/workspace/WorkspaceHeader.tsx');
-  assert.equal(source.includes('bookmarkQuery'), false);
-  assert.equal(source.includes('Фильтр по категории'), false);
-  assert.equal(source.includes('searchWrap'), false);
+  for (const forbidden of ['bookmarkQuery', 'Фильтр по категории', 'searchWrap', 'setSettingsOpen', 'setViewMode']) {
+    assert.equal(source.includes(forbidden), false, `duplicate workspace concern returned: ${forbidden}`);
+  }
   assert.match(source, /contentMode/);
   assert.match(source, /setContentMode/);
-  assert.match(source, /setSettingsOpen/);
+  for (const label of ['Все', 'Избранное', 'Недавние']) assert.ok(source.includes(label));
 });
 
 test('sidebar contains one category tree and no explorer/chip duplication or forecast', async () => {
@@ -40,4 +40,18 @@ test('omnibox does not imitate browser chrome', async () => {
   for (const forbidden of ['ChevronLeft', 'ChevronRight', 'Shield', 'profile']) {
     assert.equal(source.includes(forbidden), false, `Omnibox must not contain ${forbidden}`);
   }
+});
+
+test('store exposes no deprecated section/project navigation API', async () => {
+  const [store, types, workspace] = await Promise.all([
+    read('../state/appStore.ts'),
+    read('../domain/types.ts'),
+    read('../domain/workspace.ts'),
+  ]);
+  for (const forbidden of ['section: AppSection', 'workspaceTab:', 'activeProjectId:', 'bookmarkQuery:', 'setSection(', 'setWorkspaceTab(', 'setActiveProject(', "kind: 'project'"]) {
+    assert.equal(store.includes(forbidden), false, `deprecated store API remains: ${forbidden}`);
+  }
+  for (const forbidden of ['AppSection', 'WorkspaceTab', 'ViewMode']) assert.equal(types.includes(`type ${forbidden}`), false, `deprecated domain type remains: ${forbidden}`);
+  assert.equal(workspace.includes('LegacyWorkspaceSelectionInput'), false);
+  assert.equal(workspace.includes('projectId: string;\n  categoryId'), false);
 });
