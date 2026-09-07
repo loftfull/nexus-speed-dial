@@ -4,6 +4,21 @@ export type TileSize = 'S' | 'M' | 'L' | 'XL';
 /** Canonical Pure Speed Dial content modes. */
 export type ContentMode = 'all' | 'favorites' | 'recent';
 export type LayoutMode = 'grid' | 'list';
+export type ThemeMode = 'system' | 'light' | 'dark';
+export type InterfaceDensity = 'comfortable' | 'compact';
+export type AppBackground = 'soft' | 'clean' | 'contrast';
+export type GlassStrength = 'minimal' | 'standard' | 'strong';
+export type SearchEngine = 'google' | 'yandex' | 'duckduckgo';
+
+export interface UserPreferences {
+  theme: ThemeMode;
+  density: InterfaceDensity;
+  background: AppBackground;
+  glassStrength: GlassStrength;
+  searchEngine: SearchEngine;
+  globalSiteSearch: boolean;
+  omniboxSuggestions: boolean;
+}
 
 /** @deprecated Transitional compatibility until the one-screen refactor is complete. */
 export type AppSection = 'home' | 'favorites' | 'recent' | 'downloads' | 'notes' | 'settings';
