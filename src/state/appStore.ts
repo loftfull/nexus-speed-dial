@@ -1,5 +1,20 @@
 import type { BackupSnapshot } from '../domain/backup.ts';
-import type { AppSection, Category, ContentMode, HistoryEntry, LayoutMode, Project, Site, Space, StoredNote, TileAppearanceSettings, TilePreset, ViewMode, WorkspaceTab } from '../domain/types.ts';
+import type {
+  AppSection,
+  Category,
+  ContentMode,
+  HistoryEntry,
+  LayoutMode,
+  Project,
+  Site,
+  Space,
+  StoredNote,
+  TileAppearanceSettings,
+  TilePreset,
+  UserPreferences,
+  ViewMode,
+  WorkspaceTab,
+} from '../domain/types.ts';
 import { getTilePreset, normalizeTileSettings } from '../domain/tilePresets.ts';
 import { seedCategories, seedProjects, seedSites, seedSpaces } from '../data/seed.ts';
 import type { StorageAdapter } from '../storage/StorageAdapter.ts';
@@ -15,25 +30,101 @@ type PersistedNavigation = {
   layoutMode?: LayoutMode;
 };
 
-export interface AppStoreState {
-  activeSpaceId: string; activeCategoryId: string | null; contentMode: ContentMode; layoutMode: LayoutMode; query: string; spaces: Space[];
-  tileSettings: TileAppearanceSettings; categories: Category[]; sites: Site[]; history: HistoryEntry[]; notes: StoredNote[]; structureEditor: StructureEditorTarget; siteEditor: 'new' | string | null; calendarOpen: boolean; settingsOpen: boolean; mobileNavOpen: boolean; weatherOpen: boolean; weatherLocation: WeatherLocation;
-  setActiveSpace(id: string): void; setActiveCategory(id: string | null): void; setContentMode(mode: ContentMode): void; setLayoutMode(mode: LayoutMode): void; setQuery(query: string): void;
-  addSpace(space: Space): void; updateSpace(id: string, patch: Partial<Omit<Space, 'id'>>): void; removeSpace(id: string): void;
-  setTileSetting<K extends keyof TileAppearanceSettings>(key: K, value: TileAppearanceSettings[K]): void; applyTilePreset(preset: TilePreset): void; resetTileSettings(): void;
-  addCategory(category: Category): void; updateCategory(id: string, patch: Partial<Omit<Category, 'id'>>): void; removeCategory(id: string): void; addSite(site: Site): void; updateSite(id: string, patch: Partial<Omit<Site, 'id'>>): void; removeSite(id: string): void; toggleFavorite(id: string): void; recordVisit(siteId: string, openedAt?: string): void; clearHistory(): void; addNote(input: { title: string; body: string; projectId?: string }, now?: string): void; updateNote(id: string, patch: Partial<Pick<StoredNote, 'title' | 'body' | 'projectId'>>, now?: string): void; removeNote(id: string): void; restoreBackup(snapshot: BackupSnapshot): void;
-  setStructureEditor(target: StructureEditorTarget): void; setSiteEditor(target: 'new' | string | null): void; setCalendarOpen(open: boolean): void; setSettingsOpen(open: boolean): void; setMobileNavOpen(open: boolean): void; setWeatherOpen(open: boolean): void; setWeatherLocation(location: WeatherLocation): void;
+export const DEFAULT_USER_PREFERENCES: UserPreferences = {
+  theme: 'system',
+  density: 'comfortable',
+  background: 'soft',
+  glassStrength: 'standard',
+  searchEngine: 'google',
+  globalSiteSearch: true,
+  omniboxSuggestions: true,
+};
 
-  /** @deprecated Transitional adapter for pre-Pure-Speed-Dial UI. */
-  section: AppSection; workspaceTab: WorkspaceTab; viewMode: ViewMode; activeProjectId: string; bookmarkQuery: string; projects: Project[];
-  /** @deprecated Transitional adapter for pre-Pure-Speed-Dial UI. */
-  setSection(section: AppSection): void; setWorkspaceTab(tab: WorkspaceTab): void; setViewMode(mode: ViewMode): void; setActiveProject(id: string): void; setBookmarkQuery(query: string): void; addProject(project: Project): void; updateProject(id: string, patch: Partial<Omit<Project, 'id'>>): void; removeProject(id: string): void;
+export interface AppStoreState {
+  activeSpaceId: string;
+  activeCategoryId: string | null;
+  contentMode: ContentMode;
+  layoutMode: LayoutMode;
+  query: string;
+  spaces: Space[];
+  preferences: UserPreferences;
+  tileSettings: TileAppearanceSettings;
+  categories: Category[];
+  sites: Site[];
+  history: HistoryEntry[];
+  notes: StoredNote[];
+  structureEditor: StructureEditorTarget;
+  siteEditor: 'new' | string | null;
+  calendarOpen: boolean;
+  settingsOpen: boolean;
+  mobileNavOpen: boolean;
+  weatherOpen: boolean;
+  weatherLocation: WeatherLocation;
+
+  setActiveSpace(id: string): void;
+  setActiveCategory(id: string | null): void;
+  setContentMode(mode: ContentMode): void;
+  setLayoutMode(mode: LayoutMode): void;
+  setQuery(query: string): void;
+  setPreference<K extends keyof UserPreferences>(key: K, value: UserPreferences[K]): void;
+  resetPreferences(): void;
+
+  addSpace(space: Space): void;
+  updateSpace(id: string, patch: Partial<Omit<Space, 'id'>>): void;
+  removeSpace(id: string): void;
+
+  setTileSetting<K extends keyof TileAppearanceSettings>(key: K, value: TileAppearanceSettings[K]): void;
+  applyTilePreset(preset: TilePreset): void;
+  resetTileSettings(): void;
+
+  addCategory(category: Category): void;
+  updateCategory(id: string, patch: Partial<Omit<Category, 'id'>>): void;
+  removeCategory(id: string): void;
+  addSite(site: Site): void;
+  updateSite(id: string, patch: Partial<Omit<Site, 'id'>>): void;
+  removeSite(id: string): void;
+  toggleFavorite(id: string): void;
+  recordVisit(siteId: string, openedAt?: string): void;
+  clearHistory(): void;
+  addNote(input: { title: string; body: string; projectId?: string }, now?: string): void;
+  updateNote(id: string, patch: Partial<Pick<StoredNote, 'title' | 'body' | 'projectId'>>, now?: string): void;
+  removeNote(id: string): void;
+  restoreBackup(snapshot: BackupSnapshot): void;
+
+  setStructureEditor(target: StructureEditorTarget): void;
+  setSiteEditor(target: 'new' | string | null): void;
+  setCalendarOpen(open: boolean): void;
+  setSettingsOpen(open: boolean): void;
+  setMobileNavOpen(open: boolean): void;
+  setWeatherOpen(open: boolean): void;
+  setWeatherLocation(location: WeatherLocation): void;
+
+  /** @deprecated Transitional adapter for pre-Pure-Speed-Dial data/UI. */
+  section: AppSection;
+  workspaceTab: WorkspaceTab;
+  viewMode: ViewMode;
+  activeProjectId: string;
+  bookmarkQuery: string;
+  projects: Project[];
+  /** @deprecated Transitional adapter for pre-Pure-Speed-Dial data/UI. */
+  setSection(section: AppSection): void;
+  setWorkspaceTab(tab: WorkspaceTab): void;
+  setViewMode(mode: ViewMode): void;
+  setActiveProject(id: string): void;
+  setBookmarkQuery(query: string): void;
+  addProject(project: Project): void;
+  updateProject(id: string, patch: Partial<Omit<Project, 'id'>>): void;
+  removeProject(id: string): void;
 }
 
-export interface AppStore { getState(): AppStoreState; subscribe(listener: () => void): () => void; }
+export interface AppStore {
+  getState(): AppStoreState;
+  subscribe(listener: () => void): () => void;
+}
 
 const KEYS = {
   tiles: 'nexus.tileSettings',
+  preferences: 'nexus.preferences',
   spaces: 'nexus.spaces',
   projects: 'nexus.projects',
   navigation: 'nexus.navigation',
@@ -49,6 +140,20 @@ const spaceIdOfSite = (site: Site) => site.spaceId ?? site.projectId;
 const toProjects = (spaces: Space[]): Project[] => spaces.map(({ id, name, icon, position }) => ({ id, name, icon, position }));
 const tabForMode = (mode: ContentMode): WorkspaceTab => mode === 'all' ? 'quick' : mode;
 const modeForTab = (tab: WorkspaceTab): ContentMode => tab === 'quick' ? 'all' : tab;
+
+function normalizePreferences(raw: unknown): UserPreferences {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...DEFAULT_USER_PREFERENCES };
+  const value = raw as Partial<UserPreferences>;
+  return {
+    theme: value.theme === 'light' || value.theme === 'dark' || value.theme === 'system' ? value.theme : DEFAULT_USER_PREFERENCES.theme,
+    density: value.density === 'compact' || value.density === 'comfortable' ? value.density : DEFAULT_USER_PREFERENCES.density,
+    background: value.background === 'soft' || value.background === 'clean' || value.background === 'contrast' ? value.background : DEFAULT_USER_PREFERENCES.background,
+    glassStrength: value.glassStrength === 'minimal' || value.glassStrength === 'standard' || value.glassStrength === 'strong' ? value.glassStrength : DEFAULT_USER_PREFERENCES.glassStrength,
+    searchEngine: value.searchEngine === 'google' || value.searchEngine === 'yandex' || value.searchEngine === 'duckduckgo' ? value.searchEngine : DEFAULT_USER_PREFERENCES.searchEngine,
+    globalSiteSearch: typeof value.globalSiteSearch === 'boolean' ? value.globalSiteSearch : DEFAULT_USER_PREFERENCES.globalSiteSearch,
+    omniboxSuggestions: typeof value.omniboxSuggestions === 'boolean' ? value.omniboxSuggestions : DEFAULT_USER_PREFERENCES.omniboxSuggestions,
+  };
+}
 
 function normalizeSpaces(raw: Array<Space | Project>): Space[] {
   const seen = new Set<string>();
@@ -103,12 +208,17 @@ function normalizeNotes(raw: StoredNote[], spaces: Space[]): StoredNote[] {
   return raw.map(note => ({ ...note, projectId: note.projectId && ids.has(note.projectId) ? note.projectId : 'home' }));
 }
 
-function isContentMode(value: unknown): value is ContentMode { return value === 'all' || value === 'favorites' || value === 'recent'; }
-function isLayoutMode(value: unknown): value is LayoutMode { return value === 'grid' || value === 'list'; }
+function isContentMode(value: unknown): value is ContentMode {
+  return value === 'all' || value === 'favorites' || value === 'recent';
+}
+function isLayoutMode(value: unknown): value is LayoutMode {
+  return value === 'grid' || value === 'list';
+}
 
 export function createAppStore(storage: StorageAdapter): AppStore {
   const listeners = new Set<() => void>();
   let tileSettings = normalizeTileSettings(storage.get<TileAppearanceSettings>(KEYS.tiles, getTilePreset('standard')));
+  let preferences = normalizePreferences(storage.get<unknown>(KEYS.preferences, DEFAULT_USER_PREFERENCES));
   const persistedSpaces = storage.get<Space[] | null>(KEYS.spaces, null);
   const legacyProjects = storage.get<Project[]>(KEYS.projects, seedProjects);
   let spaces = normalizeSpaces(persistedSpaces ?? legacyProjects);
@@ -126,11 +236,13 @@ export function createAppStore(storage: StorageAdapter): AppStore {
   storage.set(KEYS.spaces, spaces);
   storage.set(KEYS.categories, categories);
   storage.set(KEYS.sites, sites);
+  storage.set(KEYS.preferences, preferences);
 
   let state: AppStoreState;
   const emit = () => listeners.forEach(listener => listener());
   const patchState = (partial: Partial<AppStoreState>) => { state = { ...state, ...partial }; emit(); };
   const persistTiles = (next: TileAppearanceSettings) => { tileSettings = normalizeTileSettings(next); storage.set(KEYS.tiles, tileSettings); patchState({ tileSettings }); };
+  const persistPreferences = (next: UserPreferences) => { preferences = normalizePreferences(next); storage.set(KEYS.preferences, preferences); patchState({ preferences }); };
   const persistNavigation = (next: Pick<AppStoreState, 'activeSpaceId' | 'activeCategoryId' | 'contentMode' | 'layoutMode'>) => storage.set(KEYS.navigation, next);
   const persistSpaces = (next: Space[]) => { spaces = normalizeSpaces(next); storage.set(KEYS.spaces, spaces); patchState({ spaces, projects: toProjects(spaces) }); };
   const persistCategories = (next: Category[]) => { categories = normalizeCategories(next, spaces); storage.set(KEYS.categories, categories); patchState({ categories }); };
@@ -186,6 +298,7 @@ export function createAppStore(storage: StorageAdapter): AppStore {
     layoutMode: initialLayoutMode,
     query: '',
     spaces,
+    preferences,
     tileSettings,
     categories,
     sites,
@@ -204,6 +317,8 @@ export function createAppStore(storage: StorageAdapter): AppStore {
     setContentMode: contentMode => applyNavigation({ contentMode }),
     setLayoutMode: layoutMode => applyNavigation({ layoutMode }),
     setQuery: query => applyNavigation({ query }),
+    setPreference: (key, value) => persistPreferences({ ...preferences, [key]: value }),
+    resetPreferences: () => persistPreferences(DEFAULT_USER_PREFERENCES),
     addSpace,
     updateSpace,
     removeSpace,
@@ -337,5 +452,8 @@ export function createAppStore(storage: StorageAdapter): AppStore {
 
   persistNavigation({ activeSpaceId: initialSpaceId, activeCategoryId: initialCategoryId, contentMode: initialContentMode, layoutMode: initialLayoutMode });
 
-  return { getState: () => state, subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); } };
+  return {
+    getState: () => state,
+    subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
+  };
 }
