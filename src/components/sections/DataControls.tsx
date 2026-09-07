@@ -6,6 +6,7 @@ import { useAppStore } from '../../state/useAppStore.ts';
 import styles from './DataControls.module.css';
 
 export function DataControls() {
+  const preferences = useAppStore(state => state.preferences);
   const tileSettings = useAppStore(state => state.tileSettings);
   const projects = useAppStore(state => state.projects);
   const categories = useAppStore(state => state.categories);
@@ -18,7 +19,7 @@ export function DataControls() {
   const [status, setStatus] = useState('');
 
   const exportData = () => {
-    const text = createBackup({ tileSettings, projects, categories, sites, history, notes, weatherLocation });
+    const text = createBackup({ preferences, tileSettings, projects, categories, sites, history, notes, weatherLocation });
     const blob = new Blob([text], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
