@@ -1,7 +1,8 @@
-import { ArrowLeft, ArrowRight, Search, ShieldCheck, Star } from 'lucide-react';
+import { Grid2X2, List, Search, Settings2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useMemo, useState } from 'react';
 import { resolveOmnibox, suggestSites } from '../../domain/omnibox.ts';
+import type { Site } from '../../domain/types.ts';
 import { useAppStore } from '../../state/useAppStore.ts';
 import { GlassSurface } from '../primitives/GlassSurface.tsx';
 import styles from './Omnibox.module.css';
@@ -9,48 +10,63 @@ import styles from './Omnibox.module.css';
 export function Omnibox() {
   const [query, setQuery] = useState('');
   const sites = useAppStore(state => state.sites);
+  const spaces = useAppStore(state => state.spaces);
+  const categories = useAppStore(state => state.categories);
+  const layoutMode = useAppStore(state => state.layoutMode);
   const recordVisit = useAppStore(state => state.recordVisit);
+  const setLayoutMode = useAppStore(state => state.setLayoutMode);
+  const setSettingsOpen = useAppStore(state => state.setSettingsOpen);
   const suggestions = useMemo(() => suggestSites(query, sites), [query, sites]);
   const resolution = useMemo(() => resolveOmnibox(query, sites), [query, sites]);
-  const savedSite = resolution.kind === 'site';
-  const secureAddress = resolution.kind === 'site'
-    ? resolution.site.url.startsWith('https://')
-    : resolution.kind === 'url' && resolution.url.startsWith('https://');
+
   const go = (url: string) => window.location.assign(url);
-  const openSite = (id: string) => {
-    const site = sites.find(item => item.id === id);
-    if (!site) return;
+  const siteSpaceId = (site: Site) => site.spaceId ?? site.projectId;
+  const contextFor = (site: Site) => {
+    const spaceId = siteSpaceId(site);
+    const space = spaces.find(item => item.id === spaceId)?.name ?? 'Пространство';
+    const category = site.categoryId ? categories.find(item => item.id === site.categoryId)?.name : undefined;
+    return category ? `${space} / ${category}` : space;
+  };
+  const openSite = (site: Site) => {
     recordVisit(site.id);
     go(site.url);
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (resolution.kind === 'site') {
-      recordVisit(resolution.site.id);
-      go(resolution.site.url);
-    } else if (resolution.kind === 'url' || resolution.kind === 'search') {
-      go(resolution.url);
-    }
+    if (resolution.kind === 'site') openSite(resolution.site);
+    else if (resolution.kind === 'url' || resolution.kind === 'search') go(resolution.url);
   };
 
   return <header className={styles.bar}>
-    <div className={styles.nav}>
-      <GlassSurface as="button" role="control" aria-label="Назад" onClick={() => history.back()}><ArrowLeft size={18}/></GlassSurface>
-      <GlassSurface as="button" role="control" aria-label="Вперёд" onClick={() => history.forward()}><ArrowRight size={18}/></GlassSurface>
-    </div>
     <div className={styles.searchArea}>
       <form onSubmit={submit}>
         <GlassSurface role="control" className={styles.box}>
           <Search size={18}/>
-          <input aria-label="Введите запрос или адрес" placeholder="Введите запрос или адрес" value={query} onChange={event => setQuery(event.target.value)}/>
-          <div className={styles.status} aria-live="polite">
-            {savedSite && <Star aria-label="Сохранённый сайт" size={17} fill="currentColor"/>}
-            {secureAddress && <ShieldCheck aria-label="HTTPS" size={17}/>} 
-          </div>
+          <input
+            aria-label="Найти сайт или ввести адрес"
+            placeholder="Найти сайт или ввести адрес…"
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+            autoComplete="off"
+          />
         </GlassSurface>
       </form>
-      {suggestions.length > 0 && <GlassSurface role="popover" className={styles.suggestions} data-testid="omnibox-suggestions">{suggestions.map(site => <button key={site.id} type="button" onClick={() => openSite(site.id)}><span>{site.title.slice(0, 1).toUpperCase()}</span><div><strong>{site.title}</strong><small>{site.domain}</small></div></button>)}</GlassSurface>}
+      {suggestions.length > 0 && <GlassSurface role="popover" className={styles.suggestions} data-testid="omnibox-suggestions">
+        {suggestions.map(site => <button key={site.id} type="button" onClick={() => openSite(site)}>
+          <span className={styles.initial}>{site.title.slice(0, 1).toUpperCase()}</span>
+          <span className={styles.suggestionText}>
+            <strong>{site.title}</strong>
+            <small>{site.domain}</small>
+            <em>{contextFor(site)}</em>
+          </span>
+        </button>)}
+      </GlassSurface>}
     </div>
-    <GlassSurface role="control" className={styles.profile} title="Локальный профиль Nexus" aria-label="Локальный профиль Nexus">N</GlassSurface>
+    <GlassSurface role="control" className={styles.tools} aria-label="Вид и настройки">
+      <button type="button" aria-label="Сетка" className={layoutMode === 'grid' ? styles.active : ''} onClick={() => setLayoutMode('grid')}><Grid2X2 size={17}/></button>
+      <button type="button" aria-label="Список" className={layoutMode === 'list' ? styles.active : ''} onClick={() => setLayoutMode('list')}><List size={18}/></button>
+      <span className={styles.divider}/>
+      <button type="button" aria-label="Настройки" data-testid="settings-button" onClick={() => setSettingsOpen(true)}><Settings2 size={18}/></button>
+    </GlassSurface>
   </header>;
 }
