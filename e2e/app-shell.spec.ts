@@ -15,37 +15,65 @@ test('calendar opens as overlay without changing workspace width', async ({ page
   expect(Math.abs((before?.width ?? 0) - (after?.width ?? 0))).toBeLessThan(1);
   await dateButton.click();
   await expect(page.getByTestId('calendar-popover')).toBeHidden();
-  await dateButton.click();
-  await expect(page.getByTestId('calendar-popover')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('calendar-popover')).toBeHidden();
 });
 
-test('tile settings update CSS immediately and persist after reload', async ({ page }) => {
-  const dock = page.getByTestId('dock');
-  await dock.getByRole('button', { name: 'Настройки' }).click();
-  await expect(page.getByRole('heading', { name: 'Настройки', level: 1 })).toBeVisible();
-  await page.getByRole('button', { name: 'Открыть' }).click();
-  await expect(page.getByTestId('tile-settings-panel')).toBeVisible();
-  const radius = page.getByLabel('Радиус');
-  await expect(radius).toHaveValue('20');
-  await radius.focus();
-  for (let step = 0; step < 4; step += 1) await radius.press('ArrowRight');
-  await expect(radius).toHaveValue('24');
-  await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--tile-radius'))).toBe('24px');
+test('settings preferences apply immediately and persist after reload', async ({ page }) => {
+  await page.getByTestId('settings-button').click();
+  const panel = page.getByTestId('settings-panel');
+  await expect(panel).toBeVisible();
+  await panel.getByLabel('Тема').selectOption('dark');
+  await panel.getByLabel('Плотность').selectOption('compact');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('html')).toHaveAttribute('data-density', 'compact');
   await page.reload();
-  await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--tile-radius'))).toBe('24px');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('html')).toHaveAttribute('data-density', 'compact');
 });
 
-test('mobile navigation replaces persistent sidebar', async ({ page }) => {
+test('content modes remain scoped to the active space', async ({ page }) => {
+  await page.getByRole('button', { name: 'Избранное' }).click();
+  await expect(page.getByRole('link', { name: 'Telegram' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'GitHub' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Работа', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'GitHub' })).toBeVisible();
+});
+
+test('category tree filters the same workspace grid', async ({ page }) => {
+  await page.getByRole('button', { name: /^Новости/ }).click();
+  await expect(page.getByRole('link', { name: 'РБК' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Telegram' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Все сайты' }).click();
+  await expect(page.getByRole('link', { name: 'Telegram' })).toBeVisible();
+});
+
+test('site can be added and survives reload', async ({ page }) => {
+  await page.getByRole('button', { name: 'Добавить сайт' }).click();
+  await page.getByLabel('Адрес').fill('example.com');
+  await page.getByLabel('Название').fill('Example');
+  await page.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(page.getByRole('link', { name: 'Example' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('link', { name: 'Example' })).toBeVisible();
+});
+
+test('omnibox searches saved sites globally by default', async ({ page }) => {
+  await page.getByLabel('Найти сайт или ввести адрес').fill('git');
+  const suggestions = page.getByTestId('omnibox-suggestions');
+  await expect(suggestions).toBeVisible();
+  await expect(suggestions.getByRole('button', { name: /GitHub github\.com Работа/i })).toBeVisible();
+});
+
+test('mobile navigation uses one spaces and categories drawer', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
-  await page.getByRole('button', { name: 'Открыть разделы' }).click();
-  await expect(page.getByText('Разделы и категории')).toBeVisible();
+  await page.getByRole('button', { name: 'Открыть пространства и категории' }).click();
+  await expect(page.getByText('Пространства и категории')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Добавить пространство' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Добавить категорию' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Все сайты' })).toBeVisible();
 });
 
-test('mobile status bar opens the shared calendar bottom sheet', async ({ page }) => {
+test('mobile status opens and closes the shared calendar', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   const calendarButton = page.getByRole('button', { name: 'Открыть календарь' });
@@ -55,61 +83,23 @@ test('mobile status bar opens the shared calendar bottom sheet', async ({ page }
   await expect(page.getByTestId('calendar-popover')).toBeHidden();
 });
 
-test('dock opens dedicated sections', async ({ page }) => {
-  const dock = page.getByTestId('dock');
-  for (const section of ['Избранное', 'Недавние', 'Загрузки', 'Заметки', 'Настройки'] as const) {
-    await dock.getByRole('button', { name: section }).click();
-    await expect(page.getByRole('heading', { name: section, level: 1 })).toBeVisible();
-  }
-});
-
-test('notes are stored and survive reload', async ({ page }) => {
-  const dock = page.getByTestId('dock');
-  await dock.getByRole('button', { name: 'Заметки' }).click();
-  await page.getByRole('button', { name: 'Новая заметка' }).click();
-  await page.getByPlaceholder('Заголовок').fill('Контрольный план');
-  await page.getByPlaceholder('Текст заметки').fill('Проверить glass UI и release gate');
-  await page.getByRole('button', { name: 'Сохранить' }).click();
-  await expect(page.getByRole('heading', { name: 'Контрольный план', level: 3 })).toBeVisible();
-  await page.reload();
-  await page.getByTestId('dock').getByRole('button', { name: 'Заметки' }).click();
-  await expect(page.getByRole('heading', { name: 'Контрольный план', level: 3 })).toBeVisible();
-});
-
-test('omnibox shows local suggestions before web search', async ({ page }) => {
-  await page.getByLabel('Введите запрос или адрес').fill('git');
-  const suggestions = page.getByTestId('omnibox-suggestions');
-  await expect(suggestions).toBeVisible();
-  await expect(suggestions.getByRole('button', { name: /GitHub github\.com/i })).toBeVisible();
-});
-
-test('bookmark category filter uses real project categories', async ({ page }) => {
-  const filterButton = page.getByRole('button', { name: 'Фильтр по категории' });
-  await filterButton.click();
-  const filter = page.getByTestId('bookmark-filter');
-  await expect(filter).toBeVisible();
-  await expect(filter.getByRole('button', { name: 'Все категории' })).toBeVisible();
-  const category = filter.getByRole('button').nth(1);
-  await category.click();
-  await expect(filter).toBeHidden();
-  await expect(filterButton).toHaveAttribute('aria-expanded', 'false');
-});
-
-test('backup import restores validated Nexus data', async ({ page }) => {
-  const dock = page.getByTestId('dock');
-  await dock.getByRole('button', { name: 'Настройки' }).click();
+test('backup import restores validated sites and user preferences', async ({ page }) => {
+  await page.getByTestId('settings-button').click();
   const controls = page.getByTestId('data-controls');
   await expect(controls).toBeVisible();
   const payload = {
-    schema: 'nexus-speed-dial', version: 1, exportedAt: '2026-08-31T12:00:00.000Z', data: {
+    schema: 'nexus-speed-dial', version: 1, exportedAt: '2026-09-07T12:00:00.000Z', data: {
+      preferences: { theme:'dark', density:'compact', background:'clean', glassStrength:'strong', searchEngine:'yandex', globalSiteSearch:true, omniboxSuggestions:true },
       tileSettings: {},
-      projects: [{ id: 'home', name: 'Дом', icon: 'home' }], categories: [], sites: [], history: [],
-      notes: [{ id: 'imported', title: 'Импортировано', body: 'Резервная копия работает', projectId: 'home', createdAt: '2026-08-31T12:00:00.000Z', updatedAt: '2026-08-31T12:00:00.000Z' }],
-      weatherLocation: { mode: 'city', city: 'Минск' },
+      projects: [{ id: 'home', name: 'Дом', icon: 'home' }],
+      categories: [],
+      sites: [{ id:'imported', title:'Импорт', url:'https://example.com/', domain:'example.com', projectId:'home', favorite:false }],
+      history: [], notes: [], weatherLocation: { mode: 'city', city: 'Минск' },
     },
   };
   await controls.locator('input[type="file"]').setInputFiles({ name: 'nexus.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(payload)) });
   await expect(page.getByRole('status')).toHaveText('Данные восстановлены');
-  await page.getByTestId('dock').getByRole('button', { name: 'Заметки' }).click();
-  await expect(page.getByRole('heading', { name: 'Импортировано', level: 3 })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Закрыть настройки' }).click();
+  await expect(page.getByRole('link', { name: 'Импорт' })).toBeVisible();
 });
