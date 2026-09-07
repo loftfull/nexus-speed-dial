@@ -4,6 +4,9 @@ import { createBackup, parseBackup } from '../domain/backup.ts';
 import { getTilePreset } from '../domain/tilePresets.ts';
 
 const snapshot = {
+  preferences: {
+    theme:'dark', density:'compact', background:'clean', glassStrength:'strong', searchEngine:'yandex', globalSiteSearch:true, omniboxSuggestions:false,
+  } as const,
   tileSettings: getTilePreset('standard'),
   projects: [{ id:'home', name:'Дом', icon:'home' }],
   categories: [],
@@ -13,7 +16,7 @@ const snapshot = {
   weatherLocation: { mode:'city', city:'Минск' },
 };
 
-test('backup round trips Nexus data with explicit schema version', () => {
+test('backup round trips Nexus data and user preferences with explicit schema version', () => {
   const text = createBackup(snapshot, '2026-08-31T12:30:00.000Z');
   const raw = JSON.parse(text);
   assert.equal(raw.schema, 'nexus-speed-dial');
@@ -22,6 +25,15 @@ test('backup round trips Nexus data with explicit schema version', () => {
   const parsed = parseBackup(text);
   assert.equal(parsed.sites[0].id, 'github');
   assert.equal(parsed.notes[0].title, 'План');
+  assert.equal(parsed.preferences?.theme, 'dark');
+  assert.equal(parsed.preferences?.searchEngine, 'yandex');
+});
+
+test('legacy v1 backup without preferences remains importable', () => {
+  const legacy = JSON.stringify({ schema:'nexus-speed-dial', version:1, exportedAt:'2026-08-31T12:00:00Z', data:{ ...snapshot, preferences:undefined } });
+  const parsed = parseBackup(legacy);
+  assert.equal(parsed.preferences, undefined);
+  assert.equal(parsed.projects[0].id, 'home');
 });
 
 test('backup rejects malformed and foreign payloads', () => {
