@@ -2,6 +2,7 @@ import { Download, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { createBackup, parseBackup } from '../../domain/backup.ts';
+import type { UserPreferences } from '../../domain/types.ts';
 import { useAppStore } from '../../state/useAppStore.ts';
 import styles from './DataControls.module.css';
 
@@ -15,6 +16,7 @@ export function DataControls() {
   const notes = useAppStore(state => state.notes);
   const weatherLocation = useAppStore(state => state.weatherLocation);
   const restoreBackup = useAppStore(state => state.restoreBackup);
+  const setPreference = useAppStore(state => state.setPreference);
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState('');
 
@@ -33,12 +35,20 @@ export function DataControls() {
     setStatus('Резервная копия создана');
   };
 
+  const restorePreferences = (next: UserPreferences) => {
+    for (const [key, value] of Object.entries(next) as Array<[keyof UserPreferences, UserPreferences[keyof UserPreferences]]>) {
+      setPreference(key, value as never);
+    }
+  };
+
   const importData = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
     try {
-      restoreBackup(parseBackup(await file.text()));
+      const snapshot = parseBackup(await file.text());
+      restoreBackup(snapshot);
+      if (snapshot.preferences) restorePreferences(snapshot.preferences);
       setStatus('Данные восстановлены');
     } catch {
       setStatus('Не удалось импортировать файл');
