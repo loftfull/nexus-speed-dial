@@ -1,6 +1,7 @@
-import type { Category, HistoryEntry, Project, Site, StoredNote, TileAppearanceSettings } from './types.ts';
+import type { Category, HistoryEntry, Project, Site, StoredNote, TileAppearanceSettings, UserPreferences } from './types.ts';
 
 export interface BackupSnapshot {
+  preferences?: UserPreferences;
   tileSettings: Partial<TileAppearanceSettings>;
   projects: Project[];
   categories: Category[];
@@ -29,6 +30,14 @@ const isCategory = (value: unknown): value is Category => isObject(value) && isS
 const isSite = (value: unknown): value is Site => isObject(value) && isString(value.id) && isString(value.title) && isSafeHttpUrl(value.url) && isString(value.domain) && isString(value.projectId) && typeof value.favorite === 'boolean';
 const isHistory = (value: unknown): value is HistoryEntry => isObject(value) && isString(value.id) && isString(value.siteId) && isString(value.openedAt);
 const isNote = (value: unknown): value is StoredNote => isObject(value) && isString(value.id) && typeof value.title === 'string' && typeof value.body === 'string' && isString(value.createdAt) && isString(value.updatedAt) && (value.projectId === undefined || typeof value.projectId === 'string');
+const isPreferences = (value: unknown): value is UserPreferences => isObject(value)
+  && ['system', 'light', 'dark'].includes(String(value.theme))
+  && ['comfortable', 'compact'].includes(String(value.density))
+  && ['soft', 'clean', 'contrast'].includes(String(value.background))
+  && ['minimal', 'standard', 'strong'].includes(String(value.glassStrength))
+  && ['google', 'yandex', 'duckduckgo'].includes(String(value.searchEngine))
+  && typeof value.globalSiteSearch === 'boolean'
+  && typeof value.omniboxSuggestions === 'boolean';
 const uniqueById = <T extends { id: string }>(items: T[]): T[] => {
   const seen = new Set<string>();
   return items.filter(item => {
@@ -71,6 +80,7 @@ export function parseBackup(text: string): BackupSnapshot {
   const notes = uniqueById(data.notes.filter(isNote)).map(note => ({ ...note, projectId: note.projectId && projectIds.has(note.projectId) ? note.projectId : 'home' }));
 
   return {
+    preferences: isPreferences(data.preferences) ? data.preferences : undefined,
     tileSettings: data.tileSettings as Partial<TileAppearanceSettings>,
     projects,
     categories,
