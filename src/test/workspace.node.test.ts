@@ -4,38 +4,48 @@ import { readFile } from 'node:fs/promises';
 import { selectWorkspaceSites } from '../domain/workspace.ts';
 import type { Category, HistoryEntry, Site } from '../domain/types.ts';
 
-const sites: Site[] = [
-  { id:'telegram', title:'Telegram', url:'https://telegram.org', domain:'telegram.org', projectId:'home', categoryId:'chat', favorite:false },
-  { id:'rbk', title:'РБК', url:'https://rbc.ru', domain:'rbc.ru', projectId:'home', categoryId:'news', favorite:true },
-  { id:'github', title:'GitHub', url:'https://github.com', domain:'github.com', projectId:'work', categoryId:'dev', favorite:true },
-];
-const categories: Category[] = [
-  { id:'social', name:'Социальные сети', projectId:'home', icon:'users' },
-  { id:'chat', name:'Общение', projectId:'home', parentId:'social', icon:'chat' },
-  { id:'news', name:'Новости', projectId:'home', parentId:'social', icon:'news' },
-  { id:'dev', name:'Разработка', projectId:'work', icon:'code' },
-];
+const sites = [
+  { id:'telegram', title:'Telegram', url:'https://telegram.org', domain:'telegram.org', spaceId:'home', categoryId:'chat', favorite:false, position:30 },
+  { id:'rbk', title:'РБК', url:'https://rbc.ru', domain:'rbc.ru', spaceId:'home', categoryId:'news', favorite:true, position:10 },
+  { id:'youtube', title:'YouTube', url:'https://youtube.com', domain:'youtube.com', spaceId:'home', categoryId:'media', favorite:true, position:20 },
+  { id:'github', title:'GitHub', url:'https://github.com', domain:'github.com', spaceId:'work', categoryId:'dev', favorite:true, position:5 },
+] as Site[];
+
+const categories = [
+  { id:'social', name:'Социальные сети', spaceId:'home', icon:'users', position:10 },
+  { id:'chat', name:'Общение', spaceId:'home', parentId:'social', icon:'chat', position:20 },
+  { id:'news', name:'Новости', spaceId:'home', parentId:'social', icon:'news', position:30 },
+  { id:'media', name:'Медиа', spaceId:'home', icon:'video', position:40 },
+  { id:'dev', name:'Разработка', spaceId:'work', icon:'code', position:10 },
+] as Category[];
+
 const history: HistoryEntry[] = [
-  { id:'h1', siteId:'rbk', openedAt:'2026-08-31T15:00:00.000Z' },
-  { id:'h2', siteId:'telegram', openedAt:'2026-08-31T14:00:00.000Z' },
-  { id:'h3', siteId:'rbk', openedAt:'2026-08-31T13:00:00.000Z' },
+  { id:'h1', siteId:'telegram', openedAt:'2026-09-07T15:00:00.000Z' },
+  { id:'h2', siteId:'rbk', openedAt:'2026-09-07T14:00:00.000Z' },
+  { id:'h3', siteId:'telegram', openedAt:'2026-09-07T13:00:00.000Z' },
+  { id:'h4', siteId:'github', openedAt:'2026-09-07T12:00:00.000Z' },
 ];
 
-test('recent workspace follows persisted history order and deduplicates sites', () => {
-  const result = selectWorkspaceSites({ sites, categories, history, projectId:'home', categoryId:null, tab:'recent', query:'' });
-  assert.deepEqual(result.map(site => site.id), ['rbk','telegram']);
+test('all mode stays inside active space and follows canonical position', () => {
+  const result = selectWorkspaceSites({ sites, categories, history, spaceId:'home', categoryId:null, mode:'all' });
+  assert.deepEqual(result.map(site => site.id), ['rbk','youtube','telegram']);
 });
 
-test('parent category includes its direct children while project scope remains strict', () => {
-  const home = selectWorkspaceSites({ sites, categories, history, projectId:'home', categoryId:'social', tab:'quick', query:'' });
-  assert.deepEqual(home.map(site => site.id), ['telegram','rbk']);
-  const work = selectWorkspaceSites({ sites, categories, history, projectId:'work', categoryId:null, tab:'quick', query:'' });
+test('parent category includes its direct children while space scope remains strict', () => {
+  const home = selectWorkspaceSites({ sites, categories, history, spaceId:'home', categoryId:'social', mode:'all' });
+  assert.deepEqual(home.map(site => site.id), ['rbk','telegram']);
+  const work = selectWorkspaceSites({ sites, categories, history, spaceId:'work', categoryId:null, mode:'all' });
   assert.deepEqual(work.map(site => site.id), ['github']);
 });
 
-test('favorites and search compose with project/category filters', () => {
-  const result = selectWorkspaceSites({ sites, categories, history, projectId:'home', categoryId:'social', tab:'favorites', query:'рб' });
-  assert.deepEqual(result.map(site => site.id), ['rbk']);
+test('favorites are scoped to active space/category and keep canonical order', () => {
+  const result = selectWorkspaceSites({ sites, categories, history, spaceId:'home', categoryId:null, mode:'favorites' });
+  assert.deepEqual(result.map(site => site.id), ['rbk','youtube']);
+});
+
+test('recent mode follows persisted history order, deduplicates and stays scoped', () => {
+  const result = selectWorkspaceSites({ sites, categories, history, spaceId:'home', categoryId:null, mode:'recent' });
+  assert.deepEqual(result.map(site => site.id), ['telegram','rbk']);
 });
 
 test('workspace does not mark the first tile selected without a user selection', async () => {
