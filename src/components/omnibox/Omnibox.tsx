@@ -12,12 +12,25 @@ export function Omnibox() {
   const sites = useAppStore(state => state.sites);
   const spaces = useAppStore(state => state.spaces);
   const categories = useAppStore(state => state.categories);
+  const activeSpaceId = useAppStore(state => state.activeSpaceId);
+  const preferences = useAppStore(state => state.preferences);
   const layoutMode = useAppStore(state => state.layoutMode);
   const recordVisit = useAppStore(state => state.recordVisit);
   const setLayoutMode = useAppStore(state => state.setLayoutMode);
   const setSettingsOpen = useAppStore(state => state.setSettingsOpen);
-  const suggestions = useMemo(() => suggestSites(query, sites), [query, sites]);
-  const resolution = useMemo(() => resolveOmnibox(query, sites), [query, sites]);
+
+  const searchableSites = useMemo(
+    () => preferences.globalSiteSearch ? sites : sites.filter(site => (site.spaceId ?? site.projectId) === activeSpaceId),
+    [preferences.globalSiteSearch, sites, activeSpaceId],
+  );
+  const suggestions = useMemo(
+    () => preferences.omniboxSuggestions ? suggestSites(query, searchableSites) : [],
+    [preferences.omniboxSuggestions, query, searchableSites],
+  );
+  const resolution = useMemo(
+    () => resolveOmnibox(query, searchableSites, preferences.searchEngine),
+    [query, searchableSites, preferences.searchEngine],
+  );
 
   const go = (url: string) => window.location.assign(url);
   const siteSpaceId = (site: Site) => site.spaceId ?? site.projectId;
