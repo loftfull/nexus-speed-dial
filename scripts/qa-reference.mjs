@@ -2,83 +2,66 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-async function source(root, relative) {
-  return readFile(resolve(root, relative), 'utf8');
-}
-
-function check(checks, failures, name, pass, detail) {
-  checks.push({ name, pass, detail });
-  if (!pass) failures.push(`${name}: ${detail}`);
-}
+async function source(root, relative) { return readFile(resolve(root, relative), 'utf8'); }
+function check(checks, failures, name, pass, detail) { checks.push({ name, pass, detail }); if (!pass) failures.push(`${name}: ${detail}`); }
 
 export async function runReferenceQa(root) {
   const checks = [];
   const failures = [];
-
-  const [
-    shell, calendarCss, types, settings, settingsModel, bridge, shellCss, gridCss, tokens,
-    mobileNav, sections, sidebar, weatherPopover, useWeather, weatherService,
-    appStore, omniboxUi, omniboxDomain, e2e, visual, ci,
-  ] = await Promise.all([
+  const [app, shell, shellCss, types, store, workspace, workspaceHeader, grid, gridCss, sidebar, mobileNav, omniboxUi, omniboxDomain, settings, prefBridge, globalCss, tileBridge, tile, siteOrder, calendarCss, weatherPopover, useWeather, weatherService, e2e, visual, ci] = await Promise.all([
+    source(root, 'src/App.tsx'),
     source(root, 'src/components/shell/AppShell.tsx'),
-    source(root, 'src/components/calendar/CalendarPopover.module.css'),
-    source(root, 'src/domain/types.ts'),
-    source(root, 'src/components/settings/TileSettingsPanel.tsx'),
-    source(root, 'src/components/settings/tileSettingsPanelModel.ts'),
-    source(root, 'src/state/TileStyleBridge.tsx'),
     source(root, 'src/components/shell/AppShell.module.css'),
+    source(root, 'src/domain/types.ts'),
+    source(root, 'src/state/appStore.ts'),
+    source(root, 'src/domain/workspace.ts'),
+    source(root, 'src/components/workspace/WorkspaceHeader.tsx'),
+    source(root, 'src/components/tiles/SpeedDialGrid.tsx'),
     source(root, 'src/components/tiles/SpeedDialGrid.module.css'),
-    source(root, 'src/styles/tokens.css'),
-    source(root, 'src/components/sidebar/MobileNavigation.tsx'),
-    source(root, 'src/components/sections/SectionContent.tsx'),
     source(root, 'src/components/sidebar/Sidebar.tsx'),
+    source(root, 'src/components/sidebar/MobileNavigation.tsx'),
+    source(root, 'src/components/omnibox/Omnibox.tsx'),
+    source(root, 'src/domain/omnibox.ts'),
+    source(root, 'src/components/settings/TileSettingsPanel.tsx'),
+    source(root, 'src/state/PreferencesBridge.tsx'),
+    source(root, 'src/styles/global.css'),
+    source(root, 'src/state/TileStyleBridge.tsx'),
+    source(root, 'src/components/tiles/SiteTile.tsx'),
+    source(root, 'src/domain/siteOrder.ts'),
+    source(root, 'src/components/calendar/CalendarPopover.module.css'),
     source(root, 'src/components/weather/WeatherPopover.tsx'),
     source(root, 'src/weather/useWeather.ts'),
     source(root, 'src/weather/weatherService.ts'),
-    source(root, 'src/state/appStore.ts'),
-    source(root, 'src/components/omnibox/Omnibox.tsx'),
-    source(root, 'src/domain/omnibox.ts'),
     source(root, 'e2e/app-shell.spec.ts'),
     source(root, 'e2e/visual.spec.ts'),
     source(root, '.github/workflows/ci.yml'),
   ]);
 
-  check(checks, failures, 'calendar-not-in-layout', !shell.includes('CalendarPopover'), 'AppShell must never reserve a calendar column');
-  check(checks, failures, 'calendar-is-overlay', /position\s*:\s*fixed/.test(calendarCss), 'CalendarPopover must be positioned as an overlay');
-
-  const requiredModes = ['minimal', 'standard', 'expanded', 'large', 'list'];
-  const missingTypes = requiredModes.filter(mode => !types.includes(`'${mode}'`));
-  check(checks, failures, 'tile-modes-domain', missingTypes.length === 0, `Missing TilePreset modes: ${missingTypes.join(', ') || 'none'}`);
-  const missingSettings = requiredModes.filter(mode => !settings.includes(`'${mode}'`));
-  check(checks, failures, 'tile-modes-settings', missingSettings.length === 0, `Missing settings modes: ${missingSettings.join(', ') || 'none'}`);
-
-  check(checks, failures, 'single-style-bridge', bridge.includes('applyTileCssVariables(document.documentElement.style, settings)'), 'TileStyleBridge must write canonical tile CSS variables to documentElement');
-  check(checks, failures, 'desktop-sidebar-width', /grid-template-columns\s*:\s*318px/.test(shellCss), 'Desktop sidebar must start near the approved 300–320px range');
-  check(checks, failures, 'mobile-sidebar-breakpoint', /@media\s*\(\s*max-width\s*:\s*760px\s*\)/.test(shellCss), 'AppShell must include the mobile breakpoint');
-  check(checks, failures, 'responsive-grid-breakpoints', ['1300px','1100px','760px','430px'].every(bp => gridCss.includes(bp)), 'SpeedDialGrid must retain desktop/tablet/mobile density breakpoints');
-  check(checks, failures, 'glass-tokens', ['--nexus-blur-panel: 20px','--nexus-radius-panel: 26px','--nexus-radius-tile: 20px','--nexus-accent: #2f7cf6'].every(token => tokens.includes(token)), 'Canonical Glass Design tokens must stay present');
-
-  check(checks, failures, 'mobile-navigation-drawer', mobileNav.includes('mobileNavOpen') && mobileNav.includes('Разделы и категории'), 'Mobile layout must use a dedicated project/category drawer instead of the desktop sidebar');
-  check(checks, failures, 'settings-three-tabs', ['basic','advanced','motion'].every(tab => settingsModel.includes(`'${tab}'`)), 'Tile settings must retain Basic, Advanced and Motion tabs');
-  check(checks, failures, 'dock-section-screens', ['FavoritesSection','RecentSection','DownloadsSection','NotesSection','SettingsSection'].every(name => sections.includes(name)), 'All non-home Dock sections must have dedicated workspace content');
-
-  check(checks, failures, 'live-weather-single-source', sidebar.includes('useWeather') && mobileNav.includes('useWeather') && weatherPopover.includes('useWeather'), 'Sidebar, mobile header and WeatherPopover must use the same runtime weather hook');
-  check(checks, failures, 'no-fake-weather', !sidebar.includes('22°') && !mobileNav.includes('22°') && !weatherPopover.includes('22°'), 'No static demo temperature may remain in production weather UI');
-  check(checks, failures, 'weather-manual-city', weatherPopover.includes('Введите город') && weatherPopover.includes('setWeatherLocation'), 'Manual city selection must remain available');
-  check(checks, failures, 'weather-no-background-geolocation', !useWeather.includes('geolocation') && !sidebar.includes('geolocation') && !mobileNav.includes('geolocation'), 'Weather loading must never request geolocation implicitly');
-  check(checks, failures, 'weather-explicit-geolocation', weatherPopover.includes('requestExplicitPosition(navigator.geolocation)') && weatherService.includes('getCurrentPosition'), 'Geolocation may only run from the explicit user action path');
-  check(checks, failures, 'weather-open-meteo', weatherService.includes('api.open-meteo.com/v1/forecast') && weatherService.includes('geocoding-api.open-meteo.com/v1/search'), 'Live weather must use the configured Open-Meteo endpoints');
-
-  check(checks, failures, 'persistent-history-notes', ['nexus.history','nexus.notes','recordVisit','addNote','updateNote','removeNote'].every(token => appStore.includes(token)), 'History and notes must be persisted through the application store');
-  check(checks, failures, 'no-seed-recent-notes', !sections.includes('seedRecent') && !sections.includes('seedNotes') && !sections.includes('seedSites'), 'Favorites, Recent and Notes must use persistent app state rather than demo seeds');
-  check(checks, failures, 'functional-omnibox', ['resolveOmnibox','suggestSites','recordVisit','omnibox-suggestions'].every(token => omniboxUi.includes(token)), 'Omnibox must resolve local sites, show suggestions and record visits');
-  const omniboxRestrictsProtocols = omniboxDomain.includes("'http:'") && omniboxDomain.includes("'https:'") && omniboxDomain.includes('url.protocol');
-  check(checks, failures, 'omnibox-domain-model', omniboxDomain.includes('https://www.google.com/search') && omniboxDomain.includes('suggestSites') && omniboxRestrictsProtocols, 'Omnibox URL/search behavior must live in the domain model and reject unsafe schemes');
-
-  const interactionSignals = ['calendar opens as overlay','tile settings update CSS immediately','mobile navigation replaces persistent sidebar','dock opens dedicated sections','notes are stored and survive reload','omnibox shows local suggestions'];
-  check(checks, failures, 'interaction-e2e', interactionSignals.every(signal => e2e.includes(signal)), 'Playwright interaction suite must cover the approved core flows');
-  const visualNames = ['desktop-main.png','desktop-tile-settings.png','tablet-main.png','mobile-main.png'];
-  check(checks, failures, 'visual-surfaces', visualNames.every(name => visual.includes(name)), 'Visual regression suite must define desktop, settings, tablet and mobile surfaces');
+  check(checks, failures, 'pure-one-screen-app', !app.includes('SectionContent') && !app.includes("section !== 'home'") && app.includes('<WorkspaceHeader/>') && app.includes('<SpeedDialGrid/>'), 'Nexus must render one permanent Speed Dial workspace instead of section screens');
+  check(checks, failures, 'no-dock-navigation', !shell.includes('../dock/Dock') && !shell.includes('<Dock'), 'Bottom Dock must not return to the application shell');
+  check(checks, failures, 'canonical-space-model', types.includes("ContentMode = 'all' | 'favorites' | 'recent'") && types.includes('interface Space') && types.includes('position: number'), 'Domain must expose Space, one ContentMode and canonical positions');
+  check(checks, failures, 'canonical-navigation-state', ['activeSpaceId','activeCategoryId','contentMode','layoutMode','query'].every(token => store.includes(token)) && store.includes("'nexus.navigation'"), 'Store must persist the single Pure Speed Dial navigation model');
+  check(checks, failures, 'legacy-data-migration', store.includes("'nexus.projects'") && store.includes('spaceId ??') && store.includes('normalizeSpaces'), 'Legacy project data must be migrated instead of discarded');
+  check(checks, failures, 'space-scoped-workspace', workspace.includes('siteSpaceId(site) === spaceId') && workspace.includes("mode === 'favorites'") && workspace.includes("mode === 'recent'") && workspace.includes('canonicalOrder'), 'All/Favorites/Recent must remain scoped to the active space');
+  check(checks, failures, 'single-mode-switcher', ['Все','Избранное','Недавние'].every(label => workspaceHeader.includes(label)) && !workspaceHeader.includes('searchWrap') && !workspaceHeader.includes('bookmarkQuery'), 'Workspace header must only switch All/Favorites/Recent');
+  check(checks, failures, 'single-category-tree', sidebar.includes('ПРОСТРАНСТВА') && sidebar.includes('КАТЕГОРИИ') && sidebar.includes('Все сайты') && !sidebar.includes('ПРОВОДНИК') && !sidebar.includes('forecast') && !sidebar.includes('styles.chips'), 'Sidebar must contain one spaces list, one category tree and no duplicate explorer/forecast');
+  check(checks, failures, 'compact-utility-status', sidebar.includes('utilityWeather') && sidebar.includes('date-button') && !sidebar.includes('clockCard'), 'Clock/weather must remain compact utilities rather than a dashboard card');
+  check(checks, failures, 'mobile-shared-mental-model', mobileNav.includes('Пространства и категории') && mobileNav.includes('Все сайты') && mobileNav.includes('activeSpaceId') && mobileNav.includes('activeCategoryId'), 'Mobile drawer must use the same spaces/category model as desktop');
+  check(checks, failures, 'single-omnibox', omniboxUi.includes('Найти сайт или ввести адрес') && !omniboxUi.includes('ArrowLeft') && !omniboxUi.includes('ArrowRight') && !omniboxUi.includes('Shield') && !omniboxUi.includes('profile'), 'Omnibox must be the only search/address surface and must not imitate browser chrome');
+  check(checks, failures, 'omnibox-preferences', ['globalSiteSearch','omniboxSuggestions','searchEngine'].every(token => omniboxUi.includes(token)) && ['google','yandex','duckduckgo'].every(engine => omniboxDomain.includes(engine)), 'Omnibox must honor search scope, suggestions and selected web search engine');
+  check(checks, failures, 'user-settings-only', ['Внешний вид','Плитки','Поиск','Данные'].every(label => settings.includes(label)) && !['AdvancedSettings','MotionSettings','TilePreview','Hover glow','Selected glow'].some(token => settings.includes(token)), 'Settings must expose user choices only, not design-engine internals');
+  check(checks, failures, 'preferences-are-live', ['data-theme','data-density','data-background','data-glass'].every(token => prefBridge.includes(token)) && ["data-theme='dark'","data-density='compact'","data-glass='strong'"].every(token => globalCss.includes(token)), 'Theme, density, background and glass preferences must affect live CSS');
+  check(checks, failures, 'single-style-bridge', tileBridge.includes('applyTileCssVariables(document.documentElement.style, settings)'), 'TileStyleBridge must remain the only canonical tile CSS variable writer');
+  check(checks, failures, 'single-tile-action-menu', tile.includes('Действия ${site.title}') && ['В избранное','Изменить','Переместить','Удалить'].every(label => tile.includes(label)), 'Secondary tile actions must live behind one context menu');
+  check(checks, failures, 'canonical-drag-order', grid.includes('reorderVisibleSites') && grid.includes("contentMode === 'all'") && siteOrder.includes('visibleOrder') && siteOrder.includes('position'), 'Drag reorder must update one canonical space order and be disabled outside All mode');
+  check(checks, failures, 'add-site-is-grid-action', grid.includes('Добавить сайт') && grid.includes("contentMode === 'all'"), 'Add site must be a grid action, not another global navigation item');
+  check(checks, failures, 'responsive-layout', ['1100px','760px'].every(bp => shellCss.includes(bp)) && ['1300px','1100px','760px','430px'].every(bp => gridCss.includes(bp)), 'Desktop/tablet/mobile layout breakpoints must remain explicit');
+  check(checks, failures, 'calendar-is-overlay', /position\s*:\s*fixed/.test(calendarCss), 'Calendar must remain an overlay and never reserve a workspace column');
+  check(checks, failures, 'live-weather-single-source', sidebar.includes('useWeather') && mobileNav.includes('useWeather') && weatherPopover.includes('useWeather'), 'Desktop/mobile/weather popover must share the same live weather hook');
+  check(checks, failures, 'weather-no-background-geolocation', !useWeather.includes('geolocation') && weatherPopover.includes('requestExplicitPosition(navigator.geolocation)') && weatherService.includes('getCurrentPosition'), 'Geolocation must only happen from explicit user action');
+  check(checks, failures, 'interaction-e2e', ['content modes remain scoped','site can be added and survives reload','settings preferences apply immediately','mobile navigation uses one spaces and categories drawer','backup import restores validated sites'].every(signal => e2e.includes(signal)), 'Playwright suite must cover the approved Pure Speed Dial flows');
+  const visualNames = ['desktop-main.png','desktop-settings.png','tablet-main.png','mobile-main.png','mobile-navigation.png'];
+  check(checks, failures, 'visual-surfaces', visualNames.every(name => visual.includes(name)), 'Visual QA must cover desktop, settings, tablet, mobile and mobile navigation');
   const ciCommands = ['npm run lint','npm run test:node','npm test','npm run build','npm run qa:reference','npm run test:e2e','npm run test:visual','playwright install --with-deps chromium'];
   check(checks, failures, 'full-ci-gate', ciCommands.every(command => ci.includes(command)), 'CI must enforce lint, contracts, unit, build, reference, interaction and visual gates');
 
@@ -88,12 +71,8 @@ export async function runReferenceQa(root) {
 async function main() {
   const result = await runReferenceQa(process.cwd());
   for (const item of result.checks) console.log(`${item.pass ? 'PASS' : 'FAIL'} ${item.name} — ${item.detail}`);
-  if (result.failures.length) {
-    console.error(`\nReference QA failed (${result.failures.length})`);
-    process.exitCode = 1;
-  } else {
-    console.log(`\nReference QA passed (${result.checks.length} checks)`);
-  }
+  if (result.failures.length) { console.error(`\nReference QA failed (${result.failures.length})`); process.exitCode = 1; }
+  else console.log(`\nReference QA passed (${result.checks.length} checks)`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await main();
