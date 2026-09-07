@@ -6,10 +6,12 @@ import { WeatherPopover } from './components/weather/WeatherPopover.tsx';
 import { TileSettingsPanel } from './components/settings/TileSettingsPanel.tsx';
 import { SiteEditor } from './components/sites/SiteEditor.tsx';
 import { StructureEditor } from './components/structure/StructureEditor.tsx';
+import { PreferencesBridge } from './state/PreferencesBridge.tsx';
 import { TileStyleBridge } from './state/TileStyleBridge.tsx';
 
 export default function App() {
   return <>
+    <PreferencesBridge/>
     <TileStyleBridge/>
     <AppShell>
       <WorkspaceHeader/>
