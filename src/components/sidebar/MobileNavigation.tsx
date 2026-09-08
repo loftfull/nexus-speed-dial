@@ -59,8 +59,8 @@ export function MobileNavigation() {
         <header><div><strong>Навигация</strong><small>Пространства и категории</small></div><button aria-label="Закрыть навигацию" onClick={close}><X size={20}/></button></header>
 
         <section>
-          <div className={styles.sectionHead}><h3>Пространства</h3><button aria-label="Добавить пространство" onClick={() => { close(); setStructureEditor({ kind: 'project' }); }}><Plus size={16}/></button></div>
-          <div className={styles.spaceList}>{orderedSpaces.map(space => { const Icon = iconFor(space.name, space.id); return <div className={styles.item} key={space.id}><button className={`${styles.itemMain} ${activeSpaceId === space.id ? styles.active : ''}`} onClick={() => { setActiveSpace(space.id); close(); }}><Icon size={18}/><span>{space.name}</span></button><button className={styles.more} aria-label={`Изменить пространство ${space.name}`} onClick={() => { close(); setStructureEditor({ kind: 'project', id: space.id }); }}><MoreHorizontal size={17}/></button></div>; })}</div>
+          <div className={styles.sectionHead}><h3>Пространства</h3><button aria-label="Добавить пространство" onClick={() => { close(); setStructureEditor({ kind: 'space' }); }}><Plus size={16}/></button></div>
+          <div className={styles.spaceList}>{orderedSpaces.map(space => { const Icon = iconFor(space.name, space.id); return <div className={styles.item} key={space.id}><button className={`${styles.itemMain} ${activeSpaceId === space.id ? styles.active : ''}`} onClick={() => { setActiveSpace(space.id); close(); }}><Icon size={18}/><span>{space.name}</span></button><button className={styles.more} aria-label={`Изменить пространство ${space.name}`} onClick={() => { close(); setStructureEditor({ kind: 'space', id: space.id }); }}><MoreHorizontal size={17}/></button></div>; })}</div>
         </section>
 
         <section>
