@@ -48,7 +48,7 @@ test('category tree filters the same workspace grid', async ({ page }) => {
 
 test('site can be added and survives reload', async ({ page }) => {
   await page.getByRole('button', { name: 'Добавить сайт' }).click();
-  await page.getByLabel('Адрес').fill('example.com');
+  await page.getByRole('textbox', { name: 'Адрес', exact: true }).fill('example.com');
   await page.getByLabel('Название').fill('Example');
   await page.getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByRole('link', { name: 'Example' })).toBeVisible();
