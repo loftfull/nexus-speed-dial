@@ -20,7 +20,7 @@ export function StructureEditor() {
   const updateCategory = useAppStore(state => state.updateCategory);
   const removeCategory = useAppStore(state => state.removeCategory);
   const activeSpaceId = useAppStore(state => state.activeSpaceId);
-  const existingSpace = target?.kind === 'project' && target.id ? spaces.find(item => item.id === target.id) : undefined;
+  const existingSpace = target?.kind === 'space' && target.id ? spaces.find(item => item.id === target.id) : undefined;
   const existingCategory = target?.kind === 'category' && target.id ? categories.find(item => item.id === target.id) : undefined;
   const [name, setName] = useState('');
   const [spaceId, setSpaceId] = useState(activeSpaceId);
@@ -33,7 +33,7 @@ export function StructureEditor() {
   }, [existingSpace, existingCategory, activeSpaceId]);
 
   if (!target) return null;
-  const isSpace = target.kind === 'project';
+  const isSpace = target.kind === 'space';
   const hasChildren = !isSpace && Boolean(target.id && categories.some(category => category.parentId === target.id));
   const roots = categories.filter(category => (category.spaceId ?? category.projectId) === spaceId && !category.parentId && category.id !== target.id);
   const close = () => setTarget(null);
