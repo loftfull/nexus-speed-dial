@@ -31,5 +31,5 @@ test('mobile spaces and categories drawer reference', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await resetApp(page);
   await page.getByRole('button', { name: 'Открыть пространства и категории' }).click();
-  await expect(page).toHaveScreenshot('mobile-navigation.png', { fullPage: true, animations: 'disabled' });
+  await expect(page).toHaveScreenshot('mobile-navigation.png', { animations: 'disabled' });
 });
