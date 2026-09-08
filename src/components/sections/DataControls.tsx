@@ -2,25 +2,24 @@ import { Download, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { createBackup, parseBackup } from '../../domain/backup.ts';
-import type { UserPreferences } from '../../domain/types.ts';
 import { useAppStore } from '../../state/useAppStore.ts';
 import styles from './DataControls.module.css';
 
 export function DataControls() {
   const preferences = useAppStore(state => state.preferences);
   const tileSettings = useAppStore(state => state.tileSettings);
-  const projects = useAppStore(state => state.projects);
+  const spaces = useAppStore(state => state.spaces);
   const categories = useAppStore(state => state.categories);
   const sites = useAppStore(state => state.sites);
   const history = useAppStore(state => state.history);
   const notes = useAppStore(state => state.notes);
   const weatherLocation = useAppStore(state => state.weatherLocation);
   const restoreBackup = useAppStore(state => state.restoreBackup);
-  const setPreference = useAppStore(state => state.setPreference);
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState('');
 
   const exportData = () => {
+    const projects = spaces.map(({ id, name, icon, position }) => ({ id, name, icon, position }));
     const text = createBackup({ preferences, tileSettings, projects, categories, sites, history, notes, weatherLocation });
     const blob = new Blob([text], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -35,20 +34,12 @@ export function DataControls() {
     setStatus('Резервная копия создана');
   };
 
-  const restorePreferences = (next: UserPreferences) => {
-    for (const [key, value] of Object.entries(next) as Array<[keyof UserPreferences, UserPreferences[keyof UserPreferences]]>) {
-      setPreference(key, value as never);
-    }
-  };
-
   const importData = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
     try {
-      const snapshot = parseBackup(await file.text());
-      restoreBackup(snapshot);
-      if (snapshot.preferences) restorePreferences(snapshot.preferences);
+      restoreBackup(parseBackup(await file.text()));
       setStatus('Данные восстановлены');
     } catch {
       setStatus('Не удалось импортировать файл');
