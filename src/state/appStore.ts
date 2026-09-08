@@ -1,6 +1,5 @@
 import type { BackupSnapshot } from '../domain/backup.ts';
 import type {
-  AppSection,
   Category,
   ContentMode,
   HistoryEntry,
@@ -12,8 +11,6 @@ import type {
   TileAppearanceSettings,
   TilePreset,
   UserPreferences,
-  ViewMode,
-  WorkspaceTab,
 } from '../domain/types.ts';
 import { getTilePreset, normalizeTileSettings } from '../domain/tilePresets.ts';
 import { seedCategories, seedProjects, seedSites, seedSpaces } from '../data/seed.ts';
@@ -21,7 +18,7 @@ import type { StorageAdapter } from '../storage/StorageAdapter.ts';
 import { DEFAULT_WEATHER_LOCATION, normalizeWeatherLocation } from '../weather/weatherLocation.ts';
 import type { WeatherLocation } from '../weather/weatherLocation.ts';
 
-export type StructureEditorTarget = { kind: 'project' | 'category'; id?: string } | null;
+export type StructureEditorTarget = { kind: 'space' | 'category'; id?: string } | null;
 
 type PersistedNavigation = {
   activeSpaceId?: string;
@@ -98,23 +95,6 @@ export interface AppStoreState {
   setMobileNavOpen(open: boolean): void;
   setWeatherOpen(open: boolean): void;
   setWeatherLocation(location: WeatherLocation): void;
-
-  /** @deprecated Transitional adapter for pre-Pure-Speed-Dial data/UI. */
-  section: AppSection;
-  workspaceTab: WorkspaceTab;
-  viewMode: ViewMode;
-  activeProjectId: string;
-  bookmarkQuery: string;
-  projects: Project[];
-  /** @deprecated Transitional adapter for pre-Pure-Speed-Dial data/UI. */
-  setSection(section: AppSection): void;
-  setWorkspaceTab(tab: WorkspaceTab): void;
-  setViewMode(mode: ViewMode): void;
-  setActiveProject(id: string): void;
-  setBookmarkQuery(query: string): void;
-  addProject(project: Project): void;
-  updateProject(id: string, patch: Partial<Omit<Project, 'id'>>): void;
-  removeProject(id: string): void;
 }
 
 export interface AppStore {
@@ -137,9 +117,6 @@ const KEYS = {
 
 const spaceIdOfCategory = (category: Category) => category.spaceId ?? category.projectId;
 const spaceIdOfSite = (site: Site) => site.spaceId ?? site.projectId;
-const toProjects = (spaces: Space[]): Project[] => spaces.map(({ id, name, icon, position }) => ({ id, name, icon, position }));
-const tabForMode = (mode: ContentMode): WorkspaceTab => mode === 'all' ? 'quick' : mode;
-const modeForTab = (tab: WorkspaceTab): ContentMode => tab === 'quick' ? 'all' : tab;
 
 function normalizePreferences(raw: unknown): UserPreferences {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...DEFAULT_USER_PREFERENCES };
@@ -244,7 +221,7 @@ export function createAppStore(storage: StorageAdapter): AppStore {
   const persistTiles = (next: TileAppearanceSettings) => { tileSettings = normalizeTileSettings(next); storage.set(KEYS.tiles, tileSettings); patchState({ tileSettings }); };
   const persistPreferences = (next: UserPreferences) => { preferences = normalizePreferences(next); storage.set(KEYS.preferences, preferences); patchState({ preferences }); };
   const persistNavigation = (next: Pick<AppStoreState, 'activeSpaceId' | 'activeCategoryId' | 'contentMode' | 'layoutMode'>) => storage.set(KEYS.navigation, next);
-  const persistSpaces = (next: Space[]) => { spaces = normalizeSpaces(next); storage.set(KEYS.spaces, spaces); patchState({ spaces, projects: toProjects(spaces) }); };
+  const persistSpaces = (next: Space[]) => { spaces = normalizeSpaces(next); storage.set(KEYS.spaces, spaces); patchState({ spaces }); };
   const persistCategories = (next: Category[]) => { categories = normalizeCategories(next, spaces); storage.set(KEYS.categories, categories); patchState({ categories }); };
   const persistSites = (next: Site[]) => { sites = normalizeSites(next, spaces, categories); storage.set(KEYS.sites, sites); patchState({ sites }); };
   const persistHistory = (next: HistoryEntry[]) => { history = next; storage.set(KEYS.history, history); patchState({ history }); };
@@ -259,17 +236,7 @@ export function createAppStore(storage: StorageAdapter): AppStore {
     const layoutMode = partial.layoutMode ?? state.layoutMode;
     const query = partial.query ?? state.query;
     persistNavigation({ activeSpaceId, activeCategoryId, contentMode, layoutMode });
-    patchState({
-      activeSpaceId,
-      activeCategoryId,
-      contentMode,
-      layoutMode,
-      query,
-      activeProjectId: activeSpaceId,
-      workspaceTab: tabForMode(contentMode),
-      viewMode: layoutMode,
-      bookmarkQuery: query,
-    });
+    patchState({ activeSpaceId, activeCategoryId, contentMode, layoutMode, query });
   };
 
   const addSpace = (space: Space) => {
@@ -390,6 +357,7 @@ export function createAppStore(storage: StorageAdapter): AppStore {
     removeNote: id => persistNotes(notes.filter(note => note.id !== id)),
     restoreBackup: snapshot => {
       tileSettings = normalizeTileSettings({ ...getTilePreset('standard'), ...snapshot.tileSettings });
+      preferences = normalizePreferences(snapshot.preferences ?? DEFAULT_USER_PREFERENCES);
       spaces = normalizeSpaces(snapshot.projects);
       categories = normalizeCategories(snapshot.categories, spaces);
       sites = normalizeSites(snapshot.sites, spaces, categories);
@@ -397,6 +365,7 @@ export function createAppStore(storage: StorageAdapter): AppStore {
       notes = normalizeNotes(snapshot.notes, spaces);
       weatherLocation = normalizeWeatherLocation(snapshot.weatherLocation);
       storage.set(KEYS.tiles, tileSettings);
+      storage.set(KEYS.preferences, preferences);
       storage.set(KEYS.spaces, spaces);
       storage.set(KEYS.categories, categories);
       storage.set(KEYS.sites, sites);
@@ -406,22 +375,18 @@ export function createAppStore(storage: StorageAdapter): AppStore {
       storage.set(KEYS.navigation, { activeSpaceId: 'home', activeCategoryId: null, contentMode: 'all', layoutMode: 'grid' } satisfies PersistedNavigation);
       patchState({
         tileSettings,
+        preferences,
         spaces,
-        projects: toProjects(spaces),
         categories,
         sites,
         history,
         notes,
         weatherLocation,
         activeSpaceId: 'home',
-        activeProjectId: 'home',
         activeCategoryId: null,
         contentMode: 'all',
-        workspaceTab: 'quick',
         layoutMode: 'grid',
-        viewMode: 'grid',
         query: '',
-        bookmarkQuery: '',
         structureEditor: null,
         siteEditor: null,
       });
@@ -433,21 +398,6 @@ export function createAppStore(storage: StorageAdapter): AppStore {
     setMobileNavOpen: mobileNavOpen => patchState({ mobileNavOpen }),
     setWeatherOpen: weatherOpen => patchState({ weatherOpen }),
     setWeatherLocation: location => { weatherLocation = normalizeWeatherLocation(location); storage.set(KEYS.weatherLocation, weatherLocation); patchState({ weatherLocation }); },
-
-    section: 'home',
-    workspaceTab: tabForMode(initialContentMode),
-    viewMode: initialLayoutMode,
-    activeProjectId: initialSpaceId,
-    bookmarkQuery: '',
-    projects: toProjects(spaces),
-    setSection: section => patchState({ section }),
-    setWorkspaceTab: workspaceTab => applyNavigation({ contentMode: modeForTab(workspaceTab) }),
-    setViewMode: viewMode => applyNavigation({ layoutMode: viewMode }),
-    setActiveProject: activeProjectId => applyNavigation({ activeSpaceId: activeProjectId, activeCategoryId: null }),
-    setBookmarkQuery: bookmarkQuery => applyNavigation({ query: bookmarkQuery }),
-    addProject: project => addSpace({ ...project, position: project.position ?? spaces.length }),
-    updateProject: (id, projectPatch) => updateSpace(id, projectPatch),
-    removeProject: removeSpace,
   };
 
   persistNavigation({ activeSpaceId: initialSpaceId, activeCategoryId: initialCategoryId, contentMode: initialContentMode, layoutMode: initialLayoutMode });
