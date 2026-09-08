@@ -76,7 +76,7 @@ export function Sidebar() {
     </div>
 
     <section className={styles.navSection}>
-      <header><span>ПРОСТРАНСТВА</span><button aria-label="Добавить пространство" onClick={() => setStructureEditor({ kind: 'project' })}><Plus size={15}/></button></header>
+      <header><span>ПРОСТРАНСТВА</span><button aria-label="Добавить пространство" onClick={() => setStructureEditor({ kind: 'space' })}><Plus size={15}/></button></header>
       <div className={styles.spaceList}>
         {orderedSpaces.map(space => {
           const Icon = iconFor(space.name, space.id);
@@ -85,7 +85,7 @@ export function Sidebar() {
             <button className={`${styles.navMain} ${space.id === activeSpaceId ? styles.active : ''}`} onClick={() => { setActiveSpace(space.id); setMenu(null); }}><Icon size={16}/><span>{space.name}</span></button>
             <button className={styles.more} aria-label={`Действия пространства ${space.name}`} aria-expanded={menu === menuId} onClick={() => setMenu(value => value === menuId ? null : menuId)}><MoreHorizontal size={16}/></button>
             {menu === menuId && <GlassSurface role="popover" className={styles.itemMenu}>
-              <button onClick={() => { setMenu(null); setStructureEditor({ kind: 'project', id: space.id }); }}>Переименовать</button>
+              <button onClick={() => { setMenu(null); setStructureEditor({ kind: 'space', id: space.id }); }}>Переименовать</button>
               {space.id !== 'home' && <button className={styles.danger} onClick={() => confirmRemoveSpace(space.id, space.name)}>Удалить</button>}
             </GlassSurface>}
           </div>;
