@@ -1,6 +1,6 @@
-import type { Category, ContentMode, HistoryEntry, Site, WorkspaceTab } from './types.ts';
+import type { Category, ContentMode, HistoryEntry, Site } from './types.ts';
 
-interface CanonicalWorkspaceSelectionInput {
+export interface WorkspaceSelectionInput {
   sites: Site[];
   categories: Category[];
   history: HistoryEntry[];
@@ -10,29 +10,8 @@ interface CanonicalWorkspaceSelectionInput {
   query?: string;
 }
 
-interface LegacyWorkspaceSelectionInput {
-  sites: Site[];
-  categories: Category[];
-  history: HistoryEntry[];
-  projectId: string;
-  categoryId: string | null;
-  tab: WorkspaceTab;
-  query?: string;
-}
-
-type WorkspaceSelectionInput = CanonicalWorkspaceSelectionInput | LegacyWorkspaceSelectionInput;
-
 const siteSpaceId = (site: Site) => site.spaceId ?? site.projectId;
 const categorySpaceId = (category: Category) => category.spaceId ?? category.projectId;
-
-function canonicalMode(input: WorkspaceSelectionInput): ContentMode {
-  if ('mode' in input) return input.mode;
-  return input.tab === 'quick' ? 'all' : input.tab;
-}
-
-function canonicalSpaceId(input: WorkspaceSelectionInput): string {
-  return 'spaceId' in input ? input.spaceId : input.projectId;
-}
 
 function canonicalOrder(sites: Site[]): Site[] {
   return sites
@@ -42,23 +21,21 @@ function canonicalOrder(sites: Site[]): Site[] {
 }
 
 export function selectWorkspaceSites(input: WorkspaceSelectionInput): Site[] {
-  const spaceId = canonicalSpaceId(input);
-  const mode = canonicalMode(input);
   const query = input.query?.trim().toLowerCase() ?? '';
-  let result = input.sites.filter(site => siteSpaceId(site) === spaceId);
+  let result = input.sites.filter(site => siteSpaceId(site) === input.spaceId);
 
   if (input.categoryId) {
     const childIds = input.categories
-      .filter(category => categorySpaceId(category) === spaceId && category.parentId === input.categoryId)
+      .filter(category => categorySpaceId(category) === input.spaceId && category.parentId === input.categoryId)
       .map(category => category.id);
     const allowed = new Set([input.categoryId, ...childIds]);
     result = result.filter(site => site.categoryId && allowed.has(site.categoryId));
   }
 
-  if (mode === 'favorites') result = result.filter(site => site.favorite);
+  if (input.mode === 'favorites') result = result.filter(site => site.favorite);
   if (query) result = result.filter(site => `${site.title} ${site.subtitle ?? ''} ${site.domain}`.toLowerCase().includes(query));
 
-  if (mode === 'recent') {
+  if (input.mode === 'recent') {
     const byId = new Map(result.map(site => [site.id, site]));
     const seen = new Set<string>();
     const ordered: Site[] = [];
