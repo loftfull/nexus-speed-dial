@@ -85,6 +85,8 @@ Expanded state contains only:
 
 Collapsed state keeps only structural icons and the active-state indicator. Labels appear on hover/focus tooltip. `Ctrl+B` toggles Sidebar collapse on desktop.
 
+`sidebarCollapsed` is persisted as a normal user preference so the next launch restores the user's chosen shell density.
+
 The Sidebar must not contain duplicate All/Favorites/Recent navigation.
 
 ## 5. Unified service rail
@@ -129,13 +131,18 @@ Supported interaction families:
 - `#name` → categories in their owning space;
 - `> command` → actions.
 
-Initial commands:
+Commands enabled in the first implementation package:
 
 - `> add` / `> добавить` — open Add Site;
-- `> settings` / `> настройки` — open Settings;
-- `> import` / `> импорт` — open import flow;
-- `> organize` / `> проверить` — open Smart Organizer summary when implemented;
-- `> focus` — toggle Focus Mode when implemented.
+- `> settings` / `> настройки` — open Settings.
+
+Commands added only when their corresponding feature ships:
+
+- `> import` / `> импорт` — Phase 2 bookmark import;
+- `> organize` / `> проверить` — Phase 2 Smart Organizer;
+- `> focus` — Phase 3 Focus Mode.
+
+Nexus must never show a command that opens a placeholder or disabled dead-end flow.
 
 Command result rows must show type and context, e.g. `GitHub · Работа / Разработка`.
 
@@ -188,14 +195,15 @@ Open via:
 - long press on touch;
 - `… → Quick Peek`.
 
-Quick Peek may display:
+The first implementation displays local metadata only:
 
 - site logo/title/domain;
 - space/category location;
 - last-opened time and visit frequency;
 - favorite status;
-- optional lightweight page preview if it can be produced safely and cheaply;
 - Open, Edit, Move and Favorite actions.
+
+Remote page screenshot/preview fetching is explicitly deferred. It must not block the first implementation or introduce cross-origin/network fragility.
 
 Closing Quick Peek restores the full grid width immediately.
 
@@ -224,8 +232,7 @@ Selection Mode is temporary state over the same grid.
 Entry:
 
 - Ctrl/Cmd-click on desktop;
-- long press followed by selection on touch;
-- future command entry may be added.
+- long press followed by selection on touch.
 
 When active, the service rail temporarily becomes a batch-action rail:
 
@@ -235,37 +242,40 @@ When active, the service rail temporarily becomes a batch-action rail:
 
 No permanent checkboxes appear in normal mode.
 
-Batch destructive actions require confirmation. Batch operations should be reversible through Undo where practical.
+Batch destructive actions require confirmation. Batch operations are reversible through Undo when listed in section 11.
 
 ## 11. Undo
 
-Nexus maintains a short-lived in-memory undo transaction for user actions such as:
+Nexus maintains exactly one short-lived in-memory undo transaction for the most recent reversible operation.
+
+First-package reversible operations:
 
 - delete site(s);
 - move site(s);
 - batch category assignment;
-- favorite changes where practical.
+- favorite toggle/batch favorite.
 
 Presentation: compact toast near the lower workspace edge with a single `Undo` action. Undo is contextual state, not a separate history screen.
 
-The first implementation may support one most-recent reversible transaction. Multi-level undo is deferred unless real use demonstrates need.
+A new reversible operation replaces the previous undo transaction. Multi-level undo is deferred.
 
 ## 12. Focus Mode
 
-Focus Mode is part of the Nexus Power direction but is not required in the first coding package.
+Focus Mode is Phase 3, not part of the first coding package.
 
-When enabled:
+When implemented:
 
 - Sidebar collapses;
 - service rail reduces to search trigger + essential layout control;
 - grid receives nearly full window area;
-- no content state is lost.
+- no content state is lost;
+- Focus Mode itself is session-only and does not persist across launches.
 
 Focus Mode is a presentation state, not a route.
 
 ## 13. Smart Organizer
 
-Smart Organizer is a secondary Power capability and must remain suggestion-driven.
+Smart Organizer is Phase 2 and must remain suggestion-driven.
 
 It may detect:
 
@@ -282,7 +292,7 @@ Initial implementation can be deterministic and local. AI classification is opti
 
 ## 14. Import
 
-Import is a utility flow, not a top-level permanent navigation section.
+Import is Phase 2 and is a utility flow, not a top-level permanent navigation section.
 
 First supported source:
 
@@ -323,18 +333,24 @@ Existing persisted domain state remains canonical:
 - `preferences`;
 - legacy notes retained only for migration/export compatibility.
 
-New Power UI/session state should be ephemeral unless noted otherwise:
+New Power UI/session state is ephemeral unless explicitly stated:
 
 ```ts
 omniboxExpanded: boolean
 quickPeekSiteId: string | null
 focusedSiteId: string | null
 selectionMode: boolean
-selectedSiteIds: Set<string> // or serializable array in store implementation
-sidebarCollapsed: boolean // may persist as preference
-focusMode: boolean // may persist as preference
+selectedSiteIds: string[]
 undoTransaction: UndoTransaction | null
 ```
+
+Persisted preference addition:
+
+```ts
+sidebarCollapsed: boolean
+```
+
+Future Phase 3 Focus Mode is session-only.
 
 Command suggestions and visible-site lists are derived selectors, not duplicated persisted arrays.
 
@@ -364,7 +380,7 @@ Mobile retains the current one-drawer model for spaces/categories.
 Power adaptations:
 
 - Omnibox uses the available row width when expanded;
-- Quick Peek becomes a bottom sheet/full-height sheet depending content;
+- Quick Peek becomes a bottom sheet;
 - long press is the main entry for Quick Peek/Selection Mode;
 - Selection Mode batch rail sticks to the viewport;
 - no persistent desktop Sidebar;
@@ -379,12 +395,12 @@ The user journey remains:
 The first coding package is intentionally bounded to the capabilities that immediately make Nexus feel more powerful while preserving the clean architecture:
 
 1. compact unified service rail;
-2. collapsible Command Omnibox;
+2. collapsible Command Omnibox with first-package commands only;
 3. keyboard tile navigation;
-4. Quick Peek overlay;
+4. local-metadata Quick Peek overlay;
 5. Selection Mode;
 6. one-step Undo;
-7. collapsible desktop Sidebar;
+7. collapsible desktop Sidebar with persisted preference;
 8. updated tests and visual baselines.
 
 Not in the first package:
@@ -392,6 +408,8 @@ Not in the first package:
 - Smart Organizer implementation;
 - bookmark HTML import implementation;
 - AI integration;
+- Focus Mode;
+- remote webpage previews;
 - rich live widgets;
 - finance/news/tasks dashboards;
 - permanent weather/greeting hero blocks;
@@ -408,7 +426,7 @@ These exclusions are deliberate to prevent the product from returning to dashboa
 - selection reducer/actions;
 - undo transaction apply/revert;
 - Quick Peek selector data;
-- persisted Sidebar-collapse preference if implemented.
+- Sidebar-collapse preference persistence.
 
 ### Playwright interaction
 
@@ -421,7 +439,7 @@ Required flows:
 5. Space opens/closes Quick Peek;
 6. selection mode selects several tiles and performs a batch move/category action;
 7. delete + Undo restores site(s);
-8. Sidebar collapse preserves active scope;
+8. Sidebar collapse persists and preserves active scope;
 9. mobile long-press path exposes Quick Peek/selection affordance.
 
 ### Architecture QA
@@ -434,7 +452,8 @@ Static guard must continue to reject:
 - `AppSection` / `WorkspaceTab` reintroduction;
 - permanent Quick Peek column;
 - second command/search component outside Omnibox;
-- browser Back/Forward chrome as navigation feature.
+- browser Back/Forward chrome as navigation feature;
+- placeholder Power commands whose feature is not implemented.
 
 ### Visual regression
 
