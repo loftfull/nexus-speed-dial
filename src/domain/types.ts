@@ -1,7 +1,6 @@
 export type TilePreset = 'minimal' | 'standard' | 'expanded' | 'large' | 'list';
 export type TileSize = 'S' | 'M' | 'L' | 'XL';
 
-/** Canonical Pure Speed Dial content modes. */
 export type ContentMode = 'all' | 'favorites' | 'recent';
 export type LayoutMode = 'grid' | 'list';
 export type ThemeMode = 'system' | 'light' | 'dark';
@@ -20,13 +19,6 @@ export interface UserPreferences {
   omniboxSuggestions: boolean;
 }
 
-/** @deprecated Transitional compatibility until the one-screen refactor is complete. */
-export type AppSection = 'home' | 'favorites' | 'recent' | 'downloads' | 'notes' | 'settings';
-/** @deprecated Use ContentMode. */
-export type WorkspaceTab = 'quick' | 'recent' | 'favorites';
-/** @deprecated Use LayoutMode. */
-export type ViewMode = LayoutMode;
-
 export interface Space {
   id: string;
   name: string;
@@ -34,7 +26,7 @@ export interface Space {
   position: number;
 }
 
-/** @deprecated Persisted legacy shape; normalized to Space by the store migration. */
+/** Legacy persisted backup-v1 shape. Runtime navigation uses Space only. */
 export interface Project {
   id: string;
   name: string;
@@ -49,7 +41,7 @@ export interface Site {
   domain: string;
   /** Canonical Pure Speed Dial owner. */
   spaceId?: string;
-  /** @deprecated Legacy persisted owner used during migration. */
+  /** Legacy persisted owner retained for storage/backup migration only. */
   projectId: string;
   subtitle?: string;
   categoryId?: string;
@@ -64,7 +56,7 @@ export interface Category {
   name: string;
   /** Canonical Pure Speed Dial owner. */
   spaceId?: string;
-  /** @deprecated Legacy persisted owner used during migration. */
+  /** Legacy persisted owner retained for storage/backup migration only. */
   projectId: string;
   parentId?: string;
   icon: string;
