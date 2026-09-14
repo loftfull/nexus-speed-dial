@@ -8,11 +8,20 @@ const modes = [
   ['recent', 'Недавние', Clock3],
 ] as const;
 
+const sizes = ['S', 'M', 'L', 'XL'] as const;
+
 export function WorkspaceHeader() {
   const contentMode = useAppStore(state => state.contentMode);
   const setContentMode = useAppStore(state => state.setContentMode);
+  const spaces = useAppStore(state => state.spaces);
+  const activeSpaceId = useAppStore(state => state.activeSpaceId);
+  const tileSettings = useAppStore(state => state.tileSettings);
+  const setTileSetting = useAppStore(state => state.setTileSetting);
+
+  const activeSpace = spaces.find(space => space.id === activeSpaceId);
 
   return <div className={styles.head}>
+    <h1 className={styles.title}>{activeSpace?.name ?? 'Пространство'}</h1>
     <nav className={styles.modes} aria-label="Режим сайтов">
       {modes.map(([id, label, Icon]) => (
         <button
@@ -28,5 +37,18 @@ export function WorkspaceHeader() {
         </button>
       ))}
     </nav>
+    <div className={styles.sizes} aria-label="Размер плиток">
+      {sizes.map(size => (
+        <button
+          key={size}
+          type="button"
+          aria-pressed={tileSettings.size === size}
+          className={tileSettings.size === size ? styles.sizeActive : ''}
+          onClick={() => setTileSetting('size', size)}
+        >
+          {size}
+        </button>
+      ))}
+    </div>
   </div>;
 }

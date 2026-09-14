@@ -2,9 +2,14 @@
 * { box-sizing: border-box; }
 html { min-width:320px; min-height:100%; background:var(--nexus-bg-bottom); color-scheme:light; }
 body { margin:0; min-width:320px; min-height:100vh; color:var(--nexus-text); background:radial-gradient(circle at 82% 6%,rgba(178,213,255,.44),transparent 31%),radial-gradient(circle at 44% 96%,rgba(255,223,215,.32),transparent 30%),linear-gradient(160deg,var(--nexus-bg-top),var(--nexus-bg-bottom)); font-family:Onest,Inter,Manrope,"Segoe UI",system-ui,sans-serif; text-rendering:optimizeLegibility; -webkit-font-smoothing:antialiased; transition:background var(--nexus-motion-normal) var(--nexus-ease),color var(--nexus-motion-fast) var(--nexus-ease); }
+body::before{content:"";position:fixed;inset:0;z-index:-2;background-image:url('/mountain-backdrop.png');background-size:cover;background-position:center;background-repeat:no-repeat;opacity:.62;transition:opacity var(--nexus-motion-normal) var(--nexus-ease)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(243,247,252,.52) 0%,rgba(237,243,250,.34) 40%,rgba(237,243,250,.68) 100%);pointer-events:none}
 button,input,select,textarea { font:inherit; } button { color:inherit; } :focus-visible { outline:2px solid color-mix(in srgb,var(--nexus-accent) 70%,white); outline-offset:2px; }
 
+html[data-background='clean'] body::before{opacity:0}
+html[data-background='clean'] body::after{opacity:0}
 html[data-background='clean'] body{background:linear-gradient(160deg,#f7f9fc,#eef3f8)}
+html[data-background='contrast'] body::after{background:linear-gradient(180deg,rgba(233,241,251,.28) 0%,rgba(223,233,245,.18) 100%)}
 html[data-background='contrast'] body{background:radial-gradient(circle at 78% 4%,rgba(121,180,255,.34),transparent 28%),radial-gradient(circle at 32% 100%,rgba(255,190,173,.26),transparent 29%),linear-gradient(155deg,#e9f1fb,#dfe9f5)}
 html[data-density='compact']{--nexus-shell-pad:10px;--nexus-layout-gap:12px;--nexus-sidebar-pad:12px 9px 9px;--nexus-nav-row:34px}
 html[data-glass='minimal']{--nexus-blur-panel:10px;--nexus-blur-control:8px;--nexus-saturation:108%}

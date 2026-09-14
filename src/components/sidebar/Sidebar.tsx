@@ -5,6 +5,7 @@ import { useAppStore } from '../../state/useAppStore.ts';
 import { useWeather } from '../../weather/useWeather.ts';
 import { useLiveClock } from '../clock/useLiveClock.ts';
 import { GlassSurface } from '../primitives/GlassSurface.tsx';
+import { WeatherCard } from './WeatherCard.tsx';
 import styles from './Sidebar.module.css';
 
 function iconFor(label: string, id = '') {
@@ -75,6 +76,8 @@ export function Sidebar() {
       <div><strong>Nexus</strong><small>Speed Dial</small></div>
     </div>
 
+    <WeatherCard />
+
     <section className={styles.navSection}>
       <header><span>ПРОСТРАНСТВА</span><button aria-label="Добавить пространство" onClick={() => setStructureEditor({ kind: 'space' })}><Plus size={15}/></button></header>
       <div className={styles.spaceList}>
@@ -126,6 +129,16 @@ export function Sidebar() {
         })}
       </div>
     </section>
+
+    <div className={styles.storage}>
+      <div className={styles.storageHead}>
+        <span>Хранилище</span>
+        <small>2.4 ГБ из 15 ГБ</small>
+      </div>
+      <div className={styles.storageBar}>
+        <div className={styles.storageFill} style={{ width: '16%' }}/>
+      </div>
+    </div>
 
     <div className={styles.utility}>
       <button data-calendar-trigger data-testid="date-button" aria-expanded={calendarOpen} onClick={() => setCalendarOpen(!calendarOpen)}>

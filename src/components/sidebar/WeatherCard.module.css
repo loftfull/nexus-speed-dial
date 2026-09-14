@@ -1,0 +1,17 @@
+.card{padding:14px 13px 11px;display:grid;gap:10px;margin:0 2px 14px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.location{display:flex;align-items:center;gap:10px}
+.icon{font-size:32px;line-height:1}
+.location strong{display:block;font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1;color:var(--nexus-text)}
+.location small{display:block;color:var(--nexus-text-muted);font-size:10px;margin-top:3px}
+.meta{display:grid;gap:2px;text-align:right;color:var(--nexus-text-secondary);font-size:10px}
+.stats{display:flex;gap:14px;padding:6px 2px;border-top:1px solid var(--nexus-glass-border-secondary);border-bottom:1px solid var(--nexus-glass-border-secondary)}
+.stats>div{display:flex;align-items:center;gap:5px;color:var(--nexus-text-secondary);font-size:10px}
+.stats em{font-style:normal;font-size:11px}
+.forecast{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.day{display:grid;gap:4px;align-items:center;justify-items:center;padding:6px 2px;border-radius:11px;background:color-mix(in srgb,var(--nexus-glass-control) 50%,transparent)}
+.dayName{font-size:9px;font-weight:650;color:var(--nexus-text-muted);text-transform:uppercase}
+.dayIcon{font-size:15px;line-height:1}
+.dayTemp{display:grid;gap:1px;text-align:center}
+.dayTemp b{font-size:11px;font-weight:650;color:var(--nexus-text)}
+.dayTemp small{font-size:9px;color:var(--nexus-text-muted)}

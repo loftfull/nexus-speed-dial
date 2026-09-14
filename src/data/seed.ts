@@ -43,4 +43,11 @@ export const seedSites: Site[] = [
   site({ id:'metrika', title:'Яндекс Метрика', subtitle:'Аналитика', url:'https://metrika.yandex.ru', iconUrl:faviconUrlFor('https://metrika.yandex.ru'), domain:'metrika.yandex.ru', spaceId:'work', categoryId:'tools', favorite:false, position:12 }),
   site({ id:'github', title:'GitHub', subtitle:'Разработка', url:'https://github.com', iconUrl:faviconUrlFor('https://github.com'), domain:'github.com', spaceId:'work', categoryId:'development', favorite:true, position:13 }),
   site({ id:'kaspersky', title:'Kaspersky', subtitle:'Безопасность', url:'https://www.kaspersky.ru', iconUrl:faviconUrlFor('https://www.kaspersky.ru'), domain:'kaspersky.ru', spaceId:'home', categoryId:'tools', favorite:false, position:14 }),
+  site({ id:'vk', title:'ВКонтакте', subtitle:'Соцсеть', url:'https://vk.com', iconUrl:faviconUrlFor('https://vk.com'), domain:'vk.com', spaceId:'home', categoryId:'social', favorite:false, position:15 }),
+  site({ id:'yandex', title:'Яндекс', subtitle:'Поиск', url:'https://ya.ru', iconUrl:faviconUrlFor('https://ya.ru'), domain:'ya.ru', spaceId:'home', categoryId:'services', favorite:true, position:16 }),
+  site({ id:'habr', title:'Хабр', subtitle:'Сообщество', url:'https://habr.com', iconUrl:faviconUrlFor('https://habr.com'), domain:'habr.com', spaceId:'home', categoryId:'news', favorite:false, position:17 }),
+  site({ id:'wildberries', title:'Wildberries', subtitle:'Маркетплейс', url:'https://wildberries.ru', iconUrl:faviconUrlFor('https://wildberries.ru'), domain:'wildberries.ru', spaceId:'home', categoryId:'shopping', favorite:false, position:18 }),
+  site({ id:'tinkoff', title:'Т-Банк', subtitle:'Финансы', url:'https://tinkoff.ru', iconUrl:faviconUrlFor('https://tinkoff.ru'), domain:'tinkoff.ru', spaceId:'home', categoryId:'finance', favorite:false, position:19 }),
+  site({ id:'avito', title:'Авито', subtitle:'Объявления', url:'https://avito.ru', iconUrl:faviconUrlFor('https://avito.ru'), domain:'avito.ru', spaceId:'home', categoryId:'shopping', favorite:false, position:20 }),
+  site({ id:'kinopoisk', title:'Кинопоиск', subtitle:'Кино', url:'https://kinopoisk.ru', iconUrl:faviconUrlFor('https://kinopoisk.ru'), domain:'kinopoisk.ru', spaceId:'home', categoryId:'entertainment', favorite:false, position:21 }),
 ];

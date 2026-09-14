@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from 'react';
-import { Sidebar } from '../sidebar/Sidebar.tsx';
+import { BottomDock } from '../dock/BottomDock.tsx';
+import { EditorRail } from '../editor/EditorRail.tsx';
 import { MobileNavigation } from '../sidebar/MobileNavigation.tsx';
+import { Sidebar } from '../sidebar/Sidebar.tsx';
 import { Omnibox } from '../omnibox/Omnibox.tsx';
 import styles from './AppShell.module.css';
 
@@ -8,11 +10,13 @@ export function AppShell({ children }: PropsWithChildren) {
   return (
     <main className={styles.shell} data-testid="app-shell">
       <MobileNavigation />
-      <Sidebar />
-      <section className={styles.workspace}>
+      <div data-shell-part="sidebar"><Sidebar /></div>
+      <section data-shell-part="workspace" className={styles.workspace}>
         <Omnibox />
         {children}
       </section>
+      <div data-shell-part="rail"><EditorRail /></div>
+      <div data-shell-part="dock"><BottomDock /></div>
     </main>
   );
 }

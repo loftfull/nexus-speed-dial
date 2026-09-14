@@ -31,7 +31,7 @@ test('settings preferences apply immediately and persist after reload', async ({
 });
 
 test('content modes remain scoped to the active space', async ({ page }) => {
-  await page.getByRole('button', { name: 'Избранное' }).click();
+  await page.getByRole('navigation', { name: 'Режим сайтов' }).getByRole('button', { name: 'Избранное' }).click();
   await expect(page.getByRole('link', { name: 'Telegram' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'GitHub' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Работа', exact: true }).click();
@@ -50,7 +50,7 @@ test('site can be added and survives reload', async ({ page }) => {
   await page.getByRole('button', { name: 'Добавить сайт' }).click();
   await page.getByRole('textbox', { name: 'Адрес', exact: true }).fill('example.com');
   await page.getByLabel('Название').fill('Example');
-  await page.getByRole('button', { name: 'Сохранить' }).click();
+  await page.getByRole('contentinfo').getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByRole('link', { name: 'Example' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('link', { name: 'Example' })).toBeVisible();

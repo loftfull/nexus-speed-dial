@@ -1,0 +1,7 @@
+.dock{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:8px;border-radius:22px;background:rgba(255,255,255,.58);border:1px solid rgba(255,255,255,.7);backdrop-filter:blur(22px) saturate(130%);box-shadow:0 14px 34px rgba(50,80,120,.14),inset 0 1px 0 rgba(255,255,255,.8);z-index:40}
+.dock button{border:0;width:54px;height:54px;border-radius:16px;background:transparent;color:var(--nexus-text-secondary);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:background var(--nexus-motion-fast) var(--nexus-ease),color var(--nexus-motion-fast) var(--nexus-ease),transform var(--nexus-motion-fast) var(--nexus-ease)}
+.dock button span{font-size:8.5px;font-weight:680;letter-spacing:.02em}
+.dock button:hover{background:color-mix(in srgb,var(--nexus-glass-control) 80%,transparent);color:var(--nexus-text);transform:translateY(-2px)}
+.dock .active{background:var(--nexus-accent);color:white;box-shadow:0 8px 18px rgba(59,130,246,.36)}
+.dock .active:hover{transform:translateY(-2px)}
+@media(max-width:760px){.dock{bottom:8px;padding:6px;border-radius:20px}.dock button{width:46px;height:46px;border-radius:14px}.dock button span{display:none}}

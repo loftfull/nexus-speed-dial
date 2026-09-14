@@ -1,1 +1,8 @@
-.shell{width:100vw;height:100vh;padding:var(--nexus-shell-pad);display:grid;grid-template-columns:306px minmax(0,1fr);gap:var(--nexus-layout-gap);overflow:hidden}.workspace{min-width:0;overflow:auto;padding:2px 3px 26px;scrollbar-gutter:stable}@media(max-width:1100px){.shell{grid-template-columns:248px minmax(0,1fr)}}@media(max-width:760px){.shell{display:block;height:auto;min-height:100vh;padding:8px;overflow:visible}.workspace{min-height:calc(100vh - 16px);padding:0 1px 20px;overflow:visible}}
+.shell{position:relative;width:100vw;height:100vh;padding:var(--nexus-shell-pad);display:grid;grid-template-columns:304px minmax(0,1fr) 320px;grid-template-rows:1fr auto;grid-template-areas:"sidebar workspace rail" "sidebar dock rail";gap:var(--nexus-layout-gap);overflow:hidden}
+.shell > [data-shell-part='sidebar']{grid-area:sidebar}
+.shell > [data-shell-part='workspace']{grid-area:workspace;min-width:0;overflow:auto;padding:6px 4px 82px;scrollbar-gutter:stable}
+.shell > [data-shell-part='rail']{grid-area:rail}
+.shell > [data-shell-part='dock']{grid-area:dock;align-self:end;justify-self:center}
+@media(max-width:1380px){.shell{grid-template-columns:276px minmax(0,1fr) 288px}}
+@media(max-width:1180px){.shell{grid-template-columns:256px minmax(0,1fr);grid-template-areas:"sidebar workspace" "sidebar dock"}.shell > [data-shell-part='rail']{display:none}}
+@media(max-width:760px){.shell{display:block;height:auto;min-height:100vh;padding:8px;overflow:visible}.shell > [data-shell-part='workspace']{min-height:calc(100vh - 16px);padding:0 1px 92px;overflow:visible}.shell > [data-shell-part='sidebar']{display:none}}
