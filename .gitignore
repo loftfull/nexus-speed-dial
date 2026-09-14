@@ -1,0 +1,33 @@
+# deps / tooling
+node_modules/
+.pnpm-store/
+
+# build
+dist/
+dist-ssr/
+*.local
+
+# testing artifacts
+test-results/
+playwright-report/
+blob-report/
+.playwright-cli/
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# autopilot / superpowers local instruments
+.autopilot/
+.superpowers/
+
+# env
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
