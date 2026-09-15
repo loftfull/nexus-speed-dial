@@ -1,4 +1,4 @@
-import { Home, Star, Clock3, Download, StickyNote, Settings2 } from 'lucide-react';
+import { Home, Star, Clock3, Settings2 } from 'lucide-react';
 import { useAppStore } from '../../state/useAppStore.ts';
 import styles from './BottomDock.module.css';
 
@@ -6,12 +6,10 @@ const items = [
   { id: 'home', label: 'Главная', Icon: Home, action: 'home' as const },
   { id: 'favorites', label: 'Избранное', Icon: Star, action: 'favorites' as const },
   { id: 'recent', label: 'История', Icon: Clock3, action: 'recent' as const },
-  { id: 'downloads', label: 'Загрузки', Icon: Download, action: 'downloads' as const },
-  { id: 'notes', label: 'Заметки', Icon: StickyNote, action: 'notes' as const },
   { id: 'settings', label: 'Настройки', Icon: Settings2, action: 'settings' as const },
 ];
 
-type DockAction = 'home' | 'favorites' | 'recent' | 'downloads' | 'notes' | 'settings';
+type DockAction = 'home' | 'favorites' | 'recent' | 'settings';
 
 export function BottomDock() {
   const contentMode = useAppStore(state => state.contentMode);

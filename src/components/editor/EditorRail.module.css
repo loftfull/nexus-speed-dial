@@ -6,6 +6,8 @@
 .tabs{display:flex;flex-wrap:wrap;gap:4px;padding:3px;border-radius:14px;background:color-mix(in srgb,var(--nexus-glass-control) 62%,transparent)}
 .tabs button{flex:1;min-width:62px;border:0;border-radius:10px;background:transparent;color:var(--nexus-text-secondary);padding:7px 4px;font:inherit;font-size:10.5px;font-weight:620}
 .tabs .active{color:var(--nexus-accent);background:color-mix(in srgb,var(--nexus-accent) 11%,var(--nexus-glass-control));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--nexus-accent) 14%,transparent)}
+.tabContent{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+.panel{display:grid;gap:8px;padding:10px 0 0;border-top:1px solid var(--nexus-glass-border-secondary)}
 .rail section{display:grid;gap:8px;padding-top:10px;border-top:1px solid var(--nexus-glass-border-secondary)}
 .rail section:first-of-type{border-top:0;padding-top:0}
 .rail h4{margin:0;color:var(--nexus-text-muted);font-size:10px;font-weight:760;letter-spacing:.05em;text-transform:uppercase}
@@ -26,7 +28,7 @@
 .actions button{border:0;border-radius:13px;padding:10px 8px;font:inherit;font-size:12px;font-weight:650}
 .reset{background:color-mix(in srgb,var(--nexus-glass-control) 80%,transparent);color:var(--nexus-text-secondary)}
 .save{background:var(--nexus-accent);color:white;box-shadow:0 8px 18px rgba(59,130,246,.28)}
-.shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding-top:10px;border-top:1px solid var(--nexus-glass-border-secondary)}
+.shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
 .shortcuts span{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 4px;border-radius:10px;background:color-mix(in srgb,var(--nexus-glass-control) 60%,transparent);color:var(--nexus-text-secondary);font-size:9.5px}
 @media(max-width:1280px){.rail{padding:14px 12px 12px}.preview{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.rail{display:none}}

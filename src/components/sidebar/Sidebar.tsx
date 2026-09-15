@@ -2,10 +2,10 @@ import { BriefcaseBusiness, CircleDollarSign, FolderKanban, Grid2X2, Home, Messa
 import { useState } from 'react';
 import { navigationIconKey } from '../../domain/navigationIcon.ts';
 import { useAppStore } from '../../state/useAppStore.ts';
-import { useWeather } from '../../weather/useWeather.ts';
 import { useLiveClock } from '../clock/useLiveClock.ts';
 import { GlassSurface } from '../primitives/GlassSurface.tsx';
 import { WeatherCard } from './WeatherCard.tsx';
+import { formatStorageSize, useStorageUsage } from './useStorageUsage.ts';
 import styles from './Sidebar.module.css';
 
 function iconFor(label: string, id = '') {
@@ -24,7 +24,6 @@ function iconFor(label: string, id = '') {
 
 export function Sidebar() {
   const clock = useLiveClock();
-  const weather = useWeather();
   const spaces = useAppStore(state => state.spaces);
   const categories = useAppStore(state => state.categories);
   const sites = useAppStore(state => state.sites);
@@ -36,9 +35,9 @@ export function Sidebar() {
   const removeSpace = useAppStore(state => state.removeSpace);
   const removeCategory = useAppStore(state => state.removeCategory);
   const setCalendarOpen = useAppStore(state => state.setCalendarOpen);
-  const setWeatherOpen = useAppStore(state => state.setWeatherOpen);
   const setStructureEditor = useAppStore(state => state.setStructureEditor);
   const [menu, setMenu] = useState<string | null>(null);
+  const storageUsage = useStorageUsage(spaces.length + categories.length + sites.length);
 
   const orderedSpaces = [...spaces].sort((a, b) => a.position - b.position);
   const spaceCategories = categories
@@ -68,7 +67,6 @@ export function Sidebar() {
     removeCategory(id);
     setMenu(null);
   };
-  const current = weather.data?.current;
 
   return <GlassSurface as="aside" role="panel" className={styles.sidebar}>
     <div className={styles.brand}>
@@ -133,10 +131,10 @@ export function Sidebar() {
     <div className={styles.storage}>
       <div className={styles.storageHead}>
         <span>Хранилище</span>
-        <small>2.4 ГБ из 15 ГБ</small>
+        <small>{storageUsage ? `${formatStorageSize(storageUsage.usedBytes)} из ${formatStorageSize(storageUsage.quotaBytes)}` : '—'}</small>
       </div>
       <div className={styles.storageBar}>
-        <div className={styles.storageFill} style={{ width: '16%' }}/>
+        <div className={styles.storageFill} style={{ width: `${storageUsage ? Math.max(storageUsage.percent, 2) : 0}%` }}/>
       </div>
     </div>
 
@@ -144,7 +142,6 @@ export function Sidebar() {
       <button data-calendar-trigger data-testid="date-button" aria-expanded={calendarOpen} onClick={() => setCalendarOpen(!calendarOpen)}>
         <strong>{clock.time}</strong><span>{clock.date}</span>
       </button>
-      {current && <button className={styles.utilityWeather} aria-label="Открыть погоду" onClick={() => setWeatherOpen(true)}><span>{current.icon}</span><strong>{current.temperature}°</strong></button>}
     </div>
   </GlassSurface>;
 }

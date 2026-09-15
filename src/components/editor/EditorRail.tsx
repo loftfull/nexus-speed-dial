@@ -1,4 +1,5 @@
 import { Calendar, CheckSquare, Clock3, LayoutGrid, Palette, Sparkles, Star } from 'lucide-react';
+import { useState } from 'react';
 import { useAppStore } from '../../state/useAppStore.ts';
 import type { TilePreset } from '../../domain/types.ts';
 import { GlassSurface } from '../primitives/GlassSurface.tsx';
@@ -32,6 +33,17 @@ const hoverOptions = [
   { label: 'Пульс', enabled: true, lift: -3, glow: true },
 ];
 
+const tabs = [
+  { id: 'tiles', label: 'Плитки' },
+  { id: 'glass', label: 'Стекло' },
+  { id: 'shadows', label: 'Тени' },
+  { id: 'hover', label: 'Реакции' },
+  { id: 'labels', label: 'Подписи' },
+  { id: 'extra', label: 'Доп.' },
+] as const;
+
+type TabId = (typeof tabs)[number]['id'];
+
 const previewTiles = [
   { title: 'Telegram', sub: 'общение', tone: '#33a8db' },
   { title: 'YouTube', sub: 'видео', tone: '#ff4d4d', badge: 12 },
@@ -60,6 +72,8 @@ function matchHover(s: { hoverEnabled: boolean; hoverGlow: boolean }) {
 }
 
 export function EditorRail() {
+  const [tab, setTab] = useState<TabId>('tiles');
+  const [saved, setSaved] = useState(false);
   const settings = useAppStore(state => state.tileSettings);
   const setTileSetting = useAppStore(state => state.setTileSetting);
   const applyPreset = useAppStore(state => state.applyTilePreset);
@@ -68,6 +82,11 @@ export function EditorRail() {
   const activeGlass = matchGlass(settings);
   const activeShadow = matchShadow(settings);
   const activeHover = matchHover(settings);
+
+  const handleSave = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1800);
+  };
 
   return <GlassSurface as="aside" role="panel" className={styles.rail} data-testid="editor-rail" aria-label="Редактор плиток">
     <header className={styles.head}>
@@ -78,81 +97,104 @@ export function EditorRail() {
       </div>
     </header>
 
-    <section className={styles.tabs}>
-      {['Плитки', 'Анимация', 'Тени', 'Реакции', 'Подписи', 'Доп.'].map((label, index) => (
-        <button key={label} type="button" className={index === 0 ? styles.active : ''}>{label}</button>
+    <nav className={styles.tabs} aria-label="Разделы редактора">
+      {tabs.map(t => (
+        <button key={t.id} type="button" className={tab === t.id ? styles.active : ''} onClick={() => setTab(t.id)}>{t.label}</button>
       ))}
-    </section>
+    </nav>
 
-    <section>
-      <h4>Размер</h4>
-      <div className={styles.sizeRow}>
-        {sizeOptions.map(size => (
-          <button key={size} type="button" className={settings.size === size ? styles.active : ''} onClick={() => setTileSetting('size', size)}>{size}</button>
-        ))}
-      </div>
-      <h4>Режим</h4>
-      <div className={styles.modeRow}>
-        {modeOptions.map(option => (
-          <button key={option.id} type="button" className={settings.preset === option.id ? styles.active : ''} onClick={() => applyPreset(option.id)}>{option.label}</button>
-        ))}
-      </div>
-    </section>
+    <div className={styles.tabContent}>
+      {tab === 'tiles' && <section className={styles.panel}>
+        <h4>Размер</h4>
+        <div className={styles.sizeRow}>
+          {sizeOptions.map(size => (
+            <button key={size} type="button" className={settings.size === size ? styles.active : ''} onClick={() => setTileSetting('size', size)}>{size}</button>
+          ))}
+        </div>
+        <h4>Режим</h4>
+        <div className={styles.modeRow}>
+          {modeOptions.map(option => (
+            <button key={option.id} type="button" className={settings.preset === option.id ? styles.active : ''} onClick={() => applyPreset(option.id)}>{option.label}</button>
+          ))}
+        </div>
+      </section>}
 
-    <section>
-      <h4>Стекло</h4>
-      <div className={styles.pills}>
-        {glassOptions.map(option => (
-          <button
-            key={option.label}
-            type="button"
-            className={activeGlass === option.label ? styles.active : ''}
-            onClick={() => {
-              setTileSetting('glassOpacity', option.opacity);
-              setTileSetting('blur', option.blur);
-              setTileSetting('saturation', option.saturation);
-            }}
-          >{option.label}</button>
-        ))}
-      </div>
-      <h4>Тени</h4>
-      <div className={styles.pills}>
-        {shadowOptions.map(option => (
-          <button
-            key={option.label}
-            type="button"
-            className={activeShadow === option.label ? styles.active : ''}
-            onClick={() => {
-              setTileSetting('shadowOpacity', option.opacity);
-              setTileSetting('shadowDepth', option.depth);
-              setTileSetting('shadowSoftness', option.softness);
-            }}
-          >{option.label}</button>
-        ))}
-      </div>
-      <h4>Реакция при наведении</h4>
-      <div className={styles.pills}>
-        {hoverOptions.map(option => (
-          <button
-            key={option.label}
-            type="button"
-            className={activeHover === option.label ? styles.active : ''}
-            onClick={() => {
-              setTileSetting('hoverEnabled', option.enabled);
-              setTileSetting('hoverLift', option.lift);
-              setTileSetting('hoverGlow', option.glow);
-            }}
-          >{option.label}</button>
-        ))}
-      </div>
-      <h4>Подписи</h4>
-      <div className={styles.pills}>
-        <button type="button" className={settings.showTitle ? styles.active : ''} onClick={() => setTileSetting('showTitle', !settings.showTitle)}>Заголовок</button>
-        <button type="button" className={settings.showSubtitle ? styles.active : ''} onClick={() => setTileSetting('showSubtitle', !settings.showSubtitle)}>Подпись</button>
-        <button type="button" className={settings.showCategory ? styles.active : ''} onClick={() => setTileSetting('showCategory', !settings.showCategory)}>Категория</button>
-        <button type="button" className={settings.showDomain ? styles.active : ''} onClick={() => setTileSetting('showDomain', !settings.showDomain)}>Мета</button>
-      </div>
-    </section>
+      {tab === 'glass' && <section className={styles.panel}>
+        <h4>Стекло</h4>
+        <div className={styles.pills}>
+          {glassOptions.map(option => (
+            <button
+              key={option.label}
+              type="button"
+              className={activeGlass === option.label ? styles.active : ''}
+              onClick={() => {
+                setTileSetting('glassOpacity', option.opacity);
+                setTileSetting('blur', option.blur);
+                setTileSetting('saturation', option.saturation);
+              }}
+            >{option.label}</button>
+          ))}
+        </div>
+      </section>}
+
+      {tab === 'shadows' && <section className={styles.panel}>
+        <h4>Тени</h4>
+        <div className={styles.pills}>
+          {shadowOptions.map(option => (
+            <button
+              key={option.label}
+              type="button"
+              className={activeShadow === option.label ? styles.active : ''}
+              onClick={() => {
+                setTileSetting('shadowOpacity', option.opacity);
+                setTileSetting('shadowDepth', option.depth);
+                setTileSetting('shadowSoftness', option.softness);
+              }}
+            >{option.label}</button>
+          ))}
+        </div>
+      </section>}
+
+      {tab === 'hover' && <section className={styles.panel}>
+        <h4>Реакция при наведении</h4>
+        <div className={styles.pills}>
+          {hoverOptions.map(option => (
+            <button
+              key={option.label}
+              type="button"
+              className={activeHover === option.label ? styles.active : ''}
+              onClick={() => {
+                setTileSetting('hoverEnabled', option.enabled);
+                setTileSetting('hoverLift', option.lift);
+                setTileSetting('hoverGlow', option.glow);
+              }}
+            >{option.label}</button>
+          ))}
+        </div>
+      </section>}
+
+      {tab === 'labels' && <section className={styles.panel}>
+        <h4>Подписи</h4>
+        <div className={styles.pills}>
+          <button type="button" className={settings.showTitle ? styles.active : ''} onClick={() => setTileSetting('showTitle', !settings.showTitle)}>Заголовок</button>
+          <button type="button" className={settings.showSubtitle ? styles.active : ''} onClick={() => setTileSetting('showSubtitle', !settings.showSubtitle)}>Подпись</button>
+          <button type="button" className={settings.showCategory ? styles.active : ''} onClick={() => setTileSetting('showCategory', !settings.showCategory)}>Категория</button>
+          <button type="button" className={settings.showDomain ? styles.active : ''} onClick={() => setTileSetting('showDomain', !settings.showDomain)}>Мета</button>
+        </div>
+      </section>}
+
+      {tab === 'extra' && <section className={styles.panel}>
+        <h4>Быстрые разделы</h4>
+        <div className={styles.shortcuts}>
+          <span><Calendar size={13}/>Календарь</span>
+          <span><CheckSquare size={13}/>Задачи</span>
+          <span><Clock3 size={13}/>История</span>
+          <span><LayoutGrid size={13}/>Вид</span>
+          <span><Palette size={13}/>Тема</span>
+          <span><Star size={13}/>Избранное</span>
+        </div>
+      </section>}
+    </div>
 
     <section>
       <h4>Предпросмотр</h4>
@@ -172,16 +214,7 @@ export function EditorRail() {
 
     <div className={styles.actions}>
       <button type="button" className={styles.reset} onClick={resetTileSettings}>Сбросить</button>
-      <button type="button" className={styles.save}>Сохранить</button>
+      <button type="button" className={styles.save} onClick={handleSave}>{saved ? 'Сохранено ✓' : 'Сохранить'}</button>
     </div>
-
-    <footer className={styles.shortcuts}>
-      <span><Calendar size={13}/>Календарь</span>
-      <span><CheckSquare size={13}/>Задачи</span>
-      <span><Clock3 size={13}/>История</span>
-      <span><LayoutGrid size={13}/>Вид</span>
-      <span><Palette size={13}/>Тема</span>
-      <span><Star size={13}/>Избранное</span>
-    </footer>
   </GlassSurface>;
 }
