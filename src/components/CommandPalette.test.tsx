@@ -18,6 +18,15 @@ const defaultProps = () => ({
   onNotes: vi.fn(),
 });
 
+const githubSite: SiteRecord = {
+  title: 'GitHub',
+  desc: 'Код',
+  domain: 'github.com',
+  color: '#000',
+  icon: 'GH',
+  category: 'Работа',
+};
+
 afterEach(() => vi.restoreAllMocks());
 
 describe('CommandPalette', () => {
@@ -73,14 +82,7 @@ describe('CommandPalette', () => {
     const user = userEvent.setup();
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     const props = defaultProps();
-    props.sites = [{
-      title: 'GitHub',
-      desc: 'Код',
-      domain: 'github.com',
-      color: '#000',
-      icon: 'GH',
-      category: 'Работа',
-    }];
+    props.sites = [githubSite];
     render(<CommandPalette {...props} />);
 
     await user.type(screen.getByPlaceholderText('Что вы хотите сделать?'), 'GitHub');
@@ -90,7 +92,23 @@ describe('CommandPalette', () => {
     expect(props.onClose).toHaveBeenCalled();
   });
 
-  it('opens a history URL without corrupting its protocol', async () => {
+  it('resolves current history titles back to their saved site domain', async () => {
+    const user = userEvent.setup();
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const props = defaultProps();
+    props.sites = [githubSite];
+    props.history = ['GitHub'];
+    render(<CommandPalette {...props} />);
+
+    await user.type(screen.getByPlaceholderText('Что вы хотите сделать?'), 'GitHub');
+    const historyResult = screen.getByRole('button', { name: /Недавно открытый ресурс/ });
+    await user.click(historyResult);
+
+    expect(open).toHaveBeenCalledWith('https://github.com', '_blank', 'noopener,noreferrer');
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it('keeps legacy history URLs without corrupting their protocol', async () => {
     const user = userEvent.setup();
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     const props = defaultProps();
