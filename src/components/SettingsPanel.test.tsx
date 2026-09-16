@@ -29,4 +29,13 @@ describe('SettingsPanel', () => {
     await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }));
     expect(props.onClose).toHaveBeenCalledOnce();
   });
+
+  it('exposes real browser bridge controls in the Data section', async () => {
+    const user = userEvent.setup(); const props = baseProps();
+    render(<Settings {...props} />);
+    await user.click(screen.getByRole('button', { name: /Данные/ }));
+    expect(screen.getByText('Подключение браузера')).toBeInTheDocument();
+    expect(screen.getByText('Подключение не проверено')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Запросить открытые вкладки/ })).toBeInTheDocument();
+  });
 });
