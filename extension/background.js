@@ -1,11 +1,22 @@
 const allowedSchemes = /^(https?|ftp):/i;
+const allowedOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|[^/]+\.e2b\.app)(\/|$)/i;
 
 chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
-  if (message?.type !== 'NEXUS_REQUEST_TABS') return false;
-  if (!sender.url || !/^https?:\/\/(localhost|127\.0\.0\.1|[^/]+\.e2b\.app)(\/|$)/i.test(sender.url)) {
-    sendResponse({ type: 'NEXUS_TABS_RESPONSE', requestId: message.requestId, error: 'Origin is not allowed' });
+  if (!sender.url || !allowedOrigin.test(sender.url)) {
+    sendResponse({
+      type: message?.type === 'NEXUS_PING' ? 'NEXUS_PONG' : 'NEXUS_TABS_RESPONSE',
+      requestId: message?.requestId,
+      error: 'Origin is not allowed'
+    });
     return false;
   }
+
+  if (message?.type === 'NEXUS_PING') {
+    sendResponse({ type: 'NEXUS_PONG', requestId: message.requestId });
+    return false;
+  }
+
+  if (message?.type !== 'NEXUS_REQUEST_TABS') return false;
 
   chrome.tabs.query({}).then(tabs => {
     sendResponse({
