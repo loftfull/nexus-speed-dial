@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Check, ExternalLink, Filter, Search, Star, Tag, X } from 'lucide-react';
 import type { SiteRecord } from '../domain/types';
 
-export function LibraryWorkspace({ sites, onOpen, onToggleFavorite, onChange }: { sites: SiteRecord[]; onOpen: (site: SiteRecord) => void; onToggleFavorite: (title: string) => void; onChange: (sites: SiteRecord[] | ((current: SiteRecord[]) => SiteRecord[])) => void }) {
+export function LibraryWorkspace({ sites, onOpen, onToggleFavorite, onChange }: { sites: SiteRecord[]; onOpen: (site: SiteRecord) => void; onToggleFavorite: (title: string) => void; onChange: (sites: SiteRecord[] | ((current: SiteRecord[]) => SiteRecord[])) => void; initialTag?: string }) {
   const [query, setQuery] = useState('');
   const [tag, setTag] = useState('Все');
   const [type, setType] = useState<'Все' | 'С заметками' | 'Избранное'>('Все');
