@@ -1,10 +1,10 @@
 import type { SiteRecord, TileMode, VisualPreset } from './types';
 import { readStorage, writeStorage } from './storage';
 
-export type TileState = { mode: TileMode; preset: VisualPreset; radius: number; iconSize: number; hover: string; shadow: string; font: string };
+export type TileState = { mode: TileMode; preset: VisualPreset; radius: number; iconSize: number; hover: string; shadow: string; font: string; size?: string; showDescription?: boolean; showDomain?: boolean; showNotifications?: boolean };
 export type AppearanceState = { theme: string; accent: string; wallpaper: string };
 
-export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean };
+export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: string };
 
 export type AppState = {
   sites: SiteRecord[];
@@ -33,8 +33,8 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
     categories: readStorage('nexus-categories', defaultCategories),
     history: readStorage('nexus-history', []),
     density: readStorage('nexus-density', 20),
-    ui: readStorage('nexus-ui', { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false }),
-    tile: readStorage('nexus-tile', { mode: 'standard' as TileMode, preset: 'glass' as VisualPreset, radius: 20, iconSize: 40, hover: 'lift', shadow: 'soft', font: 'Manrope' }),
+    ui: readStorage('nexus-ui', { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, projects: true, sidebarWidth: '292 px', mobileMode: 'В виде меню' }),
+    tile: readStorage('nexus-tile', { mode: 'standard' as TileMode, preset: 'glass' as VisualPreset, radius: 20, iconSize: 40, hover: 'lift', shadow: 'soft', font: 'Manrope', size: 'M', showDescription: true, showDomain: true, showNotifications: true }),
     appearance: readStorage('nexus-appearance', { theme: 'light', accent: '#2f7cf6', wallpaper: 'aurora' }),
   };
 }
