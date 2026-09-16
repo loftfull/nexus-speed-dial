@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, BookmarkPlus, FolderOpen, Keyboard, Library, Search, Settings, StickyNote, X } from 'lucide-react';
-import type { SiteRecord } from '../domain/types';
+import type { BrowserSession, SiteRecord } from '../domain/types';
 
 type Action = { id: string; label: string; description: string; shortcut: string; icon: typeof Search; run: () => void };
 
-export function CommandPalette({ sites, categories, history, onClose, onAddSite, onSettings, onFavorites, onNotes }: { sites: SiteRecord[]; categories: string[]; history: string[]; onClose: () => void; onAddSite: () => void; onSettings: () => void; onFavorites: () => void; onNotes: () => void }) {
+export function CommandPalette({ sites, categories, history, sessions, onClose, onAddSite, onSettings, onFavorites, onNotes }: { sites: SiteRecord[]; categories: string[]; history: string[]; sessions: BrowserSession[]; onClose: () => void; onAddSite: () => void; onSettings: () => void; onFavorites: () => void; onNotes: () => void }) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const actions: Action[] = [
@@ -17,9 +17,10 @@ export function CommandPalette({ sites, categories, history, onClose, onAddSite,
     const needle = query.trim().toLowerCase();
     const siteResults = sites.filter(site => `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle)).slice(0, 6).map(site => ({ id: `site-${site.title}`, label: site.title, description: `${site.domain} · Плитка сайта`, shortcut: '', icon: Library, run: () => window.open(`https://${site.domain}`, '_blank', 'noopener,noreferrer') }));
     const categoryResults = categories.filter(category => category.toLowerCase().includes(needle)).slice(0, 3).map(category => ({ id: `category-${category}`, label: category, description: 'Категория в рабочем пространстве', shortcut: '', icon: FolderOpen, run: () => { onClose(); } }));
+    const sessionResults = sessions.filter(session => session.name.toLowerCase().includes(needle)).slice(0, 3).map(session => ({ id: `session-${session.id}`, label: session.name, description: `${session.siteIds.length} сайтов · рабочая сессия`, shortcut: '', icon: FolderOpen, run: () => { onClose(); } }));
     const historyResults = history.filter(item => item.toLowerCase().includes(needle)).slice(0, 3).map(item => ({ id: `history-${item}`, label: item, description: 'Недавно открытый ресурс', shortcut: '', icon: ArrowRight, run: () => window.open(/^https?:\/\//.test(item) ? item : `https://${item}`, '_blank', 'noopener,noreferrer') }));
-    return needle ? [...siteResults, ...categoryResults, ...historyResults] : actions;
-  }, [query, sites, categories, history]);
+    return needle ? [...siteResults, ...categoryResults, ...sessionResults, ...historyResults] : actions;
+  }, [query, sites, categories, history, sessions]);
   useEffect(() => { setSelected(0); }, [query]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
