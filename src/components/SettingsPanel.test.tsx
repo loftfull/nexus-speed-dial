@@ -20,6 +20,14 @@ describe('SettingsPanel', () => {
     expect(props.setTile).toHaveBeenCalledWith(expect.objectContaining({ preset: 'neumorphic' }));
   });
 
+  it('keeps collapsed settings navigation accessible by section name', () => {
+    const props = baseProps();
+    render(<Settings {...props} />);
+    expect(screen.getByRole('button', { name: 'Общие' })).toHaveAttribute('aria-label', 'Общие');
+    expect(screen.getByRole('button', { name: 'Плитки сайтов' })).toHaveAttribute('aria-label', 'Плитки сайтов');
+    expect(screen.getByRole('button', { name: 'Данные' })).toHaveAttribute('aria-label', 'Данные');
+  });
+
   it('changes appearance and closes', async () => {
     const user = userEvent.setup(); const props = baseProps();
     render(<Settings {...props} />);
