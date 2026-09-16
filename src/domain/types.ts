@@ -20,4 +20,4 @@ export const VISUAL_PRESETS: VisualPreset[] = ['soft', 'compact', 'flat', 'neon'
 
 export type Project = { id: string; name: string; color: string; icon: string; siteIds: string[]; parentId?: string; createdAt: number; updatedAt: number };
 
-export type BrowserSession = { id: string; name: string; projectId?: string; siteIds: string[]; createdAt: number; lastOpenedAt?: number };
+export type BrowserSession = { id: string; name: string; projectId?: string; siteIds: string[]; tags?: string[]; noteSiteIds?: string[]; createdAt: number; lastOpenedAt?: number };
