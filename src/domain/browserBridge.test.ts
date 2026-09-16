@@ -68,6 +68,18 @@ describe('browserBridge', () => {
     await expect(checkBrowserExtension(EXTENSION_ID, runtime)).resolves.toBeUndefined();
   });
 
+  it('rejects a ping response that contains an extension error', async () => {
+    const runtime: BrowserRuntime = {
+      sendMessage: (_extensionId, message, callback) => callback({
+        type: 'NEXUS_PONG',
+        requestId: message.requestId,
+        error: 'Origin is not allowed',
+      }),
+    };
+
+    await expect(checkBrowserExtension(EXTENSION_ID, runtime)).rejects.toThrow('Origin is not allowed');
+  });
+
   it('requests and validates an open-tabs response', async () => {
     const runtime: BrowserRuntime = {
       sendMessage: (_extensionId, message, callback) => callback({
