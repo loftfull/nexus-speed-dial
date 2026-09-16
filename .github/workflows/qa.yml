@@ -1,0 +1,26 @@
+name: Nexus QA
+
+on:
+  push:
+    branches:
+      - arena/01a0a900-nexus-speed-dial
+  pull_request:
+
+jobs:
+  unit-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Unit tests and build
+        run: npm run qa:unit
+      - name: Whitespace check
+        run: git diff --check HEAD^ HEAD
