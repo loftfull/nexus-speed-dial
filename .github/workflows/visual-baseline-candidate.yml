@@ -9,7 +9,7 @@ on:
       - .github/visual-review-request
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   capture:
@@ -18,6 +18,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Detect review mode
+        id: review
+        shell: bash
+        run: |
+          mode=candidate
+          if [ "${{ github.event_name }}" = "push" ] && grep -qx 'mode=accept' .github/visual-review-request; then
+            mode=accept
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -38,3 +47,16 @@ jobs:
           path: e2e/visual.spec.ts-snapshots
           if-no-files-found: error
           retention-days: 7
+      - name: Commit explicitly reviewed baselines
+        if: steps.review.outputs.mode == 'accept'
+        shell: bash
+        run: |
+          if git diff --quiet -- e2e/visual.spec.ts-snapshots; then
+            echo 'Reviewed baselines already match; nothing to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add e2e/visual.spec.ts-snapshots
+          git commit -m 'test: accept reviewed visual baseline'
+          git push origin HEAD:${GITHUB_REF_NAME}
