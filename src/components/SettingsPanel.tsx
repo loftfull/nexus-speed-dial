@@ -26,7 +26,7 @@ export function Settings({onClose,density,setDensity,sites,setSites,ui,setUi,til
    {section==='Данные'&&<DataSettings sites={sites} setSites={setSites}/>} 
    {section==='Приватность'&&<PrivacySettings/>}
    {section==='Горячие клавиши'&&<Shortcuts/>}
-  </div></div><footer className="settings-footer"><span>Изменения применяются автоматически</span><button className="save" onClick={toggleSave}>Сохранить изменения</button></footer>
+  </div></div><footer className="settings-footer"><span>Изменения применяются автоматически</span><button className="save" onClick={()=>{toggleSave();onClose()}}>Сохранить изменения</button></footer>
  </section></div>
 }
 function SettingRow({title,desc,children}:{title:string;desc:string;children:React.ReactNode}){return <div className="setting-row"><div><b>{title}</b><small>{desc}</small></div>{children}</div>}
