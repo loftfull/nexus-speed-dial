@@ -1,4 +1,4 @@
-import type { SiteRecord, TileMode, VisualPreset } from './types';
+import type { SiteRecord, TileMode, VisualPreset, Project } from './types';
 import { readStorage, writeStorage } from './storage';
 
 export type TileState = { mode: TileMode; preset: VisualPreset; radius: number; iconSize: number; hover: string; shadow: string; font: string; size?: string; showDescription?: boolean; showDomain?: boolean; showNotifications?: boolean };
@@ -14,6 +14,7 @@ export type AppState = {
   ui: UiState;
   tile: TileState;
   appearance: AppearanceState;
+  projects: Project[];
 };
 
 export type AppAction =
@@ -23,7 +24,8 @@ export type AppAction =
   | { type: 'density/set'; value: number }
   | { type: 'ui/set'; value: UiState | ((current: UiState) => UiState) }
   | { type: 'tile/set'; value: TileState | ((current: TileState) => TileState) }
-  | { type: 'appearance/set'; value: AppearanceState | ((current: AppearanceState) => AppearanceState) };
+  | { type: 'appearance/set'; value: AppearanceState | ((current: AppearanceState) => AppearanceState) }
+  | { type: 'projects/set'; value: Project[] | ((current: Project[]) => Project[]) }; 
 
 export const defaultCategories = ['Проект', 'Работа', 'Личное', 'Развлечения', 'Вдохновение'];
 
@@ -36,6 +38,7 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
     ui: readStorage('nexus-ui', { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, projects: true, sidebarWidth: '292 px', mobileMode: 'В виде меню' }),
     tile: readStorage('nexus-tile', { mode: 'standard' as TileMode, preset: 'glass' as VisualPreset, radius: 20, iconSize: 40, hover: 'lift', shadow: 'soft', font: 'Manrope', size: 'M', showDescription: true, showDomain: true, showNotifications: true }),
     appearance: readStorage('nexus-appearance', { theme: 'light', accent: '#2f7cf6', wallpaper: 'aurora' }),
+    projects: readStorage('nexus-projects', defaultCategories.map((name, index) => ({ id: `project-${index}`, name, color: ['#3988ee','#8b63e8','#2aa879','#e5a43a','#e66c83'][index % 5], icon: name[0], siteIds: [], createdAt: Date.now(), updatedAt: Date.now() }))),
   };
 }
 
@@ -48,6 +51,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'ui/set': return { ...state, ui: typeof action.value === 'function' ? action.value(state.ui) : action.value };
     case 'tile/set': return { ...state, tile: typeof action.value === 'function' ? action.value(state.tile) : action.value };
     case 'appearance/set': return { ...state, appearance: typeof action.value === 'function' ? action.value(state.appearance) : action.value };
+    case 'projects/set': return { ...state, projects: typeof action.value === 'function' ? action.value(state.projects) : action.value };
     default: return state;
   }
 }
@@ -60,4 +64,5 @@ export function persistAppState(state: AppState): void {
   writeStorage('nexus-ui', state.ui);
   writeStorage('nexus-tile', state.tile);
   writeStorage('nexus-appearance', state.appearance);
+  writeStorage('nexus-projects', state.projects);
 }
