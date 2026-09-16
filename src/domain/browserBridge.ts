@@ -222,6 +222,9 @@ export async function checkBrowserExtension(extensionId: string, runtime?: Brows
   if (!response || response.type !== 'NEXUS_PONG' || response.requestId !== message.requestId) {
     throw new BrowserBridgeError('invalid-response', 'Extension ответил в неизвестном формате.');
   }
+  if (typeof response.error === 'string' && response.error) {
+    throw new BrowserBridgeError('extension-error', response.error);
+  }
 }
 
 export async function requestBrowserTabs(extensionId: string, runtime?: BrowserRuntime): Promise<BrowserTab[]> {
