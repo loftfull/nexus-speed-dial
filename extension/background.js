@@ -1,12 +1,13 @@
+import { isAllowedNexusSenderUrl } from './originPolicy.js';
+
 const allowedSchemes = /^(https?|ftp):/i;
-const allowedOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|[^/]+\.e2b\.app)(\/|$)/i;
 
 chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
-  if (!sender.url || !allowedOrigin.test(sender.url)) {
+  if (!sender.url || !isAllowedNexusSenderUrl(sender.url)) {
     sendResponse({
       type: message?.type === 'NEXUS_PING' ? 'NEXUS_PONG' : 'NEXUS_TABS_RESPONSE',
       requestId: message?.requestId,
-      error: 'Origin is not allowed'
+      error: 'Origin is not allowed',
     });
     return false;
   }
@@ -30,13 +31,13 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
         favIconUrl: tab.favIconUrl || '',
         active: Boolean(tab.active),
         pinned: Boolean(tab.pinned),
-        index: tab.index
-      }))
+        index: tab.index,
+      })),
     });
   }).catch(error => sendResponse({
     type: 'NEXUS_TABS_RESPONSE',
     requestId: message.requestId,
-    error: String(error)
+    error: String(error),
   }));
   return true;
 });
