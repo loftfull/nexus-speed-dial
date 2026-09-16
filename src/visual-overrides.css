@@ -29,7 +29,7 @@
 [data-tile-mode="preview"] .site-card:before,[data-tile-mode="screenshot"] .site-card:before{content:"PREVIEW";position:absolute;left:0;right:0;top:0;height:112px;display:grid;place-items:center;color:#98a7b9;font-size:10px;letter-spacing:1px;background:linear-gradient(135deg,#eaf3fc,#f7fbff);border-bottom:1px solid #e3ebf4}
 [data-tile-mode="screenshot"] .site-card{min-height:220px;padding-top:128px;overflow:hidden}
 [data-tile-mode="screenshot"] .site-card:before{content:"SCREENSHOT";background:linear-gradient(135deg,#dbe9f7,#f8fbfe)}
-[data-tile-mode="ios"] .site-card{border-radius:22px;background:rgba(255,255,255,.82);box-shadow:0 8px 22px rgba(46,74,111,.1);border-color:rgba(255,255,255,.9)}
+[data-tile-mode="mobile"] .site-card{border-radius:22px;background:rgba(255,255,255,.82);box-shadow:0 8px 22px rgba(46,74,111,.1);border-color:rgba(255,255,255,.9)}
 /* tactile dock: adjacent-item magnification from the reference implementation */
 .dock{transition:transform .4s cubic-bezier(.175,.885,.32,1.275),box-shadow .25s;padding:8px 11px}
 .dock button{transition:transform .3s cubic-bezier(.175,.885,.32,1.275),color .2s,background .2s;position:relative}
