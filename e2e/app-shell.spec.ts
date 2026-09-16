@@ -27,7 +27,8 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('html')).toHaveAttribute('data-tile-preset', 'neumorphic');
   });
 
-  test('mobile replaces the persistent sidebar with sections sheet', async ({ page }) => {
+  test('mobile replaces the persistent sidebar with sections sheet', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Mobile navigation behavior is only valid for the mobile project.');
     await page.goto('/');
     await expect(page.locator('.sidebar')).toBeHidden();
     await page.getByRole('button', { name: 'Разделы' }).click();
