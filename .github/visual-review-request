@@ -1,2 +1,3 @@
-Review request: mobile settings navigation and current shell baselines
-Requested from exact branch state after hard visual gate was enabled.
+mode=accept
+approved-candidate=0de8fa3209e77c3a8ee635fceb11bc909a5bbe7b
+scope=mobile-settings-navigation
