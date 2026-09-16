@@ -22,7 +22,7 @@ test.describe('Nexus shell', () => {
     await page.getByRole('button', { name: 'Настройки' }).click();
     await page.getByRole('button', { name: 'Плитки сайтов' }).click();
     await page.getByRole('button', { name: 'Neumorphic' }).click();
-    await page.getByRole('button', { name: 'Готово' }).click();
+    await page.getByRole('button', { name: 'Сохранить изменения' }).click();
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-tile-preset', 'neumorphic');
   });
