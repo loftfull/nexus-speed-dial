@@ -43,10 +43,10 @@ describe('browserBridge', () => {
 
   it('reuses existing domains, collapses multiple pages from one domain and keeps site titles unique', () => {
     const plan = prepareBrowserImport([
-      { id: 1, windowId: 1, title: 'GitHub issue', url: 'https://github.com/loftfull/nexus-speed-dial/issues/1', active: false, pinned: false, index: 0 },
-      { id: 2, windowId: 1, title: 'GitHub', url: 'https://example.com/a', active: false, pinned: false, index: 1 },
-      { id: 3, windowId: 1, title: 'Second page', url: 'https://example.com/b', active: false, pinned: false, index: 2 },
-      { id: 4, windowId: 1, title: 'FTP', url: 'ftp://files.example.com/pub', active: false, pinned: false, index: 3 },
+      { id: 1, windowId: 1, title: 'GitHub issue', url: 'https://github.com/loftfull/nexus-speed-dial/issues/1', favIconUrl: '', active: false, pinned: false, index: 0 },
+      { id: 2, windowId: 1, title: 'GitHub', url: 'https://example.com/a', favIconUrl: '', active: false, pinned: false, index: 1 },
+      { id: 3, windowId: 1, title: 'Second page', url: 'https://example.com/b', favIconUrl: '', active: false, pinned: false, index: 2 },
+      { id: 4, windowId: 1, title: 'FTP', url: 'ftp://files.example.com/pub', favIconUrl: '', active: false, pinned: false, index: 3 },
     ], [site()]);
 
     expect(plan.newSites).toHaveLength(1);
