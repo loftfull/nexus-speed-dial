@@ -1,0 +1,31 @@
+name: Visual baseline candidate
+
+on:
+  push:
+    branches:
+      - arena/01a0a900-nexus-speed-dial
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+      - name: Capture baselines
+        run: npx playwright test e2e/visual.spec.ts --update-snapshots
+      - name: Upload candidate baselines
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baseline-candidate
+          path: e2e/visual.spec.ts-snapshots
+          if-no-files-found: error
