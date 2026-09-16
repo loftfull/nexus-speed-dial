@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Nexus Workspace Bridge",
+  "version": "0.1.0",
+  "description": "Read the current browser tabs and send them to Nexus after an explicit user request.",
+  "permissions": ["tabs"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Nexus Workspace Bridge" },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost/*",
+      "http://127.0.0.1/*",
+      "https://*.e2b.app/*"
+    ]
+  }
+}
