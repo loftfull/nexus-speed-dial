@@ -1,7 +1,7 @@
 import type { SiteRecord, TileMode, VisualPreset } from './types';
 import { readStorage, writeStorage } from './storage';
 
-export type TileState = { mode: TileMode; preset: VisualPreset };
+export type TileState = { mode: TileMode; preset: VisualPreset; radius: number; iconSize: number; hover: string; shadow: string; font: string };
 export type AppearanceState = { theme: string; accent: string; wallpaper: string };
 
 export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean };
@@ -34,7 +34,7 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
     history: readStorage('nexus-history', []),
     density: readStorage('nexus-density', 20),
     ui: readStorage('nexus-ui', { sidebar: true, weather: true, compact: false, animations: true, newTab: true }),
-    tile: readStorage('nexus-tile', { mode: 'standard' as TileMode, preset: 'glass' as VisualPreset }),
+    tile: readStorage('nexus-tile', { mode: 'standard' as TileMode, preset: 'glass' as VisualPreset, radius: 20, iconSize: 40, hover: 'lift', shadow: 'soft', font: 'Manrope' }),
     appearance: readStorage('nexus-appearance', { theme: 'light', accent: '#2f7cf6', wallpaper: 'aurora' }),
   };
 }
