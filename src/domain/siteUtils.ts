@@ -7,7 +7,7 @@ export function normalizeDomain(value: string): string {
 export function filterSites(sites: SiteRecord[], query: string, category = 'Все', section = 'Быстрый доступ'): SiteRecord[] {
   const needle = query.trim().toLowerCase();
   let result = sites.filter(site => {
-    const matchesQuery = !needle || `${site.title} ${site.desc} ${site.domain} ${site.note ?? ''}`.toLowerCase().includes(needle);
+    const matchesQuery = !needle || `${site.title} ${site.desc} ${site.domain} ${site.note ?? ''} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle);
     const matchesCategory = category === 'Все' || site.category === category;
     const matchesSection = section !== 'Избранное' || Boolean(site.favorite);
     return matchesQuery && matchesCategory && matchesSection;

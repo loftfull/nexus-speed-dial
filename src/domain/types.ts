@@ -8,6 +8,7 @@ export type SiteRecord = {
   favorite?: boolean;
   badge?: string;
   note?: string;
+  tags?: string[];
   lastOpened?: number;
 };
 
