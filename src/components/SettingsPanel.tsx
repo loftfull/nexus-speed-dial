@@ -19,14 +19,14 @@ export function Settings({onClose,density,setDensity,sites,setSites,ui,setUi,til
   <header className="settings-header"><div className="settings-title"><button className="back-settings" onClick={onClose}><ChevronLeft size={17}/></button><div><span className="eyebrow">NEXUS / ПАРАМЕТРЫ</span><h2>Настройки приложения</h2></div></div><div className="settings-actions">{saved&&<span className="saved-state"><Check size={14}/> Сохранено</span>}<button className="close" onClick={onClose}><X/></button></div></header>
   <div className="settings-layout"><aside className="settings-nav"><span className="nav-caption">РАЗДЕЛЫ</span>{sections.map(([name,desc],i)=><button key={name} aria-label={name} className={section===name?'active':''} onClick={()=>setSection(name)}><span className="setting-nav-icon">{['⚙','◐','▦','☷','⌕','☼','↕','◉','⌨'][i]}</span><span><b>{name}</b><small>{desc}</small></span>{name==='Плитки сайтов'&&<em>NEW</em>}</button>)}<div className="settings-version"><span className="brand-dot"></span><div><b>Nexus Speed Dial</b><small>Версия 1.0.0 · Лицензия MIT</small></div></div></aside>
   <div className="settings-content"><div className="settings-content-head"><div><h3>{section}</h3><p>{sections.find(x=>x[0]===section)?.[1]}</p></div><button className="reset" onClick={()=>{setDensity(20);setCompact(false);setAnimations(true)}}>Сбросить раздел</button></div>
-   {section==='Общие'&&<General compact={compact} setCompact={setCompact} animations={animations} setAnimations={setAnimations} newTab={newTab} setNewTab={setNewTab}/>} 
-   {section==='Оформление'&&<Appearance appearance={appearance} setAppearance={setAppearance}/>} 
-   {section==='Плитки сайтов'&&<TileAppearance density={density} setDensity={setDensity} tile={tile} setTile={setTile}/>} 
-   {section==='Боковая панель'&&<SidebarSettings sidebar={sidebar} setSidebar={setSidebar} weather={weather} setWeather={setWeather} ui={ui} setUi={setUi}/>} 
-   {section==='Поиск'&&<SearchSettings ui={ui} setUi={setUi}/>} 
-   {section==='Погода и дата'&&<WeatherSettings ui={ui} setUi={setUi}/>} 
-   {section==='Данные'&&<DataSettings sites={sites} setSites={setSites} projects={projects??[]} setProjects={setProjects} sessions={sessions} setSessions={setSessions} density={density} setDensity={setDensity} ui={ui} setUi={setUi} tile={tile} setTile={setTile} appearance={appearance} setAppearance={setAppearance}/>} 
-   {section==='Приватность'&&<PrivacySettings ui={ui} setUi={setUi}/>} 
+   {section==='Общие'&&<General compact={compact} setCompact={setCompact} animations={animations} setAnimations={setAnimations} newTab={newTab} setNewTab={setNewTab}/>}
+   {section==='Оформление'&&<Appearance appearance={appearance} setAppearance={setAppearance}/>}
+   {section==='Плитки сайтов'&&<TileAppearance density={density} setDensity={setDensity} tile={tile} setTile={setTile}/>}
+   {section==='Боковая панель'&&<SidebarSettings sidebar={sidebar} setSidebar={setSidebar} weather={weather} setWeather={setWeather} ui={ui} setUi={setUi}/>}
+   {section==='Поиск'&&<SearchSettings ui={ui} setUi={setUi}/>}
+   {section==='Погода и дата'&&<WeatherSettings ui={ui} setUi={setUi}/>}
+   {section==='Данные'&&<DataSettings sites={sites} setSites={setSites} projects={projects??[]} setProjects={setProjects} sessions={sessions} setSessions={setSessions} density={density} setDensity={setDensity} ui={ui} setUi={setUi} tile={tile} setTile={setTile} appearance={appearance} setAppearance={setAppearance}/>}
+   {section==='Приватность'&&<PrivacySettings ui={ui} setUi={setUi}/>}
    {section==='Горячие клавиши'&&<Shortcuts/>}
   </div></div><footer className="settings-footer"><span>Изменения применяются автоматически</span><button className="save" onClick={()=>{toggleSave();onClose()}}>Сохранить изменения</button></footer>
  </section></div>
