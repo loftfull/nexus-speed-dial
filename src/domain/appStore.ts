@@ -2,6 +2,7 @@ import type { SiteRecord, TileMode, VisualPreset } from './types';
 import { readStorage, writeStorage } from './storage';
 
 export type TileState = { mode: TileMode; preset: VisualPreset };
+export type AppearanceState = { theme: string; accent: string; wallpaper: string };
 
 export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean };
 
@@ -12,6 +13,7 @@ export type AppState = {
   density: number;
   ui: UiState;
   tile: TileState;
+  appearance: AppearanceState;
 };
 
 export type AppAction =
@@ -20,7 +22,8 @@ export type AppAction =
   | { type: 'history/set'; value: string[] | ((current: string[]) => string[]) }
   | { type: 'density/set'; value: number }
   | { type: 'ui/set'; value: UiState | ((current: UiState) => UiState) }
-  | { type: 'tile/set'; value: TileState | ((current: TileState) => TileState) };
+  | { type: 'tile/set'; value: TileState | ((current: TileState) => TileState) }
+  | { type: 'appearance/set'; value: AppearanceState | ((current: AppearanceState) => AppearanceState) };
 
 export const defaultCategories = ['Проект', 'Работа', 'Личное', 'Развлечения', 'Вдохновение'];
 
@@ -32,6 +35,7 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
     density: readStorage('nexus-density', 20),
     ui: readStorage('nexus-ui', { sidebar: true, weather: true, compact: false, animations: true, newTab: true }),
     tile: readStorage('nexus-tile', { mode: 'standard' as TileMode, preset: 'glass' as VisualPreset }),
+    appearance: readStorage('nexus-appearance', { theme: 'light', accent: '#2f7cf6', wallpaper: 'aurora' }),
   };
 }
 
@@ -43,6 +47,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'density/set': return { ...state, density: Math.max(4, Math.min(32, action.value)) };
     case 'ui/set': return { ...state, ui: typeof action.value === 'function' ? action.value(state.ui) : action.value };
     case 'tile/set': return { ...state, tile: typeof action.value === 'function' ? action.value(state.tile) : action.value };
+    case 'appearance/set': return { ...state, appearance: typeof action.value === 'function' ? action.value(state.appearance) : action.value };
     default: return state;
   }
 }
@@ -54,4 +59,5 @@ export function persistAppState(state: AppState): void {
   writeStorage('nexus-density', state.density);
   writeStorage('nexus-ui', state.ui);
   writeStorage('nexus-tile', state.tile);
+  writeStorage('nexus-appearance', state.appearance);
 }
