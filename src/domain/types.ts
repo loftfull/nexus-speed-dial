@@ -10,6 +10,7 @@ export type SiteRecord = {
   note?: string;
   tags?: string[];
   lastOpened?: number;
+  screenshotUrl?: string;
 };
 
 export type TileMode = 'standard' | 'icon' | 'list' | 'preview' | 'screenshot' | 'mobile';
