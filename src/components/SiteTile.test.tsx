@@ -1,0 +1,26 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import { SiteTile } from './SiteTile';
+
+const site = { title: 'Figma', desc: 'Design', domain: 'figma.com', color: '#f00', icon: 'F', category: 'Проект' };
+const props = () => ({ site, selected: false, onSelect: vi.fn(), onFav: vi.fn(), onToast: vi.fn(), onEdit: vi.fn(), onDelete: vi.fn(), onOpen: vi.fn(), onDragStart: vi.fn(), onDragEnd: vi.fn(), onDrop: vi.fn(), selectionMode: false, selectedMany: false, onToggleSelect: vi.fn() });
+
+describe('SiteTile', () => {
+  it('supports favorite and edit actions without selecting the card', async () => {
+    const user = userEvent.setup(); const callbacks = props();
+    render(<SiteTile {...callbacks} />);
+    await user.click(screen.getByRole('button', { name: 'Добавить в избранное' }));
+    await user.click(screen.getByRole('button', { name: 'Редактировать' }));
+    expect(callbacks.onFav).toHaveBeenCalledOnce();
+    expect(callbacks.onEdit).toHaveBeenCalledOnce();
+    expect(callbacks.onSelect).not.toHaveBeenCalled();
+  });
+
+  it('toggles multi-selection when selection mode is enabled', async () => {
+    const user = userEvent.setup(); const callbacks = { ...props(), selectionMode: true };
+    render(<SiteTile {...callbacks} />);
+    await user.click(screen.getByRole('button', { name: 'Выбрать сайт' }));
+    expect(callbacks.onToggleSelect).toHaveBeenCalledOnce();
+  });
+});
