@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   repair:
-    if: github.sha == 'ecf0e4f71d044bebcb00fdd0ce13f0c8d9cbbb87'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
