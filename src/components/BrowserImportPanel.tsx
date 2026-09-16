@@ -63,6 +63,7 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
   );
   const previewPlan = useMemo(() => prepareBrowserImport(selectedTabs, sites), [selectedTabs, sites]);
   const importableTabs = useMemo(() => tabs.filter(tab => isSupportedBrowserImportUrl(tab.url)), [tabs]);
+  const unsupportedTabCount = tabs.length - importableTabs.length;
 
   const saveExtensionId = (value: string) => {
     setExtensionId(value);
@@ -120,26 +121,19 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
       return;
     }
 
-    if (plan.newSites.length) setSites([...plan.newSites, ...sites]);
-
-    let projectLabel = '';
+    let targetProject: Project | undefined;
+    let newProject: Project | undefined;
     if (addToProject) {
       if (!setProjects) {
         setError('Project storage недоступен в текущем контексте.');
         return;
       }
       if (projectId) {
-        const project = projects.find(item => item.id === projectId);
-        if (!project) {
+        targetProject = projects.find(item => item.id === projectId);
+        if (!targetProject) {
           setError('Выбранный проект больше не существует.');
           return;
         }
-        setProjects(projects.map(item => item.id === projectId ? {
-          ...item,
-          siteIds: Array.from(new Set([...item.siteIds, ...plan.siteIds])),
-          updatedAt: Date.now(),
-        } : item));
-        projectLabel = ` · проект «${project.name}» обновлён`;
       } else {
         const name = newProjectName.trim();
         if (!name) {
@@ -147,7 +141,7 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
           return;
         }
         const now = Date.now();
-        const project: Project = {
+        newProject = {
           id: makeId('project'),
           name,
           color: '#3988ee',
@@ -156,31 +150,52 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
           createdAt: now,
           updatedAt: now,
         };
-        setProjects([project, ...projects]);
-        projectLabel = ` · создан проект «${name}»`;
       }
     }
 
-    let sessionLabel = '';
+    const nextSessionName = sessionName.trim();
     if (saveSession) {
       if (!setSessions) {
         setError('Session storage недоступен в текущем контексте.');
         return;
       }
-      const name = sessionName.trim();
-      if (!name) {
+      if (!nextSessionName) {
         setError('Введите название сессии.');
         return;
       }
+    }
+
+    if (plan.newSites.length) setSites([...plan.newSites, ...sites]);
+
+    let projectLabel = '';
+    let sessionProjectId: string | undefined;
+    if (addToProject && setProjects) {
+      if (targetProject) {
+        setProjects(projects.map(item => item.id === targetProject?.id ? {
+          ...item,
+          siteIds: Array.from(new Set([...item.siteIds, ...plan.siteIds])),
+          updatedAt: Date.now(),
+        } : item));
+        sessionProjectId = targetProject.id;
+        projectLabel = ` · проект «${targetProject.name}» обновлён`;
+      } else if (newProject) {
+        setProjects([newProject, ...projects]);
+        sessionProjectId = newProject.id;
+        projectLabel = ` · создан проект «${newProject.name}»`;
+      }
+    }
+
+    let sessionLabel = '';
+    if (saveSession && setSessions) {
       const session: BrowserSession = {
         id: makeId('session'),
-        name,
-        projectId: addToProject && projectId ? projectId : undefined,
+        name: nextSessionName,
+        projectId: sessionProjectId,
         siteIds: plan.siteIds,
         createdAt: Date.now(),
       };
       setSessions([session, ...sessions]);
-      sessionLabel = ` · сессия «${name}» сохранена`;
+      sessionLabel = ` · сессия «${nextSessionName}» сохранена`;
     }
 
     const details = [
@@ -295,7 +310,7 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
       <div className="browser-import-summary">
         <span>{previewPlan.existingDomainMatches} вкладок уже представлены сохранёнными сайтами</span>
         <span>{previewPlan.collapsedTabCount} будут объединены по домену</span>
-        {previewPlan.unsupportedCount > 0 && <span>{previewPlan.unsupportedCount} FTP-вкладок доступны только для просмотра</span>}
+        {unsupportedTabCount > 0 && <span>{unsupportedTabCount} FTP-вкладок доступны только для просмотра</span>}
       </div>
 
       <button type="button" className="save browser-import-apply" onClick={applyImport} disabled={!selectedTabs.length}>
