@@ -1,0 +1,46 @@
+/* Ported visual language from the reference builds: clear preset identities, tactile interaction, and motion hierarchy. */
+[data-tile-preset="flat"] .site-card{background:#fff;border-color:#e1e8f0;box-shadow:0 2px 4px rgba(38,61,88,.06);border-radius:10px}
+[data-tile-preset="compact"] .site-card{min-height:145px;padding:13px;border-radius:12px}
+[data-tile-preset="compact"] .site-copy{margin-top:11px}
+[data-tile-preset="compact"] .site-grid{gap:12px!important}
+[data-tile-preset="soft"] .site-card{background:rgba(255,255,255,.58);box-shadow:0 12px 28px rgba(72,104,143,.10),inset 0 1px 0 #fff}
+[data-tile-preset="glass"] .site-card{background:rgba(255,255,255,.42);backdrop-filter:blur(18px) saturate(140%);box-shadow:0 14px 35px rgba(72,104,143,.11),inset 0 1px 0 #fff}
+[data-tile-preset="neon"] .site-card{background:#f8fbff;border-color:#b3d7ff;box-shadow:0 0 0 rgba(55,148,255,0);transition:transform .32s cubic-bezier(.2,.8,.2,1),box-shadow .32s,border-color .32s}
+[data-tile-preset="neon"] .site-card:hover{border-color:#64b2ff;box-shadow:0 10px 30px rgba(57,150,255,.22),0 0 18px rgba(74,168,255,.18)}
+[data-tile-preset="neumorphic"] .site-card{background:#eef3f8;border:0;box-shadow:9px 9px 18px #cbd5e0,-9px -9px 18px #fff}
+[data-tile-preset="neumorphic"] .site-card:hover{transform:translateY(-4px);box-shadow:13px 13px 23px #cbd5e0,-13px -13px 23px #fff}
+[data-tile-preset="neumorphic"] .site-card:active{transform:scale(.98);box-shadow:inset 5px 5px 10px #cbd5e0,inset -5px -5px 10px #fff}
+[data-tile-preset="layered"] .site-card{background:#fafcff;border:0;box-shadow:0 2px 4px rgba(38,61,88,.11),0 8px 14px -4px rgba(38,61,88,.17),inset 0 -3px 0 #dbe5f0}
+[data-tile-preset="layered"] .site-card:hover{transform:translateY(-3px);box-shadow:0 4px 7px rgba(38,61,88,.13),0 14px 20px -5px rgba(38,61,88,.20),inset 0 -3px 0 #c7d9ea}
+[data-tile-preset="elevated"] .site-card{background:#fff;border:0;box-shadow:0 6px 12px -2px rgba(50,70,100,.18),0 3px 7px -3px rgba(0,0,0,.18);transition:all .3s ease-in-out}
+[data-tile-preset="elevated"] .site-card:hover{transform:translateY(-5px);box-shadow:0 2px 1px rgba(0,0,0,.08),0 8px 4px rgba(0,0,0,.08),0 16px 8px rgba(0,0,0,.08),0 26px 16px rgba(0,0,0,.06)}
+[data-tile-preset="aurora"] .site-card{background:rgba(255,255,255,.88);overflow:visible}
+[data-tile-preset="aurora"] .site-card:after{content:"";position:absolute;inset:-3px;border-radius:inherit;z-index:-1;opacity:0;background:linear-gradient(45deg,#ff6b9d,#ffa64d,#4dd0e1,#ab47bc,#ff6b9d);background-size:400% 400%;filter:blur(8px);transition:opacity .4s;animation:auroraShift 6s ease infinite}
+[data-tile-preset="aurora"] .site-card:hover:after{opacity:.55}
+@keyframes auroraShift{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}
+[data-tile-mode="icon"] .site-card{min-height:105px;text-align:center;padding:16px}
+[data-tile-mode="icon"] .card-top{justify-content:center}
+[data-tile-mode="icon"] .site-copy{display:none}
+[data-tile-mode="icon"] .star{position:absolute;right:8px;top:8px}
+[data-tile-mode="list"] .site-grid{display:flex;flex-direction:column;gap:8px!important}
+[data-tile-mode="list"] .site-card{min-height:74px;display:flex;align-items:center;gap:14px;padding:11px 16px}
+[data-tile-mode="list"] .site-copy{margin:0;flex:1}
+[data-tile-mode="preview"] .site-card{min-height:220px;padding-top:128px;overflow:hidden}
+[data-tile-mode="preview"] .site-card:before,[data-tile-mode="screenshot"] .site-card:before{content:"PREVIEW";position:absolute;left:0;right:0;top:0;height:112px;display:grid;place-items:center;color:#98a7b9;font-size:10px;letter-spacing:1px;background:linear-gradient(135deg,#eaf3fc,#f7fbff);border-bottom:1px solid #e3ebf4}
+[data-tile-mode="screenshot"] .site-card{min-height:220px;padding-top:128px;overflow:hidden}
+[data-tile-mode="screenshot"] .site-card:before{content:"SCREENSHOT";background:linear-gradient(135deg,#dbe9f7,#f8fbfe)}
+[data-tile-mode="ios"] .site-card{border-radius:22px;background:rgba(255,255,255,.82);box-shadow:0 8px 22px rgba(46,74,111,.1);border-color:rgba(255,255,255,.9)}
+/* tactile dock: adjacent-item magnification from the reference implementation */
+.dock{transition:transform .4s cubic-bezier(.175,.885,.32,1.275),box-shadow .25s;padding:8px 11px}
+.dock button{transition:transform .3s cubic-bezier(.175,.885,.32,1.275),color .2s,background .2s;position:relative}
+.dock button:hover{transform:translateY(-9px) scale(1.33);z-index:3;box-shadow:0 9px 18px rgba(50,120,220,.14)}
+.dock button:hover+button,.dock button:has(+button:hover){transform:translateY(-4px) scale(1.13)}
+.dock button:has(+button+button:hover),.dock button:hover+button+button{transform:translateY(-2px) scale(1.05)}
+.dock button span{white-space:nowrap}
+/* dark variant stays deliberately restrained, as in the reference: no pure-black surfaces */
+:root[data-theme="dark"] body{background:#172337;color:#e7eef8}
+:root[data-theme="dark"] .app{background:radial-gradient(circle at 30% 0%,#263952,#172337 55%,#111b2b)}
+:root[data-theme="dark"] .glass{background:rgba(28,43,64,.76);border-color:rgba(171,201,235,.16);box-shadow:0 16px 42px rgba(0,0,0,.22)}
+:root[data-theme="dark"] .site-copy h3,:root[data-theme="dark"] .workspace-head h1,:root[data-theme="dark"] .brand strong{color:#eef5ff}
+:root[data-theme="dark"] .site-copy p,:root[data-theme="dark"] .workspace-head p,:root[data-theme="dark"] .site-copy span{color:#a9bad0}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}

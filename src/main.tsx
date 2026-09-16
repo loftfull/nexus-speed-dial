@@ -4,6 +4,7 @@ import {Search, ChevronLeft, ChevronRight, Star, ShieldCheck, UserRound, CloudSu
 import './styles.css';
 import './settings.css';
 import './presets.css';
+import './visual-overrides.css';
 
 type Site={title:string; desc:string; domain:string; color:string; icon:string; category:string; favorite?:boolean; badge?:string};
 const initialSites:Site[]=[
