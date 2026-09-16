@@ -9,7 +9,8 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
   });
 
-  test('calendar is an overlay and closes with Escape', async ({ page }) => {
+  test('calendar is an overlay and closes with Escape', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Calendar entry point is currently sidebar-only.');
     await page.goto('/');
     await page.getByRole('button', { name: 'Открыть календарь' }).click();
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeVisible();
@@ -17,9 +18,15 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeHidden();
   });
 
-  test('settings changes persist after returning to the app', async ({ page }) => {
+  test('settings changes persist after returning to the app', async ({ page }, testInfo) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Настройки' }).click();
+    if (testInfo.project.name === 'mobile') {
+      await page.getByRole('button', { name: 'Разделы' }).click();
+      await page.getByRole('button', { name: /Настройки/ }).click();
+    } else {
+      await page.getByRole('button', { name: 'Настройки' }).click();
+    }
+    await expect(page.getByRole('heading', { name: 'Настройки приложения' })).toBeVisible();
     await page.getByRole('button', { name: 'Плитки сайтов' }).click();
     await page.getByRole('button', { name: 'Neumorphic' }).click();
     await page.getByRole('button', { name: 'Сохранить изменения' }).click();
