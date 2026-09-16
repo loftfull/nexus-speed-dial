@@ -9,7 +9,10 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "qa:unit": "npm run test && npm run build"
+    "qa:unit": "npm run test && npm run build",
+    "qa:e2e": "playwright test",
+    "qa:reference": "node scripts/qa-reference.mjs",
+    "qa:full": "npm run qa:unit && npm run qa:reference && npm run qa:e2e"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -20,6 +23,7 @@
     "vite": "latest"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "jsdom": "^30.0.1",
