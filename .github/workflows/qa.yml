@@ -31,5 +31,14 @@ jobs:
       - name: Browser E2E
         run: npm run qa:e2e
       - name: Visual baseline check
-        continue-on-error: true
         run: npm run test:visual
+      - name: Upload visual regression evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-visual-regression-${{ github.sha }}
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: warn
+          retention-days: 7
