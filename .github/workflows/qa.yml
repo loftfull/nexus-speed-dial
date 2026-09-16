@@ -7,9 +7,9 @@ on:
   pull_request:
 
 jobs:
-  unit-and-build:
+  unit-build-and-browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,5 +24,12 @@ jobs:
         run: npm ci
       - name: Unit tests and build
         run: npm run qa:unit
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser E2E
+        run: npm run qa:e2e
+      - name: Visual baseline check
+        continue-on-error: true
+        run: npm run test:visual
       - name: Whitespace check
         run: git diff --check HEAD^ HEAD
