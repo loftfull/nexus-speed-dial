@@ -2,6 +2,11 @@ name: Visual baseline candidate
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - arena/01a0a900-nexus-speed-dial
+    paths:
+      - .github/visual-review-request
 
 permissions:
   contents: read
@@ -29,6 +34,7 @@ jobs:
       - name: Upload candidate baselines
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-visual-baseline-candidate
+          name: nexus-visual-baseline-candidate-${{ github.sha }}
           path: e2e/visual.spec.ts-snapshots
           if-no-files-found: error
+          retention-days: 7
