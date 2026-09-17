@@ -51,7 +51,7 @@ describe('browserBridge', () => {
 
     expect(plan.newSites).toHaveLength(1);
     expect(plan.newSites[0]).toMatchObject({ title: 'GitHub (2)', domain: 'example.com' });
-    expect(plan.siteIds).toEqual(['GitHub', 'GitHub (2)']);
+    expect(plan.siteIds).toEqual(['GitHub', 'site-example-com-0']);
     expect(plan.existingDomainMatches).toBe(1);
     expect(plan.collapsedTabCount).toBe(1);
     expect(plan.unsupportedCount).toBe(1);

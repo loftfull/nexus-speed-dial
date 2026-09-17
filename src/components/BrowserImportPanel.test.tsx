@@ -63,10 +63,10 @@ describe('BrowserImportPanel manual fallback', () => {
     await user.click(screen.getByRole('button', { name: 'Импортировать выбранные вкладки' }));
 
     expect(setProjects).toHaveBeenCalledWith([expect.objectContaining({
-      id: 'project-work', siteIds: ['example.com'],
+      id: 'project-work', siteIds: ['site-example-com-0'],
     })]);
     expect(setSessions).toHaveBeenCalledWith([expect.objectContaining({
-      name: 'Morning research', projectId: 'project-work', siteIds: ['example.com'],
+      name: 'Morning research', projectId: 'project-work', siteIds: ['site-example-com-0'],
     })]);
   });
 });

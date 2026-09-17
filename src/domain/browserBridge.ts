@@ -181,14 +181,14 @@ export function prepareBrowserImport(tabs: BrowserTab[], existingSites: SiteReco
     const existing = existingByDomain.get(domain);
     if (existing) {
       existingDomainMatches += 1;
-      addSiteId(existing.title);
+      addSiteId(existing.id||existing.title);
       continue;
     }
 
     const alreadyCreated = createdByDomain.get(domain);
     if (alreadyCreated) {
       collapsedTabCount += 1;
-      addSiteId(alreadyCreated.title);
+      addSiteId(alreadyCreated.id||alreadyCreated.title);
       continue;
     }
 
@@ -204,7 +204,7 @@ export function prepareBrowserImport(tabs: BrowserTab[], existingSites: SiteReco
       tags: ['browser-import'],
     };
     createdByDomain.set(domain, created);
-    addSiteId(created.title);
+    addSiteId(created.id||created.title);
   }
 
   return {
