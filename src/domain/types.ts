@@ -1,4 +1,6 @@
 export type SiteRecord = {
+  /** Persisted identity; legacy records may omit it and are migrated on load. */
+  id?: string;
   title: string;
   desc: string;
   domain: string;

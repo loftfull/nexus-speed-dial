@@ -38,10 +38,11 @@ function normalizeSidebarWidth(value: unknown): string {
 }
 
 export function createInitialAppState(initialSites: SiteRecord[]): AppState {
+  const storedSites = readStorage('nexus-sites', initialSites).map((site, index) => site.id ? site : { ...site, id: `site-${site.domain.replace(/[^a-z0-9]+/gi, '-')}-${index}` });
   const storedUi = readStorage('nexus-ui', null as UiState | null);
   const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, remotePreviews: true, projects: true, sidebarWidth: '292px', mobileMode: 'В виде меню' };
   return {
-    sites: readStorage('nexus-sites', initialSites),
+    sites: storedSites,
     categories: readStorage('nexus-categories', defaultCategories),
     history: readStorage('nexus-history', []),
     density: readStorage('nexus-density', 20),
