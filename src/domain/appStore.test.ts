@@ -23,6 +23,13 @@ describe('app store reducer', () => {
     expect(fresh.groups.filter(group => group.categoryId === 'cat-home-social').map(group => group.name)).toEqual(['Видео', 'Чаты', 'Почта']);
   });
 
+  it('starts in strict local-first mode without remote screenshots', () => {
+    localStorage.removeItem('nexus-ui');
+    const fresh = createInitialAppState([]);
+    expect(fresh.ui.localOnly).toBe(true);
+    expect(fresh.ui.remotePreviews).toBe(false);
+  });
+
   it('clamps density to a safe range', () => {
     expect(appReducer(initial, { type: 'density/set', value: 1 }).density).toBe(4);
     expect(appReducer(initial, { type: 'density/set', value: 100 }).density).toBe(32);
