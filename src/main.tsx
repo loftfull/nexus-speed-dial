@@ -126,7 +126,7 @@ function App(){
    <button type="button" className="widget-card widget-notes" onClick={()=>setActive('Заметки')}><span className="widget-art" aria-hidden="true"><StickyNote size={30}/></span><b className="widget-name">Заметки</b></button>
    <button type="button" className="widget-card widget-library" onClick={()=>setActive('Библиотека')}><span className="widget-art" aria-hidden="true"><BookOpen size={30}/></span><b className="widget-name">Библиотека</b></button></>}
    <button className="add-card" onClick={()=>setAddOpen(true)}><Plus size={22}/><b>Добавить сайт</b><span>Сохранить новую ссылку</span></button></div>:<div className="empty"><Search size={30}/><b>Ничего не найдено</b><span>Попробуйте изменить запрос</span></div>}
-   
+
   </main>
   <div className="ref-dock-wrap">
    {favDockOpen&&<div className="fav-strip glass" id="fav-dock-panel" aria-label="Избранные сайты">{scopedSites.filter(x=>x.favorite).slice(0,8).map(site=><button key={site.id} title={site.title} draggable onDragStart={()=>setDragged(site.id!)} onDragOver={e=>e.preventDefault()} onDrop={()=>reorder(site.id!)} onDragEnd={()=>setDragged(null)} onClick={()=>openSite(site)}><span style={{background:site.color}}>{site.icon}</span><em>{site.title}</em></button>)}{!scopedSites.some(x=>x.favorite)&&<span className="fav-strip-empty">Отметьте сайт звездой, и он появится здесь</span>}<button type="button" className="fav-dock-add" aria-label="Добавить сайт" title="Добавить сайт" onClick={()=>setAddOpen(true)}><Plus size={17}/></button></div>}
