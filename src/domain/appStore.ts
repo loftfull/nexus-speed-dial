@@ -31,13 +31,21 @@ export type AppAction =
 
 export const defaultCategories = ['Проект', 'Работа', 'Личное', 'Развлечения', 'Вдохновение'];
 
+function normalizeSidebarWidth(value: unknown): string {
+  if (typeof value !== 'string') return '292px';
+  const match = value.trim().match(/^(240|292|340)\s*px$/i);
+  return match ? `${match[1]}px` : '292px';
+}
+
 export function createInitialAppState(initialSites: SiteRecord[]): AppState {
+  const storedUi = readStorage('nexus-ui', null as UiState | null);
+  const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, projects: true, sidebarWidth: '292px', mobileMode: 'В виде меню' };
   return {
     sites: readStorage('nexus-sites', initialSites),
     categories: readStorage('nexus-categories', defaultCategories),
     history: readStorage('nexus-history', []),
     density: readStorage('nexus-density', 20),
-    ui: readStorage('nexus-ui', { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, projects: true, sidebarWidth: '292 px', mobileMode: 'В виде меню' }),
+    ui: { ...defaultUi, ...(storedUi ?? {}), sidebarWidth: normalizeSidebarWidth(storedUi?.sidebarWidth) },
     tile: readStorage('nexus-tile', { mode: 'standard' as TileMode, preset: 'glass' as VisualPreset, radius: 20, iconSize: 40, hover: 'lift', shadow: 'soft', font: 'Manrope', size: 'M', showDescription: true, showDomain: true, showNotifications: true }),
     appearance: readStorage('nexus-appearance', { theme: 'light', accent: '#2f7cf6', wallpaper: 'aurora' }),
     sessions: readStorage('nexus-sessions', []),

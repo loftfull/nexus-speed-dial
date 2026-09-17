@@ -12,4 +12,11 @@ describe('app store reducer', () => {
     expect(appReducer(initial, { type: 'density/set', value: 1 }).density).toBe(4);
     expect(appReducer(initial, { type: 'density/set', value: 100 }).density).toBe(32);
   });
+
+  it('migrates legacy sidebar width values stored with a space', () => {
+    localStorage.setItem('nexus-ui', JSON.stringify({ sidebar: true, sidebarWidth: '292 px' }));
+    const migrated = createInitialAppState([]);
+    expect(migrated.ui.sidebarWidth).toBe('292px');
+    localStorage.removeItem('nexus-ui');
+  });
 });

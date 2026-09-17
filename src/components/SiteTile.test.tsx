@@ -17,6 +17,15 @@ describe('SiteTile', () => {
     expect(callbacks.onSelect).not.toHaveBeenCalled();
   });
 
+  it('opens the site from keyboard focus', async () => {
+    const user = userEvent.setup(); const callbacks = props();
+    render(<SiteTile {...callbacks} />);
+    const tile = screen.getByRole('button', { name: 'Сайт Figma' });
+    tile.focus();
+    await user.keyboard('{Enter}');
+    expect(callbacks.onOpen).toHaveBeenCalledOnce();
+  });
+
   it('uses the persisted screenshot URL in screenshot mode', () => {
     document.documentElement.dataset.tileMode = 'screenshot';
     const { container } = render(<SiteTile {...props()} site={{ ...site, screenshotUrl: 'https://cdn.example/screenshot.png' }} />);

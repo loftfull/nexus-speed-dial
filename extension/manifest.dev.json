@@ -1,15 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "Nexus Workspace Bridge",
+  "name": "Nexus Workspace Bridge (Development)",
   "version": "0.2.0",
-  "description": "Read the current browser tabs and send them to the production Nexus app after an explicit user request.",
+  "description": "Development manifest for the Nexus Workspace Bridge.",
   "permissions": ["tabs"],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": { "default_title": "Nexus Workspace Bridge" },
   "externally_connectable": {
     "matches": [
-      "https://loftfull.github.io/nexus-speed-dial",
-      "https://loftfull.github.io/nexus-speed-dial/*"
+      "http://localhost/*",
+      "https://localhost/*",
+      "http://127.0.0.1/*",
+      "https://127.0.0.1/*"
     ]
   }
 }

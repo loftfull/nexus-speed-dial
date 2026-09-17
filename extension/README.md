@@ -2,14 +2,15 @@
 
 Минимальное Manifest V3 extension для явного чтения открытых вкладок браузера.
 
-## Установка для разработки
+## Установка
 
 1. Откройте `chrome://extensions` или `edge://extensions`.
 2. Включите Developer mode.
 3. Нажмите **Load unpacked**.
-4. Выберите папку `extension/` из репозитория Nexus.
-5. Скопируйте 32-символьный **ID** карточки `Nexus Workspace Bridge`.
-6. Откройте Nexus в разрешённом origin.
+4. Для production Nexus выберите папку `extension/` как есть: этот manifest разрешает только `https://loftfull.github.io/nexus-speed-dial/`.
+5. Для локальной разработки временно скопируйте `manifest.dev.json` поверх `manifest.json` в отдельную рабочую копию extension, затем загрузите её unpacked. Dev-manifest разрешает только localhost и 127.0.0.1.
+6. Скопируйте 32-символьный **ID** карточки `Nexus Workspace Bridge`.
+7. Откройте Nexus в разрешённом origin.
 7. В Nexus откройте **Настройки → Данные → Подключение браузера**, вставьте ID расширения и нажмите **Проверить**.
 8. После статуса `Extension подключён` нажмите **Запросить открытые вкладки**.
 
