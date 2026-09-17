@@ -18,3 +18,7 @@
 @media (hover:none){
   .card-actions{opacity:1;transform:none;pointer-events:auto}
 }
+
+/* Bulk move uses a category picker instead of a free-text prompt. */
+.bulk-move{display:flex;align-items:center;gap:5px;background:#edf4fc;padding:5px 9px;border-radius:7px;color:#6c7d92;font-size:12px}
+.bulk-move select{font:inherit;font-size:12px;color:inherit;background:transparent;border:0;outline:0;cursor:pointer}
