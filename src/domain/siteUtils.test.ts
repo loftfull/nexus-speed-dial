@@ -3,9 +3,9 @@ import { createSite, filterSites, normalizeDomain, reorderSites } from './siteUt
 import type { SiteRecord } from './types';
 
 const sites: SiteRecord[] = [
-  { title: 'Figma', desc: 'Design', domain: 'figma.com', color: '#f24e35', icon: 'F', category: 'Проект', categoryId: 'c-project', favorite: true, lastOpened: 2 },
-  { title: 'Notion', desc: 'Workspace', domain: 'notion.so', color: '#111', icon: 'N', category: 'Работа', categoryId: 'c-work', groupId: 'g-docs', note: 'План недели', lastOpened: 3 },
-  { title: 'YouTube', desc: 'Video', domain: 'youtube.com', color: '#f00', icon: 'Y', category: 'Развлечения', categoryId: 'c-fun', lastOpened: 1 },
+  { id: 's-figma', title: 'Figma', desc: 'Design', domain: 'figma.com', color: '#f24e35', icon: 'F', category: 'Проект', categoryId: 'c-project', favorite: true, lastOpened: 2 },
+  { id: 's-notion', title: 'Notion', desc: 'Workspace', domain: 'notion.so', color: '#111', icon: 'N', category: 'Работа', categoryId: 'c-work', groupId: 'g-docs', note: 'План недели', lastOpened: 3 },
+  { id: 's-youtube', title: 'YouTube', desc: 'Video', domain: 'youtube.com', color: '#f00', icon: 'Y', category: 'Развлечения', categoryId: 'c-fun', lastOpened: 1 },
 ];
 
 describe('site utilities', () => {
@@ -30,7 +30,7 @@ describe('site utilities', () => {
   });
 
   it('reorders without mutating the source', () => {
-    const reordered = reorderSites(sites, 'youtube.com', 'figma.com');
+    const reordered = reorderSites(sites, 's-youtube', 's-figma');
     expect(reordered.map(site => site.title)).toEqual(['YouTube', 'Figma', 'Notion']);
     expect(sites.map(site => site.title)).toEqual(['Figma', 'Notion', 'YouTube']);
   });
@@ -38,5 +38,15 @@ describe('site utilities', () => {
   it('creates valid sites and rejects empty input', () => {
     expect(createSite({ title: ' Linear ', domain: 'https://linear.app' }).domain).toBe('linear.app');
     expect(() => createSite({ title: '', domain: 'linear.app' })).toThrow();
+  });
+
+  it('reorders by id so two bookmarks on one domain stay independent', () => {
+    const withDuplicate = [...sites, { id: 's-yt-subs', title: 'Подписки', desc: '', domain: 'youtube.com', color: '#f00', icon: 'A', category: 'Соцсети' }];
+    const reordered = reorderSites(withDuplicate, 's-yt-subs', 's-figma');
+    expect(reordered.map(site => site.id)).toEqual(['s-yt-subs', 's-figma', 's-notion', 's-youtube']);
+  });
+
+  it('ignores an id that is not in the list', () => {
+    expect(reorderSites(sites, 'missing', 's-figma')).toBe(sites);
   });
 });

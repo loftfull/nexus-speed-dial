@@ -17,7 +17,7 @@ describe('SiteTile', () => {
     const user = userEvent.setup(); const callbacks = props();
     render(<SiteTile {...callbacks} />);
     await user.click(screen.getByRole('button', { name: 'Добавить в избранное' }));
-    await user.click(screen.getByRole('button', { name: 'Редактировать' }));
+    await user.click(screen.getByRole('button', { name: /^Редактировать/ }));
     expect(callbacks.onFav).toHaveBeenCalledOnce();
     expect(callbacks.onEdit).toHaveBeenCalledOnce();
     expect(callbacks.onSelect).not.toHaveBeenCalled();

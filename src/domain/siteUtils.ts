@@ -34,11 +34,12 @@ export function filterSites(
   return result;
 }
 
+/** `dragged` and `target` are site ids; domains are not unique. */
 export function reorderSites(sites: SiteRecord[], dragged: string, target: string): SiteRecord[] {
   if (!dragged || dragged === target) return sites;
   const next = [...sites];
-  const from = next.findIndex(site => site.domain === dragged);
-  const to = next.findIndex(site => site.domain === target);
+  const from = next.findIndex(site => site.id === dragged);
+  const to = next.findIndex(site => site.id === target);
   if (from < 0 || to < 0) return sites;
   const [item] = next.splice(from, 1);
   next.splice(to, 0, item);
