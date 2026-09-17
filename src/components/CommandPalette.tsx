@@ -19,7 +19,7 @@ export function CommandPalette({ sites, categories, history, sessions, onOpenSes
     const categoryResults = categories.filter(category => category.toLowerCase().includes(needle)).slice(0, 3).map(category => ({ id: `category-${category}`, label: category, description: 'Категория в рабочем пространстве', shortcut: '', icon: FolderOpen, run: () => onCategory(category) }));
     const sessionResults = sessions.filter(session => session.name.toLowerCase().includes(needle)).slice(0, 3).map(session => ({ id: `session-${session.id}`, label: session.name, description: `${session.siteIds.length} сайтов · рабочая сессия`, shortcut: '', icon: FolderOpen, run: () => { onOpenSession(session); } }));
     const historyResults = history.filter(item => item.toLowerCase().includes(needle)).slice(0, 3).map(item => {
-      const savedSite = sites.find(site => site.title === item);
+      const savedSite = sites.find(site => site.domain === item || site.title === item);
       const target = savedSite ? `https://${savedSite.domain}` : /^https?:\/\//.test(item) ? item : `https://${item}`;
       return { id: `history-${item}`, label: item, description: `${savedSite?.domain ? `${savedSite.domain} · ` : ''}Недавно открытый ресурс`, shortcut: '', icon: ArrowRight, run: () => window.open(target, '_blank', 'noopener,noreferrer') };
     });
