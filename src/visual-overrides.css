@@ -100,6 +100,7 @@
 :root[data-theme="dark"] .empty{color:#a9bad0}
 :root[data-theme="dark"] .empty b{color:#eef5ff}
 :root[data-theme="dark"] .star{color:#7f90a6}
+:root[data-theme="dark"] .star.fav{color:#f2ad35}
 
 /* Toolbar must stay inside the viewport on tablet/mobile instead of overflowing. */
 .toolbar{flex-wrap:wrap;gap:8px}
@@ -113,40 +114,131 @@
 .side-footer{flex:none}
 @media(max-width:680px){.sidebar{max-height:none;overflow:visible}}
 
-/* Favourites dock used to float in the middle of the grid, overlapping the last
-   row and the section dock. Park it on the same baseline as the dock on wide
-   screens, and reserve room for it on narrow ones. */
-@media(min-width:901px){
-  .favorites-dock{bottom:20px;left:auto;right:20px;transform:none}
-}
-@media(max-width:900px){
-  .main{padding-bottom:150px}
-  .favorites-dock{bottom:78px}
-}
-
-/* One bottom bar instead of two stacked floating panels. */
-.dock-bar{position:fixed;z-index:4;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:calc(100% - 40px)}
-.dock-bar .favorites-dock,.dock-bar .dock{position:static;left:auto;right:auto;bottom:auto;transform:none;max-width:none}
-.dock-bar .favorites-dock{flex:0 1 auto;overflow:hidden}
-@media(min-width:901px){.favorites-dock{bottom:auto;right:auto}}
-@media(max-width:900px){.main{padding-bottom:110px}}
-/* Full-width bottom bar only once the sidebar is gone, otherwise it would
-   slide underneath it. */
-@media(max-width:680px){.dock-bar{left:10px;right:10px;bottom:10px;transform:none;max-width:none}.dock-bar .dock{flex:1;min-width:0}}
-@media(max-width:680px){.dock-bar .favorites-dock{display:none}}
-
-/* The dock sits over scrolling content, so it needs a denser surface on small
-   screens where it spans the full width. */
-@media(max-width:900px){
-  .dock-bar .dock{background:rgba(255,255,255,.93);-webkit-backdrop-filter:blur(22px) saturate(125%);backdrop-filter:blur(22px) saturate(125%)}
-  :root[data-theme="dark"] .dock-bar .dock{background:rgba(23,35,55,.95)}
-}
-
 /* Keep the omnibox on one line when the sidebar still takes its share. */
 @media(max-width:900px){.search-trigger{white-space:nowrap;overflow:hidden}.search-trigger span{overflow:hidden;text-overflow:ellipsis}.search-trigger kbd{flex:none}}
 
-/* Centre the bottom bar over the workspace, not over the whole window, so it
-   cannot slide under the sidebar on narrow desktops and tablets. */
-@media(min-width:681px){
-  .app:has(>.sidebar) .dock-bar{left:calc(var(--sidebar-width,292px) + 40px);right:20px;transform:none;justify-content:center;max-width:none}
+/* ===================================================================
+   Shell redesign: section nav on top, sidebar as an icon list.
+   =================================================================== */
+
+/* --- Sidebar ------------------------------------------------------- */
+.sidebar{padding:20px 14px 14px}
+.brand{gap:12px;padding:0 6px;margin-bottom:22px}
+.brand-mark{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:18px;font-weight:800;letter-spacing:-.5px;background:linear-gradient(135deg,#2477f0,#5aa0ff);box-shadow:0 7px 15px #5798ef55}
+.brand strong{font-size:17px;letter-spacing:-.2px;color:#16233c}
+.brand small{font-size:12px;margin-top:2px;color:#5f6e83}
+:root[data-theme="dark"] .brand strong{color:#eef5ff}
+:root[data-theme="dark"] .brand small{color:#a9bad0}
+
+.side-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;margin:0 -6px;padding:0 6px}
+.side-scroll::-webkit-scrollbar{width:6px}
+.side-scroll::-webkit-scrollbar-thumb{background:rgba(120,145,180,.28);border-radius:6px}
+.side-section{margin-bottom:18px}
+.section-label{font-size:11px;letter-spacing:1.1px;padding:0 10px 8px;align-items:center}
+.section-label button{display:grid;place-items:center;width:22px;height:22px;border-radius:7px;color:inherit}
+.section-label button:hover{background:rgba(120,145,180,.14)}
+
+.side-item{width:100%;display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:11px;font-size:13px;color:#4e5d73;text-align:left;transition:background .16s ease,color .16s ease}
+.side-item-icon{display:grid;place-items:center;width:20px;height:20px;flex:none;color:#8697ad}
+.side-item-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-item .count{margin-left:auto;font-size:12px;font-weight:600;color:#5f6e83}
+.side-item:hover{background:rgba(120,145,180,.12)}
+.side-item.active{background:#e6f0ff;color:#1857a8;font-weight:700}
+.side-item.active .side-item-icon{color:#1857a8}
+.side-item.active .count{color:#1857a8}
+.side-item-ghost{color:#5f6e83;font-weight:500}
+.side-item-ghost .side-item-icon{color:#9aaabf}
+:root[data-theme="dark"] .side-item{color:#b3c3d7}
+:root[data-theme="dark"] .side-item-icon{color:#8fa1b8}
+:root[data-theme="dark"] .side-item .count{color:#8fa1b8}
+:root[data-theme="dark"] .side-item:hover{background:rgba(255,255,255,.06)}
+:root[data-theme="dark"] .side-item.active{background:rgba(59,130,246,.2);color:#9fc6ff}
+:root[data-theme="dark"] .side-item.active .side-item-icon,:root[data-theme="dark"] .side-item.active .count{color:#9fc6ff}
+:root[data-theme="dark"] .side-item-ghost{color:#8fa1b8}
+
+/* --- Top bar ------------------------------------------------------- */
+.topbar{height:auto;min-height:56px;gap:14px;padding:6px 0 10px;align-items:center}
+.section-nav{flex:1;min-width:0;display:flex;align-items:center;gap:2px;overflow-x:auto;scrollbar-width:none}
+.section-nav::-webkit-scrollbar{display:none}
+.section-nav button{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:11px;font-size:13px;color:#57667b;white-space:nowrap;transition:background .16s ease,color .16s ease}
+.section-nav button:hover{background:rgba(120,145,180,.13);color:#1a5fb4}
+.section-nav .section-active{background:#e6f0ff;color:#1857a8;font-weight:700}
+:root[data-theme="dark"] .section-nav button{color:#a9bad0}
+:root[data-theme="dark"] .section-nav button:hover{background:rgba(255,255,255,.07);color:#9fc6ff}
+:root[data-theme="dark"] .section-nav .section-active{background:rgba(59,130,246,.2);color:#9fc6ff}
+
+.topbar-actions{display:flex;align-items:center;gap:8px;flex:none}
+.top-icon{margin-left:0!important;width:38px;height:38px;border-radius:11px}
+.add-button.compact{padding:9px 14px;gap:7px;font-size:13px;white-space:nowrap}
+.mini-avatar{width:38px;height:38px;margin-left:2px;font-size:12px}
+
+/* --- Toolbar ------------------------------------------------------- */
+.toolbar{border-bottom:0;padding:2px 0 14px;gap:12px}
+.segmented-tabs{display:flex;align-items:center;gap:2px;padding:4px;border-radius:13px;background:rgba(120,145,180,.1)}
+.segmented-tabs button{display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:10px;font-size:13px;color:#57667b;white-space:nowrap}
+.segmented-tabs button b{font-size:12px;font-weight:700;color:#5f6e83}
+.segmented-tabs .selected{background:#fff;color:#1857a8;font-weight:700;box-shadow:0 2px 6px rgba(60,92,130,.12)}
+.segmented-tabs .selected b{color:#1857a8}
+:root[data-theme="dark"] .segmented-tabs{background:rgba(255,255,255,.07)}
+:root[data-theme="dark"] .segmented-tabs button{color:#a9bad0}
+:root[data-theme="dark"] .segmented-tabs .selected{background:rgba(59,130,246,.24);color:#9fc6ff;box-shadow:none}
+:root[data-theme="dark"] .segmented-tabs button b,:root[data-theme="dark"] .segmented-tabs .selected b{color:inherit}
+
+.tool-select{display:flex;align-items:center;gap:6px;height:34px;padding:0 10px;border:1px solid #dce6f1;border-radius:10px;background:#fff9;color:#57667b}
+.tool-select select{border:0;outline:0;background:transparent;font:inherit;font-size:13px;color:inherit;cursor:pointer;padding-right:2px}
+.tool-select:hover{border-color:#9fc2f0}
+:root[data-theme="dark"] .tool-select{background:rgba(255,255,255,.06);border-color:rgba(171,201,235,.16);color:#cfdcec}
+:root[data-theme="dark"] .tool-select select option{background:#1c2b40;color:#e7eef8}
+
+/* --- Hint bar ------------------------------------------------------ */
+.hint-bar{display:flex;align-items:center;gap:10px;margin-top:22px;padding:12px 14px;border-radius:13px;border:1px solid #dfe9f4;background:rgba(255,255,255,.6);color:#57667b;font-size:13px}
+.hint-bar>svg{color:#e0a53a;flex:none}
+.hint-bar span{flex:1}
+.hint-bar kbd{font-size:12px;padding:3px 6px;border-radius:6px;background:#edf2f7;color:#4e5d73}
+.hint-bar>button{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;color:#8697ad}
+.hint-bar>button:hover{background:rgba(120,145,180,.16);color:#33435b}
+:root[data-theme="dark"] .hint-bar{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.16);color:#a9bad0}
+:root[data-theme="dark"] .hint-bar kbd{background:rgba(255,255,255,.1);color:#cfdcec}
+
+/* --- Favourites strip now stands alone at the bottom ---------------- */
+
+.main{padding-bottom:40px}
+
+/* --- Narrow screens ------------------------------------------------- */
+@media(max-width:1180px){.section-nav button span{display:none}.section-nav button{padding:9px}}
+@media(max-width:900px){.add-button.compact span{display:none}.add-button.compact{padding:10px}}
+@media(max-width:680px){.topbar{gap:8px}}
+
+/* Section nav: only the current section keeps its label, so all nine fit
+   without clipping or a horizontal scrollbar. */
+.section-nav button span{display:none}
+.section-nav .section-active span{display:inline}
+.section-nav button{padding:9px 10px}
+.section-nav .section-active{padding:9px 13px}
+@media(max-width:1180px){.section-nav .section-active span{display:none}.section-nav .section-active{padding:9px 10px}}
+
+.main{padding-bottom:56px}
+
+/* Favourites strip: a compact pill in the bottom-right corner, clear of the
+   hint bar and the grid. */
+.favorites-dock{position:fixed;z-index:4;inset:auto 20px 20px auto;width:max-content;max-width:calc(100vw - 40px);transform:none}
+@media(max-width:680px){.favorites-dock{display:none}}
+
+/* Leave room for the favourites pill so it never lands on the hint text. */
+.app:has(.favorites-dock button) .hint-bar{margin-right:145px}
+@media(max-width:680px){.app:has(.favorites-dock button) .hint-bar{margin-right:0}}
+
+/* The mobile sections sheet sat on a translucent surface, so tiles showed
+   through the list items. Give it an opaque card. */
+.mobile-sections-card{background:#fff;border:1px solid #e4ecf5;box-shadow:0 -6px 40px rgba(32,54,84,.18)}
+:root[data-theme="dark"] .mobile-sections-card{background:#1c2b40;border-color:rgba(171,201,235,.16);box-shadow:0 -6px 40px rgba(0,0,0,.45)}
+
+/* Below 1100px the nine sections no longer fit beside the actions, so swap the
+   inline nav for the sections sheet instead of silently clipping it. */
+@media(max-width:1100px){
+  .section-nav{display:none}
+  .topbar .mobile-sections{display:grid;place-items:center;width:38px;height:38px;border-radius:11px}
+  .topbar{justify-content:space-between}
+  .topbar-actions{margin-left:auto}
 }
+:root[data-theme="dark"] .topbar .mobile-sections{background:rgba(255,255,255,.06);border-color:rgba(171,201,235,.16);color:#b3c3d7}
