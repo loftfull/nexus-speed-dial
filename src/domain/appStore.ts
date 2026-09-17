@@ -39,6 +39,9 @@ function normalizeSidebarWidth(value: unknown): string {
 
 export function createInitialAppState(initialSites: SiteRecord[]): AppState {
   const storedSites = readStorage('nexus-sites', initialSites).map((site, index) => site.id ? site : { ...site, id: `site-${site.domain.replace(/[^a-z0-9]+/gi, '-')}-${index}` });
+  const resolveSiteRef = (reference: string) => storedSites.find(site => site.id === reference || site.domain === reference || site.title === reference)?.id || reference;
+  const storedProjects = readStorage('nexus-projects', defaultCategories.map((name, index) => ({ id: `project-${index}`, name, color: ['#3988ee','#8b63e8','#2aa879','#e5a43a','#e66c83'][index % 5], icon: name[0], siteIds: [], createdAt: Date.now(), updatedAt: Date.now() }))).map(project => ({ ...project, siteIds: project.siteIds.map(resolveSiteRef) }));
+  const storedSessions = readStorage<BrowserSession[]>('nexus-sessions', []).map(session => ({ ...session, siteIds: session.siteIds.map(resolveSiteRef), noteSiteIds: session.noteSiteIds?.map(resolveSiteRef) }));
   const storedUi = readStorage('nexus-ui', null as UiState | null);
   const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, remotePreviews: true, projects: true, sidebarWidth: '292px', mobileMode: 'В виде меню' };
   return {
@@ -49,8 +52,8 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
     ui: { ...defaultUi, ...(storedUi ?? {}), sidebarWidth: normalizeSidebarWidth(storedUi?.sidebarWidth) },
     tile: readStorage('nexus-tile', { mode: 'standard' as TileMode, preset: 'glass' as VisualPreset, radius: 20, iconSize: 40, hover: 'lift', shadow: 'soft', font: 'Manrope', size: 'M', showDescription: true, showDomain: true, showNotifications: true }),
     appearance: readStorage('nexus-appearance', { theme: 'light', accent: '#2f7cf6', wallpaper: 'aurora' }),
-    sessions: readStorage('nexus-sessions', []),
-    projects: readStorage('nexus-projects', defaultCategories.map((name, index) => ({ id: `project-${index}`, name, color: ['#3988ee','#8b63e8','#2aa879','#e5a43a','#e66c83'][index % 5], icon: name[0], siteIds: [], createdAt: Date.now(), updatedAt: Date.now() }))),
+    sessions: storedSessions,
+    projects: storedProjects,
   };
 }
 
