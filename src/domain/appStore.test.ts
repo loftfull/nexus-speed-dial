@@ -19,4 +19,15 @@ describe('app store reducer', () => {
     expect(migrated.ui.sidebarWidth).toBe('292px');
     localStorage.removeItem('nexus-ui');
   });
+
+  it('migrates legacy project and session references to persisted site ids', () => {
+    localStorage.setItem('nexus-sites', JSON.stringify([{ title: 'Figma', desc: '', domain: 'figma.com', color: '#f00', icon: 'F', category: 'Проект' }]));
+    localStorage.setItem('nexus-projects', JSON.stringify([{ id: 'project-legacy', name: 'Research', color: '#111', icon: 'R', siteIds: ['Figma'], createdAt: 1, updatedAt: 1 }]));
+    localStorage.setItem('nexus-sessions', JSON.stringify([{ id: 'session-legacy', name: 'Research', siteIds: ['figma.com'], createdAt: 1 }]));
+    const migrated = createInitialAppState([]);
+    expect(migrated.sites[0].id).toBe('site-figma-com-0');
+    expect(migrated.projects[0].siteIds).toEqual(['site-figma-com-0']);
+    expect(migrated.sessions[0].siteIds).toEqual(['site-figma-com-0']);
+    ['nexus-sites', 'nexus-projects', 'nexus-sessions'].forEach(key => localStorage.removeItem(key));
+  });
 });
