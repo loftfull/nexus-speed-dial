@@ -368,3 +368,99 @@
 @media (min-width:681px){
   .calendar{position:fixed;top:auto;bottom:24px;left:calc(var(--sidebar-width,292px) + 36px);z-index:6}
 }
+
+/* Dark theme for the settings panel: its surfaces were left light, so the
+   panel rendered as a grey slab with unreadable labels. */
+:root[data-theme="dark"] .settings-header,
+:root[data-theme="dark"] .settings-footer{border-color:rgba(171,201,235,.16)}
+:root[data-theme="dark"] .settings-nav{background:rgba(255,255,255,.04);border-right-color:rgba(171,201,235,.16)}
+:root[data-theme="dark"] .nav-caption,
+:root[data-theme="dark"] .settings-nav>button small,
+:root[data-theme="dark"] .settings-version small,
+:root[data-theme="dark"] .settings-content-head p,
+:root[data-theme="dark"] .setting-row small,
+:root[data-theme="dark"] .theme-choice small,
+:root[data-theme="dark"] .card-text,
+:root[data-theme="dark"] .settings-footer>span,
+:root[data-theme="dark"] .segmented button,
+:root[data-theme="dark"] .select-row>span{color:#a9bbd2}
+:root[data-theme="dark"] .settings-nav>button{color:#cdd9e8}
+:root[data-theme="dark"] .settings-nav>button:hover{background:rgba(255,255,255,.08)}
+:root[data-theme="dark"] .settings-nav>button.active{background:rgba(59,130,246,.22);color:#a8ccff}
+:root[data-theme="dark"] .settings-nav>button.active small{color:#9dc2f4}
+:root[data-theme="dark"] .settings-nav>button em{background:rgba(59,130,246,.26);color:#a8ccff}
+:root[data-theme="dark"] .settings-card{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.16)}
+:root[data-theme="dark"] .setting-row,
+:root[data-theme="dark"] .select-row,
+:root[data-theme="dark"] .shortcut,
+:root[data-theme="dark"] .settings-version{border-color:rgba(171,201,235,.16)}
+:root[data-theme="dark"] .back-settings{background:rgba(255,255,255,.08);color:#cdd9e8}
+:root[data-theme="dark"] .theme-choice{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.16)}
+:root[data-theme="dark"] .theme-choice.selected{background:rgba(59,130,246,.18);border-color:#5b9ae8;box-shadow:0 0 0 2px rgba(59,130,246,.22)}
+:root[data-theme="dark"] .info-box{background:rgba(59,130,246,.12);border-color:rgba(91,154,232,.35)}
+:root[data-theme="dark"] .info-box kbd,
+:root[data-theme="dark"] .shortcut kbd{background:rgba(255,255,255,.08);border-color:rgba(171,201,235,.2);color:#cdd9e8}
+:root[data-theme="dark"] .outline{background:rgba(255,255,255,.06);border-color:rgba(171,201,235,.2);color:#9fc2ef}
+:root[data-theme="dark"] .select-row button{background:rgba(59,130,246,.16);color:#a8ccff}
+:root[data-theme="dark"] .segmented{background:rgba(255,255,255,.06)}
+:root[data-theme="dark"] .segmented button.active{background:rgba(59,130,246,.26);color:#bcd9ff;box-shadow:none}
+:root[data-theme="dark"] .danger-card{border-color:rgba(233,92,115,.38)}
+:root[data-theme="dark"] .danger{background:rgba(233,92,115,.18);color:#ffa8b2}
+:root[data-theme="dark"] .eyebrow{color:#8cbcf8}
+:root[data-theme="dark"] .live-label{background:rgba(49,164,123,.2);color:#7fd8b4}
+:root[data-theme="dark"] .saved-state{color:#7fd8b4}
+:root[data-theme="dark"] .range-control output{color:#8cbcf8}
+:root[data-theme="dark"] .settings-nav>button.active .setting-nav-icon{color:inherit}
+:root[data-theme="dark"] .reset,
+:root[data-theme="dark"] .settings-footer>span{color:#cdd9e8}
+:root[data-theme="dark"] .eyebrow{color:#a9cdff}
+
+/* Dark theme for the command palette, the site form and the browser import
+   panel: their text kept light-theme greys on a dark surface. */
+:root[data-theme="dark"] .command-tabs b{color:#a8ccff}
+:root[data-theme="dark"] .command-tabs span,
+:root[data-theme="dark"] .command-palette footer,
+:root[data-theme="dark"] .command-palette footer span,
+:root[data-theme="dark"] .command-item small,
+:root[data-theme="dark"] .site-form header p,
+:root[data-theme="dark"] .site-form label,
+:root[data-theme="dark"] .field-hint,
+:root[data-theme="dark"] .shortcut span,
+:root[data-theme="dark"] .browser-extension-row small,
+:root[data-theme="dark"] .browser-preview-head small,
+:root[data-theme="dark"] .browser-tab-copy small,
+:root[data-theme="dark"] .browser-model-note span,
+:root[data-theme="dark"] .browser-manual-import label{color:#a9bbd2}
+:root[data-theme="dark"] .command-item b,
+:root[data-theme="dark"] .browser-import-head b{color:#e7eef8}
+:root[data-theme="dark"] .command-item kbd{background:rgba(255,255,255,.08);border-color:rgba(171,201,235,.2);color:#cdd9e8}
+:root[data-theme="dark"] .info-box span{color:#bcd5f5}
+:root[data-theme="dark"] .browser-status{background:rgba(255,255,255,.08);color:#cdd9e8}
+:root[data-theme="dark"] .browser-status.connected{background:rgba(34,168,124,.18);color:#7fd8b4}
+:root[data-theme="dark"] .browser-status.checking{background:rgba(57,136,238,.2);color:#a8ccff}
+:root[data-theme="dark"] .browser-status.missing{background:rgba(220,72,72,.2);color:#ffa8b2}
+:root[data-theme="dark"] .browser-import-summary span{background:rgba(255,255,255,.08);color:#a9bbd2}
+:root[data-theme="dark"] .browser-extension-row input,
+:root[data-theme="dark"] .browser-manual-import textarea,
+:root[data-theme="dark"] .browser-import-metadata select,
+:root[data-theme="dark"] .browser-import-metadata input,
+:root[data-theme="dark"] .browser-project-field input{background:rgba(255,255,255,.06);border-color:rgba(171,201,235,.2);color:#e7eef8}
+:root[data-theme="dark"] .mode-grid button,
+:root[data-theme="dark"] .preset-option{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.16);color:#cdd9e8}
+:root[data-theme="dark"] .mode-grid button span{color:inherit}
+:root[data-theme="dark"] .mode-grid button.active,
+:root[data-theme="dark"] .preset-option.active{background:rgba(59,130,246,.2);border-color:#5b9ae8;color:#bcd9ff;box-shadow:0 0 0 2px rgba(59,130,246,.2)}
+:root[data-theme="dark"] .mode-grid button.active span{color:inherit}
+:root[data-theme="dark"] .command-item{color:#cdd9e8}
+:root[data-theme="dark"] .command-item.selected,
+:root[data-theme="dark"] .command-item.selected b{background:rgba(59,130,246,.22);color:#bcd9ff}
+:root[data-theme="dark"] .command-item.selected b{background:none}
+:root[data-theme="dark"] .browser-manual-import,
+:root[data-theme="dark"] .browser-extension-row{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.2)}
+:root[data-theme="dark"] .site-form>label input,
+:root[data-theme="dark"] .site-form select{background:rgba(255,255,255,.06);border-color:rgba(171,201,235,.2);color:#e7eef8}
+:root[data-theme="dark"] .site-form>label input::placeholder{color:#8ea3bf}
+:root[data-theme="dark"] .site-form>label input:focus,
+:root[data-theme="dark"] .site-form select:focus{border-color:#5b9ae8;box-shadow:0 0 0 3px rgba(59,130,246,.22)}
+:root[data-theme="dark"] .site-form header{border-color:rgba(171,201,235,.16)}
+:root[data-theme="dark"] .site-form footer{border-color:rgba(171,201,235,.16)}

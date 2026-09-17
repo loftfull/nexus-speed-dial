@@ -1,3 +1,3 @@
-mode=accept
-last-approved-candidate=49c914b
-scope=tester-pass-calendar-contrast-and-tile-actions
+mode=candidate
+last-approved-candidate=c4876cb
+scope=dark-theme-and-contrast-of-panels
