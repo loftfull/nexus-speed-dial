@@ -23,3 +23,4 @@
 .session-actions{display:flex;align-items:center;gap:5px}.session-icon-button{display:inline-flex!important;align-items:center;justify-content:center;padding:6px!important;min-width:27px}.session-icon-button.danger{color:#d65c6b}
 .metadata-status{display:flex;align-items:center;gap:5px;margin-top:-11px;margin-bottom:10px;font-size:9px;color:#8b9bb0}.metadata-status svg{animation:metadata-spin .9s linear infinite}.metadata-status.ready{color:#2d9b72}.metadata-status.ready svg{display:none}@keyframes metadata-spin{to{transform:rotate(360deg)}}
 .import-feedback{margin-top:10px;padding:9px 11px;border:1px solid #bfe8d5;background:#effbf5;color:#2d8c68;border-radius:8px;font-size:9px}
+.project{width:100%;border:0;background:transparent;text-align:left;cursor:pointer;font:inherit}
