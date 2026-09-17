@@ -4,6 +4,7 @@ import type { BrowserSession, Project, SiteRecord } from '../domain/types';
 import {
   checkBrowserExtension,
   isSupportedBrowserImportUrl,
+  normalizeBrowserTabs,
   prepareBrowserImport,
   requestBrowserTabs,
   type BrowserTab,
@@ -56,6 +57,7 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
   const [saveSession, setSaveSession] = useState(false);
   const [sessionName, setSessionName] = useState('Открытые вкладки');
   const [result, setResult] = useState('');
+  const [manualUrls, setManualUrls] = useState('');
 
   const selectedTabs = useMemo(
     () => tabs.filter(tab => selectedUrls.includes(tab.url) && isSupportedBrowserImportUrl(tab.url)),
@@ -207,6 +209,23 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
     setSelectedUrls([]);
   };
 
+  const prepareManualImport = () => {
+    const manualTabs = normalizeBrowserTabs(manualUrls.split(/\s+/).filter(Boolean).map((url, index) => ({
+      id: index,
+      windowId: 0,
+      title: hostLabel(url),
+      url,
+      favIconUrl: '',
+      active: index === 0,
+      pinned: false,
+      index,
+    })));
+    setTabs(manualTabs);
+    setSelectedUrls(manualTabs.filter(tab => isSupportedBrowserImportUrl(tab.url)).map(tab => tab.url));
+    setError(manualTabs.length ? '' : 'Введите хотя бы один корректный URL.');
+    setResult('');
+  };
+
   const statusText = connection === 'connected'
     ? 'Extension подключён'
     : connection === 'checking'
@@ -245,6 +264,12 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
           <RefreshCw size={15}/> Запросить открытые вкладки
         </button>
       </div>
+    </div>
+
+    <div className="browser-manual-import">
+      <label htmlFor="manual-browser-urls">Ручной импорт вкладок</label>
+      <textarea id="manual-browser-urls" aria-label="URL для ручного импорта" value={manualUrls} onChange={event => setManualUrls(event.target.value)} placeholder="Вставьте URL вкладок, по одному на строку" rows={3}/>
+      <button type="button" className="outline" onClick={prepareManualImport}>Подготовить URL</button>
     </div>
 
     {error && <div className="browser-import-message error" role="alert">{error}</div>}
