@@ -5,6 +5,9 @@ export const seedProjects: Project[] = [
   { id: 'project-home', name: 'Дом', color: '#3988ee', icon: 'Д', siteIds: [], createdAt: 0, updatedAt: 0 },
   { id: 'project-work', name: 'Работа', color: '#8b63e8', icon: 'Р', siteIds: [], createdAt: 0, updatedAt: 0 },
   { id: 'project-personal', name: 'Личное', color: '#2aa879', icon: 'Л', siteIds: [], createdAt: 0, updatedAt: 0 },
+  { id: 'project-study', name: 'Обучение', color: '#e0851f', icon: 'О', siteIds: [], createdAt: 0, updatedAt: 0 },
+  { id: 'project-shopping', name: 'Покупки', color: '#c9364f', icon: 'П', siteIds: [], createdAt: 0, updatedAt: 0 },
+  { id: 'project-fun', name: 'Развлечения', color: '#7a5cf0', icon: 'Р', siteIds: [], createdAt: 0, updatedAt: 0 },
 ];
 
 export const seedCategories: Category[] = [
@@ -14,6 +17,9 @@ export const seedCategories: Category[] = [
   { id: 'cat-work-dev', name: 'Разработка', projectId: 'project-work' },
   { id: 'cat-personal-finance', name: 'Финансы', projectId: 'project-personal' },
   { id: 'cat-personal-study', name: 'Обучение', projectId: 'project-personal' },
+  { id: 'cat-study-courses', name: 'Курсы', projectId: 'project-study' },
+  { id: 'cat-shopping-stores', name: 'Магазины', projectId: 'project-shopping' },
+  { id: 'cat-fun-media', name: 'Медиа', projectId: 'project-fun' },
 ];
 
 export const seedGroups: SiteGroup[] = [
@@ -45,4 +51,14 @@ export const seedSites: SiteRecord[] = [
   site('site-sber', 'СберБанк', 'Онлайн-банк', 'sberbank.ru', '#21a038', 'С', 'cat-personal-finance', 'Финансы'),
   site('site-calendar', 'Мой календарь', 'Встречи и события', 'calendar.google.com', '#4285f4', '31', 'cat-personal-study', 'Обучение'),
   site('site-stepik', 'Stepik', 'Курсы и практика', 'stepik.org', '#66c85a', 'S', 'cat-personal-study', 'Обучение'),
+  site('site-google', 'Google', 'Поиск в интернете', 'google.com', '#4285f4', 'G', 'cat-home-social', 'Соцсети'),
+  site('site-yandex', 'Яндекс', 'Поиск и сервисы', 'ya.ru', '#fc3f1d', 'Я', 'cat-home-social', 'Соцсети'),
+  site('site-whatsapp', 'WhatsApp', 'Сообщения и звонки', 'web.whatsapp.com', '#25d366', '◕', 'cat-home-social', 'Соцсети', 'grp-social-chats'),
+  site('site-trello', 'Trello', 'Задачи и доски', 'trello.com', '#0079bf', 'T', 'cat-work-tools', 'Инструменты', 'grp-tools-docs'),
+  site('site-netflix', 'Netflix', 'Фильмы и сериалы', 'netflix.com', '#e50914', 'N', 'cat-fun-media', 'Медиа'),
+  site('site-pinterest', 'Pinterest', 'Идеи и коллекции', 'pinterest.com', '#e60023', 'P', 'cat-fun-media', 'Медиа'),
+  site('site-behance', 'Behance', 'Портфолио и проекты', 'behance.net', '#1769ff', 'Be', 'cat-fun-media', 'Медиа'),
+  site('site-coursera', 'Coursera', 'Онлайн-курсы', 'coursera.org', '#0056d2', 'C', 'cat-study-courses', 'Курсы'),
+  site('site-ozon', 'Ozon', 'Заказы и доставка', 'ozon.ru', '#005bff', 'O', 'cat-shopping-stores', 'Магазины'),
+  site('site-wildberries', 'Wildberries', 'Покупки и отслеживание', 'wildberries.ru', '#cb11ab', 'W', 'cat-shopping-stores', 'Магазины'),
 ];

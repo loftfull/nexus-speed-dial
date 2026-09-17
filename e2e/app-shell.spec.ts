@@ -5,10 +5,10 @@ test.describe('Nexus shell', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Быстрый доступ' })).toBeVisible();
     // The grid is scoped to the selected project, so assert it against the
-    // counter the toolbar shows rather than a hard-coded seed size.
+    // counter the section subtitle shows rather than a hard-coded seed size.
     const shown = await page.locator('.site-card').count();
     expect(shown).toBeGreaterThan(0);
-    await expect(page.locator('.segmented-tabs button').first()).toContainText(String(shown));
+    await expect(page.locator('.workspace-head p')).toContainText(String(shown));
     await page.getByRole('button', { name: /Добавить сайт/ }).first().click();
     await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
   });
@@ -37,7 +37,7 @@ test.describe('Nexus shell', () => {
     expect(opened?.[1]).toBe('_blank');
     expect(opened?.[2]).toBe('noopener,noreferrer');
 
-    const recentTopNav = page.locator('.section-nav').getByRole('button', { name: 'Недавние' });
+    const recentTopNav = page.locator('.ref-tabs').getByRole('button', { name: 'Недавние' });
     if (await recentTopNav.isVisible()) {
       await recentTopNav.click();
     } else {

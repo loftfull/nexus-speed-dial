@@ -10,6 +10,8 @@ export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; an
 
 export type AppState = {
   sites: SiteRecord[];
+  /** Deleted sites wait here until they are restored or purged. */
+  trash: SiteRecord[];
   categories: Category[];
   groups: SiteGroup[];
   history: string[];
@@ -23,6 +25,7 @@ export type AppState = {
 
 export type AppAction =
   | { type: 'sites/set'; value: SiteRecord[] | ((current: SiteRecord[]) => SiteRecord[]) }
+  | { type: 'trash/set'; value: SiteRecord[] | ((current: SiteRecord[]) => SiteRecord[]) }
   | { type: 'categories/set'; value: Category[] | ((current: Category[]) => Category[]) }
   | { type: 'groups/set'; value: SiteGroup[] | ((current: SiteGroup[]) => SiteGroup[]) }
   | { type: 'history/set'; value: string[] | ((current: string[]) => string[]) }
@@ -57,6 +60,7 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
   const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, remotePreviews: false, projects: true, sidebarWidth: '292px', mobileMode: 'В виде меню' };
   return {
     sites: hierarchy.sites,
+    trash: readStorage<SiteRecord[]>('nexus-trash', []),
     categories: hierarchy.categories,
     groups: hierarchy.groups,
     history: readStorage('nexus-history', []),
@@ -72,6 +76,7 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'sites/set': return { ...state, sites: typeof action.value === 'function' ? action.value(state.sites) : action.value };
+    case 'trash/set': return { ...state, trash: (typeof action.value === 'function' ? action.value(state.trash) : action.value).slice(0, 100) };
     case 'categories/set': return { ...state, categories: typeof action.value === 'function' ? action.value(state.categories) : action.value };
     case 'groups/set': return { ...state, groups: typeof action.value === 'function' ? action.value(state.groups) : action.value };
     case 'history/set': return { ...state, history: typeof action.value === 'function' ? action.value(state.history) : action.value };
@@ -89,6 +94,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 export function persistAppState(state: AppState): boolean {
   return [
     writeStorage('nexus-sites', state.sites),
+    writeStorage('nexus-trash', state.trash),
     writeStorage('nexus-categories', state.categories),
     writeStorage('nexus-groups', state.groups),
     writeStorage('nexus-history', state.history),

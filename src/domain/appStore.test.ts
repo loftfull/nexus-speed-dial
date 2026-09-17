@@ -18,7 +18,7 @@ describe('app store reducer', () => {
 
   it('ships the default hierarchy when nothing is stored yet', () => {
     const fresh = createInitialAppState([]);
-    expect(fresh.projects.map(project => project.name)).toEqual(['Дом', 'Работа', 'Личное']);
+    expect(fresh.projects.map(project => project.name)).toEqual(['Дом', 'Работа', 'Личное', 'Обучение', 'Покупки', 'Развлечения']);
     expect(fresh.categories.filter(category => category.projectId === 'project-home').map(category => category.name)).toEqual(['Соцсети', 'Развлечения']);
     expect(fresh.groups.filter(group => group.categoryId === 'cat-home-social').map(group => group.name)).toEqual(['Видео', 'Чаты', 'Почта']);
   });
