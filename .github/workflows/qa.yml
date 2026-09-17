@@ -24,6 +24,8 @@ jobs:
         run: npm ci
       - name: Unit tests and build
         run: npm run qa:unit
+      - name: Reference guard
+        run: npm run qa:reference
       - name: Whitespace check
         run: git diff --check e5e17ae1fab573480b1b48ff2feb7c6f00d618bf HEAD
       - name: Install Playwright browsers
