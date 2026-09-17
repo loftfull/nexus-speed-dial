@@ -175,3 +175,12 @@
 .calendar,.card-menu-list,.fav-dock-panel{background:var(--ref-surface);backdrop-filter:none;border:1px solid var(--ref-border)}
 .calendar{box-shadow:2px 8px 22px rgba(31,58,95,.14),3px 28px 60px rgba(31,58,95,.16)}
 :root[data-theme="dark"] .calendar,:root[data-theme="dark"] .fav-dock-panel{background:#1b2436}
+
+/* Settings and the theme switch live in the sidebar on desktop and in the top
+   bar on a phone, so exactly one copy of each is in the accessibility tree. */
+@media (min-width:681px){ .top-icon.compact-only{display:none} }
+@media (max-width:680px){ .side-actions{display:none} }
+/* The clock now sits at the top of the sidebar, so its calendar opens there. */
+@media (min-width:681px){
+  .calendar{top:112px;bottom:auto;left:calc(var(--sidebar-width,296px) + 30px)}
+}
