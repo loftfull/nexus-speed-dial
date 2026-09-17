@@ -15,6 +15,7 @@ type CommandPaletteProps = {
   onOpenSession: (session: BrowserSession) => void;
   onOpenSite?: (site: SiteRecord) => void;
   onOpenHistory?: (item: string) => void;
+  onOpenHistoryItem?: (item: string) => void;
   onCategory: (categoryId: string) => void;
   onClose: () => void;
   onAddSite: () => void;
@@ -23,10 +24,11 @@ type CommandPaletteProps = {
   onNotes: () => void;
 };
 
-export function CommandPalette({ sites, categories, history, sessions, onOpenSession, onOpenSite, onOpenHistory, onCategory, onClose, onAddSite, onSettings, onFavorites, onNotes }: CommandPaletteProps) {
+export function CommandPalette({ sites, categories, history, sessions, onOpenSession, onOpenSite, onOpenHistory, onOpenHistoryItem, onCategory, onClose, onAddSite, onSettings, onFavorites, onNotes }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const dialogRef=useFocusTrap<HTMLElement>(true);
   const [selected, setSelected] = useState(0);
+  const historyOpener=onOpenHistoryItem ?? onOpenHistory;
   const actions: Action[] = [
     { id: 'add', label: 'Добавить сайт', description: 'Сохранить новую ссылку в Speed Dial', shortcut: 'Ctrl N', icon: BookmarkPlus, run: onAddSite },
     { id: 'favorites', label: 'Открыть избранное', description: 'Показать отмеченные плитки', shortcut: 'Ctrl B', icon: Library, run: onFavorites },
@@ -44,12 +46,12 @@ export function CommandPalette({ sites, categories, history, sessions, onOpenSes
     const historyResults = history.filter(item => item.toLowerCase().includes(needle) || sites.some(site => (site.id === item || site.domain === item || site.title === item) && `${site.title} ${site.domain}`.toLowerCase().includes(needle))).slice(0, 3).map(item => {
       const savedSite = sites.find(site => site.id === item || site.domain === item || site.title === item);
       return { id: `history-${item}`, label: savedSite?.title ?? item, description: `${savedSite?.domain ? `${savedSite.domain} · ` : ''}Недавно открытый ресурс`, shortcut: '', icon: ArrowRight, run: () => {
-        if (onOpenHistory) onOpenHistory(item);
+        if (historyOpener) historyOpener(item);
         else window.open(resolveHistoryTarget(item, sites).url, '_blank', 'noopener,noreferrer');
       } };
     });
     return needle ? [...siteResults, ...categoryResults, ...sessionResults, ...historyResults] : actions;
-  }, [query, sites, categories, history, sessions, onCategory, onOpenSession, onOpenSite, onOpenHistory, onAddSite, onFavorites, onNotes, onSettings]);
+  }, [query, sites, categories, history, sessions, onCategory, onOpenSession, onOpenSite, historyOpener, onAddSite, onFavorites, onNotes, onSettings]);
   useEffect(() => { setSelected(0); }, [query]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
