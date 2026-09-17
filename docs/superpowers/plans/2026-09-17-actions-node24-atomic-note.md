@@ -1,1 +1,0 @@
-This file intentionally does not change workflow behavior. The workflow update itself is performed atomically in one Git tree commit so QA and visual-candidate workflows move to the same action majors together.
