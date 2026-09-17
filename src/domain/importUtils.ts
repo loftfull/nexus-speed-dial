@@ -23,7 +23,8 @@ export function parseBookmarkHtml(text: string): SiteRecord[] {
       const title = anchor.textContent?.trim() || url.hostname;
       const folders = bookmarkFolders(anchor);
       const category = folders[0] || 'Личное';
-      const tags = Array.from(new Set(['импорт', ...folders.slice(1)]));
+      const bookmarkTags = (anchor.getAttribute('tags') || anchor.getAttribute('TAGS') || '').split(',').map(tag => tag.trim()).filter(Boolean);
+      const tags = Array.from(new Set(['импорт', ...folders.slice(1), ...bookmarkTags]));
       return {
         title,
         domain: url.hostname.replace(/^www\./, ''),
@@ -43,7 +44,7 @@ function escapeHtml(value: string) {
 export function createBookmarkHtml(sites: SiteRecord[]) {
   const grouped = new Map<string, SiteRecord[]>();
   sites.forEach(site => { const category = site.category || 'Личное'; grouped.set(category, [...(grouped.get(category) ?? []), site]); });
-  const folders = Array.from(grouped, ([category, items]) => `<DT><H3>${escapeHtml(category)}</H3><DL><p>${items.map(site => `<DT><A HREF="https://${escapeHtml(site.domain)}">${escapeHtml(site.title)}</A>`).join('')}</DL>`).join('');
+  const folders = Array.from(grouped, ([category, items]) => `<DT><H3>${escapeHtml(category)}</H3><DL><p>${items.map(site => `<DT><A HREF="https://${escapeHtml(site.domain)}" TAGS="${escapeHtml((site.tags ?? []).filter(tag => tag !== 'импорт').join(','))}">${escapeHtml(site.title)}</A>`).join('')}</DL>`).join('');
   return `<!DOCTYPE NETSCAPE-Bookmark-file-1><META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8"><TITLE>Nexus bookmarks</TITLE><H1>Nexus bookmarks</H1><DL><p>${folders}</DL>`;
 }
 

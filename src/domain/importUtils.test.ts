@@ -11,13 +11,14 @@ describe('import utilities', () => {
 
   it('exports categories as bookmark folders and restores them on import', () => {
     const html = createBookmarkHtml([
-      { title: 'Docs & notes', domain: 'docs.test', desc: '', color: '#000', icon: 'D', category: 'Работа' },
+      { title: 'Docs & notes', domain: 'docs.test', desc: '', color: '#000', icon: 'D', category: 'Работа', tags: ['важное', 'docs'] },
       { title: 'Home', domain: 'home.test', desc: '', color: '#000', icon: 'H', category: 'Личное' },
     ]);
     const sites = parseBookmarkHtml(html);
     expect(html).toContain('<H3>Работа</H3>');
+    expect(html).toContain('TAGS="важное,docs"');
     expect(sites).toEqual(expect.arrayContaining([
-      expect.objectContaining({ title: 'Docs & notes', domain: 'docs.test', category: 'Работа' }),
+      expect.objectContaining({ title: 'Docs & notes', domain: 'docs.test', category: 'Работа', tags: ['импорт', 'важное', 'docs'] }),
       expect.objectContaining({ title: 'Home', domain: 'home.test', category: 'Личное' }),
     ]));
   });
