@@ -36,6 +36,17 @@ export function parseBookmarkHtml(text: string): SiteRecord[] {
     });
 }
 
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] as string));
+}
+
+export function createBookmarkHtml(sites: SiteRecord[]) {
+  const grouped = new Map<string, SiteRecord[]>();
+  sites.forEach(site => { const category = site.category || 'Личное'; grouped.set(category, [...(grouped.get(category) ?? []), site]); });
+  const folders = Array.from(grouped, ([category, items]) => `<DT><H3>${escapeHtml(category)}</H3><DL><p>${items.map(site => `<DT><A HREF="https://${escapeHtml(site.domain)}">${escapeHtml(site.title)}</A>`).join('')}</DL>`).join('');
+  return `<!DOCTYPE NETSCAPE-Bookmark-file-1><META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8"><TITLE>Nexus bookmarks</TITLE><H1>Nexus bookmarks</H1><DL><p>${folders}</DL>`;
+}
+
 export function withoutExistingDomains(imported: SiteRecord[], existing: SiteRecord[]) {
   const existingDomains = new Set(existing.map(site => site.domain));
   return imported.filter(site => !existingDomains.has(site.domain));

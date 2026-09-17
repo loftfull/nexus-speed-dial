@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseBookmarkHtml, withoutExistingDomains } from './importUtils';
+import { createBookmarkHtml, parseBookmarkHtml, withoutExistingDomains } from './importUtils';
 
 describe('import utilities', () => {
   it('parses browser bookmark HTML and ignores unsupported URLs', () => {
@@ -7,6 +7,19 @@ describe('import utilities', () => {
     expect(sites).toHaveLength(2);
     expect(sites[0]).toMatchObject({ title: 'Example', domain: 'example.com', tags: ['импорт'] });
     expect(sites[1].icon).toBe('N');
+  });
+
+  it('exports categories as bookmark folders and restores them on import', () => {
+    const html = createBookmarkHtml([
+      { title: 'Docs & notes', domain: 'docs.test', desc: '', color: '#000', icon: 'D', category: 'Работа' },
+      { title: 'Home', domain: 'home.test', desc: '', color: '#000', icon: 'H', category: 'Личное' },
+    ]);
+    const sites = parseBookmarkHtml(html);
+    expect(html).toContain('<H3>Работа</H3>');
+    expect(sites).toEqual(expect.arrayContaining([
+      expect.objectContaining({ title: 'Docs & notes', domain: 'docs.test', category: 'Работа' }),
+      expect.objectContaining({ title: 'Home', domain: 'home.test', category: 'Личное' }),
+    ]));
   });
 
   it('preserves bookmark folders as category and tags', () => {
