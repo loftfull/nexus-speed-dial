@@ -35,7 +35,9 @@ export function getStorageUsage(storage: StorageAdapter = browserStorage, limitB
       bytes += key.length + (storage.getItem(key)?.length ?? 0);
     }
   } catch { return { bytes: 0, percent: 0, label: 'Недоступно' }; }
-  const percent = Math.min(100, Math.round((bytes / limitBytes) * 100));
+  const exact = (bytes / limitBytes) * 100;
+  // Occupied but under a per cent still has to read as used space, not as zero.
+  const percent = Math.min(100, exact > 0 && exact < 1 ? 1 : Math.round(exact));
   const kilobytes = Math.max(1, Math.round(bytes / 1024));
   return { bytes, percent, label: `${kilobytes} КБ из ${Math.round(limitBytes / 1024)} МБ` };
 }

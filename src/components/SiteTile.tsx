@@ -3,10 +3,15 @@ import { Check, ExternalLink, MoreVertical, Pencil, Star, Trash2 } from 'lucide-
 import type { SiteRecord as Site } from '../domain/types';
 import '../styles.css';
 import '../actions.css';
+import '../reference-theme.css';
 
-export function SiteTile({site,selected,onSelect,onFav,onToast,onEdit,onDelete,onOpen,onDragStart,onDragEnd,onDrop,selectionMode,selectedMany,onToggleSelect,showDescription=true,showDomain=false,showNotifications=true,allowRemotePreview=true}:{site:Site;selected:boolean;onSelect:()=>void;onFav:()=>void;onToast:(x:string)=>void;onEdit:()=>void;onDelete:()=>void;onOpen:()=>void;onDragStart:()=>void;onDragEnd:()=>void;onDrop:()=>void;selectionMode:boolean;selectedMany:boolean;onToggleSelect:()=>void;showDescription?:boolean;showDomain?:boolean;showNotifications?:boolean;allowRemotePreview?:boolean}){
+export function SiteTile({site,selected,onSelect,onFav,onToast,onEdit,onDelete,onOpen,onDragStart,onDragEnd,onDrop,selectionMode,selectedMany,onToggleSelect,showDescription=false,showDomain=false,showNotifications=true,allowRemotePreview=true,allowSiteIcons=false}:{site:Site;selected:boolean;onSelect:()=>void;onFav:()=>void;onToast:(x:string)=>void;onEdit:()=>void;onDelete:()=>void;onOpen:()=>void;onDragStart:()=>void;onDragEnd:()=>void;onDrop:()=>void;selectionMode:boolean;selectedMany:boolean;onToggleSelect:()=>void;showDescription?:boolean;showDomain?:boolean;showNotifications?:boolean;allowRemotePreview?:boolean;allowSiteIcons?:boolean}){
   const previewMode=document.documentElement.dataset.tileMode==='preview'||document.documentElement.dataset.tileMode==='screenshot';
   const [menuOpen,setMenuOpen]=useState(false);
+  // The site's own favicon, shown only when the user allows it; a failed load
+  // falls back to the monogram so the tile is never empty.
+  const [logoFailed,setLogoFailed]=useState(false);
+  const logo=!logoFailed&&allowSiteIcons&&site.domain?`https://${site.domain}/favicon.ico`:'';
   const menuRef=useRef<HTMLDivElement>(null);
   const toggleRef=useRef<HTMLButtonElement>(null);
 
@@ -25,9 +30,7 @@ export function SiteTile({site,selected,onSelect,onFav,onToast,onEdit,onDelete,o
   return <article draggable onDragStart={event=>{event.dataTransfer.setData('nexus-site',site.id||site.domain);onDragStart()}} onDragEnd={onDragEnd} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.stopPropagation();onDrop()}} className={'site-card glass '+(selected?'is-selected ':'')+(menuOpen?'menu-open':'')} role="button" tabIndex={0} aria-label={`Сайт ${site.title}`} onClick={()=>{if(selectionMode){onToggleSelect();return}onSelect();onOpen()}} onDoubleClick={()=>{if(!selectionMode)onOpen()}} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();if(selectionMode)onToggleSelect();else onOpen()}}}>
     {previewMode&&<div className="tile-preview">{(site.screenshotUrl||allowRemotePreview)&&<img src={site.screenshotUrl||('https://image.thum.io/get/width/900/crop/420/https://'+site.domain)} alt="" loading="lazy" onError={e=>{e.currentTarget.style.display='none'}}/>}<span>{site.screenshotUrl||allowRemotePreview?'PREVIEW':'Локальный preview отключён'}</span></div>}
     {selectionMode&&<button className={'card-select '+(selectedMany?'active':'')} onClick={e=>{e.stopPropagation();onToggleSelect()}} aria-label="Выбрать сайт">{selectedMany?<Check size={13}/>:null}</button>}
-    <div className="card-top">
-      <div className="site-icon" style={{background:site.color}} aria-hidden="true"><span>{site.icon}</span></div>
-      <div className="card-top-right">
+    <div className="card-corner">
         {site.favorite&&<span className="card-fav" title="В избранном"><Star size={15} fill="currentColor"/></span>}
         <div className="card-menu" ref={menuRef} onKeyDown={event=>{event.stopPropagation();if(event.key==='Escape'&&menuOpen){setMenuOpen(false);toggleRef.current?.focus()}}}>
           <button type="button" ref={toggleRef} className="card-menu-toggle" aria-haspopup="menu" aria-expanded={menuOpen} aria-label={`Действия: ${site.title}`} title="Действия" onClick={e=>{e.stopPropagation();setMenuOpen(open=>!open)}}><MoreVertical size={16}/></button>
@@ -37,9 +40,9 @@ export function SiteTile({site,selected,onSelect,onFav,onToast,onEdit,onDelete,o
             <button type="button" role="menuitem" onClick={run(onEdit)}><Pencil size={15}/>Редактировать</button>
             <button type="button" role="menuitem" className="card-menu-danger" onClick={run(()=>{if(confirm('Удалить сайт?'))onDelete()})}><Trash2 size={15}/>Удалить</button>
           </div>}
-        </div>
       </div>
     </div>
+    <div className={'site-icon '+(logo?'has-logo':'')} style={logo?undefined:{background:site.color}} aria-hidden="true">{logo?<img src={logo} alt="" loading="lazy" onError={()=>setLogoFailed(true)}/>:<span>{site.icon}</span>}</div>
     <div className="site-copy"><h3>{site.title}</h3>{showDescription&&<p>{site.desc}</p>}{showDomain&&<span>{site.domain}</span>}{site.note&&<small className="note-preview">{site.note}</small>}</div>
     {showNotifications&&site.badge&&<em className="badge">{site.badge}</em>}
   </article>;
