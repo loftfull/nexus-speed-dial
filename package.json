@@ -1,0 +1,37 @@
+{
+  "name": "nexus-speed-dial",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "qa:unit": "npm run test && npm run build",
+    "qa:e2e": "playwright test e2e/app-shell.spec.ts",
+    "test:visual": "playwright test e2e/visual.spec.ts",
+    "qa:e2e:all": "playwright test",
+    "qa:reference": "node scripts/qa-reference.mjs",
+    "qa:full": "npm run qa:unit && npm run qa:reference && npm run qa:e2e"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "6.1.1",
+    "lucide-react": "1.46.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "jsdom": "^30.0.1",
+    "vitest": "^5.0.1"
+  }
+}

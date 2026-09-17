@@ -1,0 +1,62 @@
+name: Visual baseline candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/01a0a900-nexus-speed-dial
+    paths:
+      - .github/visual-review-request
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Detect review mode
+        id: review
+        shell: bash
+        run: |
+          mode=candidate
+          if [ "${{ github.event_name }}" = "push" ] && grep -qx 'mode=accept' .github/visual-review-request; then
+            mode=accept
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build app
+        run: npm run build
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+      - name: Capture candidate baselines
+        run: npx playwright test e2e/visual.spec.ts --update-snapshots
+      - name: Upload candidate baselines
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-visual-baseline-candidate-${{ github.sha }}
+          path: e2e/visual.spec.ts-snapshots
+          if-no-files-found: error
+          retention-days: 7
+      - name: Commit explicitly reviewed baselines
+        if: steps.review.outputs.mode == 'accept'
+        shell: bash
+        run: |
+          if git diff --quiet -- e2e/visual.spec.ts-snapshots; then
+            echo 'Reviewed baselines already match; nothing to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add e2e/visual.spec.ts-snapshots
+          git commit -m 'test: accept reviewed visual baseline'
+          git push origin HEAD:${GITHUB_REF_NAME}
