@@ -92,6 +92,7 @@ test.describe('Nexus Workspace Bridge', () => {
       const visibleTab = await context.newPage();
       await requester.goto('http://127.0.0.1:4173');
       await visibleTab.goto('http://127.0.0.1:4173/?bridge-probe=1');
+      const visibleTabUrl = visibleTab.url();
 
       const response = await sendExternalMessage(requester, extensionId, {
         type: 'NEXUS_REQUEST_TABS',
@@ -100,7 +101,7 @@ test.describe('Nexus Workspace Bridge', () => {
 
       expect(response.type).toBe('NEXUS_TABS_RESPONSE');
       expect(response.requestId).toBe('e2e-tabs');
-      expect(response.tabs?.some(tab => tab.url === 'http://127.0.0.1:4173/?bridge-probe=1')).toBe(true);
+      expect(response.tabs?.some(tab => tab.url === visibleTabUrl)).toBe(true);
     } finally {
       await context.close();
     }
