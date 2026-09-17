@@ -93,6 +93,19 @@ describe('SettingsPanel', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Импорт применён: 1 сайтов, 1 проектов, 1 сессий.');
   });
 
+  it('clears an earlier backup preview when a new file is selected', async () => {
+    const user = userEvent.setup();
+    const props = { ...baseProps(), projects: [], sessions: [], setProjects: vi.fn(), setSessions: vi.fn() };
+    const { container } = render(<Settings {...props} />);
+    await user.click(screen.getByRole('button', { name: /Данные/ }));
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File([createBackup({ sites: [], projects: [{ id: 'p', name: 'Imported', siteIds: [] }], sessions: [] })], 'backup.json', { type: 'application/json' }));
+    expect(await screen.findByText(/1 проектов/)).toBeInTheDocument();
+    await user.upload(input, new File(['<DL><A HREF="https://fresh.test">Fresh</A></DL>'], 'bookmarks.html', { type: 'text/html' }));
+    expect(await screen.findByText('Fresh')).toBeInTheDocument();
+    expect(screen.queryByText(/1 проектов/)).not.toBeInTheDocument();
+  });
+
   it('exposes real browser bridge controls in the Data section', async () => {
     const user = userEvent.setup(); const props = baseProps();
     render(<Settings {...props} />);
