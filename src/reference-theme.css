@@ -42,11 +42,10 @@
 .brand-card small{font-size:12px;letter-spacing:2.8px;color:#69768c;text-transform:uppercase}
 
 .side-card{background:var(--ref-surface-soft);border:1px solid var(--ref-border);border-radius:var(--ref-radius-card);padding:14px 16px}
-.time-card{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.time-card{display:grid;grid-template-columns:1fr auto;align-items:start;gap:7px 10px}
 .time-card .clock-row{display:block;width:100%;text-align:left;padding:0;border-radius:12px}
 .time-card .clock{display:block;font-size:34px;font-weight:700;letter-spacing:-1.4px;line-height:1;color:var(--ref-text)}
-.time-card .clock-date{display:block;font-size:12px;color:var(--ref-muted);margin-top:7px}
-.time-card .clock-weekday{display:block;font-size:12px;color:var(--ref-muted);margin-top:1px}
+.time-card .clock-date{display:block;grid-column:1/-1;font-size:12px;color:var(--ref-muted)}
 .time-card .clock-row.expanded .clock{font-size:40px}
 .weather-block{display:flex;flex-direction:column;align-items:flex-end;flex:none;max-width:118px;text-align:right}
 .weather-block-icon{color:#f0a63a;line-height:0}
@@ -310,3 +309,7 @@
 :root[data-theme="dark"] .ref-dock .ref-dock-search,:root[data-theme="dark"] .ref-dock .ref-dock-search span{color:#cdd9e8}
 :root[data-theme="dark"] .ref-dock button{color:#a9bbd2}
 :root[data-theme="dark"] .ref-tab-add{color:#a9bbd2}
+
+/* Иконки разделов настроек — единый набор lucide вместо текстовых глифов. */
+.setting-nav-icon{display:inline-grid;place-items:center;width:20px;height:20px;flex:none}
+.setting-nav-icon svg{display:block}
