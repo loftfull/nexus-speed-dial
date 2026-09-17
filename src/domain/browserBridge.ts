@@ -194,6 +194,7 @@ export function prepareBrowserImport(tabs: BrowserTab[], existingSites: SiteReco
 
     const title = uniqueTitle(tab.title || domain, usedTitles);
     const created: SiteRecord = {
+      id: `site-${domain.replace(/[^a-z0-9]+/gi, '-')}-${createdByDomain.size}`,
       title,
       desc: 'Импортировано из открытых вкладок браузера',
       domain,
