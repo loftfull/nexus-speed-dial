@@ -219,15 +219,6 @@
 
 .main{padding-bottom:56px}
 
-/* Favourites strip: a compact pill in the bottom-right corner, clear of the
-   hint bar and the grid. */
-.favorites-dock{position:fixed;z-index:4;inset:auto 20px 20px auto;width:max-content;max-width:calc(100vw - 40px);transform:none}
-@media(max-width:680px){.favorites-dock{display:none}}
-
-/* Leave room for the favourites pill so it never lands on the hint text. */
-.app:has(.favorites-dock button) .hint-bar{margin-right:145px}
-@media(max-width:680px){.app:has(.favorites-dock button) .hint-bar{margin-right:0}}
-
 /* The mobile sections sheet sat on a translucent surface, so tiles showed
    through the list items. Give it an opaque card. */
 .mobile-sections-card{background:#fff;border:1px solid #e4ecf5;box-shadow:0 -6px 40px rgba(32,54,84,.18)}
@@ -242,3 +233,82 @@
   .topbar-actions{margin-left:auto}
 }
 :root[data-theme="dark"] .topbar .mobile-sections{background:rgba(255,255,255,.06);border-color:rgba(171,201,235,.16);color:#b3c3d7}
+
+/* ===================================================================
+   Sidebar: project pills + two-level category tree
+   =================================================================== */
+.space-list{display:flex;flex-direction:column;gap:8px}
+.space-pill{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border-radius:14px;font-size:13px;font-weight:600;color:#3f4e63;background:#fff;border:1px solid #e6edf6;box-shadow:0 2px 5px rgba(60,92,130,.06);transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease}
+.space-pill-icon{display:grid;place-items:center;width:20px;height:20px;flex:none;color:#7e8fa6}
+.space-pill-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.space-pill:hover{transform:translateY(-1px);border-color:#c4d9f2}
+.space-pill.active{background:#e6f0ff;border-color:#bcd8ff;color:#1857a8}
+.space-pill.active .space-pill-icon{color:#1857a8}
+:root[data-theme="dark"] .space-pill{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.14);color:#c3d1e3;box-shadow:none}
+:root[data-theme="dark"] .space-pill-icon{color:#8fa1b8}
+:root[data-theme="dark"] .space-pill:hover{border-color:rgba(171,201,235,.3)}
+:root[data-theme="dark"] .space-pill.active{background:rgba(59,130,246,.2);border-color:rgba(99,160,255,.38);color:#9fc6ff}
+:root[data-theme="dark"] .space-pill.active .space-pill-icon{color:#9fc6ff}
+
+.cat-node{display:flex;flex-direction:column}
+.cat-row{display:flex;align-items:center;gap:4px;width:100%;padding:0;border-radius:11px;color:#4e5d73;transition:background .16s ease,color .16s ease}
+.cat-row:hover{background:rgba(120,145,180,.1)}
+.cat-row.active{background:#e6f0ff;color:#1857a8}
+.cat-row.active .cat-icon,.cat-row.active .count{color:#1857a8}
+.cat-caret{display:grid;place-items:center;width:22px;height:34px;flex:none;color:#93a3b8;border-radius:8px}
+button.cat-caret:hover{background:rgba(120,145,180,.16);color:#33435b}
+.cat-main{display:flex;align-items:center;gap:10px;flex:1;min-width:0;padding:8px 10px 8px 0;color:inherit;text-align:left}
+.cat-icon{display:grid;place-items:center;width:20px;height:20px;flex:none;color:#8697ad}
+.cat-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.cat-row .count{font-size:12px;font-weight:600;color:#5f6e83}
+.cat-row-ghost{color:#5f6e83}
+.cat-row-ghost .cat-icon{color:#9aaabf}
+/* Rows without a nested .cat-main (Все / Новая категория) still need the same
+   left rhythm and a left-aligned label. */
+.cat-row>.cat-icon{margin-right:10px}
+.cat-row>.cat-label{text-align:left}
+.cat-row:not(:has(.cat-main)){padding:8px 10px 8px 0;gap:0}
+.cat-row:not(:has(.cat-main))>.cat-caret{pointer-events:none}
+
+.cat-children{display:flex;flex-direction:column;gap:2px;margin:2px 0 6px 22px;padding-left:10px;border-left:1px solid #e2eaf4}
+.cat-child{display:flex;align-items:center;gap:9px;width:100%;padding:7px 9px;border-radius:9px;color:#4e5d73;text-align:left}
+.cat-child:hover{background:rgba(120,145,180,.12)}
+.cat-child-icon{display:grid;place-items:center;width:20px;height:20px;flex:none;border-radius:6px;color:#fff;font-size:11px;font-weight:700}
+.cat-empty{padding:7px 9px;font-size:12px;color:#5f6e83}
+:root[data-theme="dark"] .cat-row{color:#b3c3d7}
+:root[data-theme="dark"] .cat-row:hover{background:rgba(255,255,255,.06)}
+:root[data-theme="dark"] .cat-row.active{background:rgba(59,130,246,.2);color:#9fc6ff}
+:root[data-theme="dark"] .cat-icon,:root[data-theme="dark"] .cat-caret{color:#8fa1b8}
+:root[data-theme="dark"] .cat-row .count,:root[data-theme="dark"] .cat-row-ghost,:root[data-theme="dark"] .cat-empty{color:#9fb0c6}
+:root[data-theme="dark"] .cat-row.active .cat-icon,:root[data-theme="dark"] .cat-row.active .count{color:#9fc6ff}
+:root[data-theme="dark"] .cat-children{border-left-color:rgba(171,201,235,.18)}
+:root[data-theme="dark"] .cat-child{color:#b3c3d7}
+:root[data-theme="dark"] .cat-child:hover{background:rgba(255,255,255,.07)}
+
+/* ===================================================================
+   Favourites dock: hidden by default, revealed by a star handle whose
+   top half peeks above the bottom edge while collapsed.
+   =================================================================== */
+.fav-dock{position:fixed;left:50%;bottom:0;z-index:6;display:flex;flex-direction:column;align-items:center;transition:transform .34s cubic-bezier(.22,1,.36,1)}
+.fav-dock.open{transform:translateX(-50%) translateY(-18px)}
+.fav-dock.closed{transform:translateX(-50%) translateY(calc(100% - 21px))}
+.fav-dock-handle{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;flex:none;color:#fff;background:linear-gradient(135deg,#2477f0,#5aa0ff);box-shadow:0 6px 16px rgba(47,124,246,.38);transition:transform .2s ease,box-shadow .2s ease}
+.fav-dock-handle:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(47,124,246,.46)}
+.fav-dock.closed .fav-dock-handle{box-shadow:0 -2px 14px rgba(47,124,246,.32)}
+.fav-dock-panel{display:flex;align-items:center;gap:8px;margin-top:-8px;padding:14px 12px 10px;border-radius:20px;max-width:calc(100vw - 40px);overflow-x:auto;scrollbar-width:none;transition:opacity .24s ease}
+.fav-dock-panel::-webkit-scrollbar{display:none}
+.fav-dock.closed .fav-dock-panel{opacity:0;pointer-events:none}
+.fav-dock-panel button{position:relative;width:40px;height:40px;border-radius:12px;padding:0;flex:none;transition:transform .26s cubic-bezier(.175,.885,.32,1.275)}
+.fav-dock-panel button:hover{transform:translateY(-6px) scale(1.16)}
+.fav-dock-panel button span{display:grid;place-items:center;width:100%;height:100%;border-radius:inherit;color:#fff;font-size:17px;font-weight:800;box-shadow:0 4px 10px rgba(45,82,117,.2)}
+.fav-dock-panel em{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) scale(.85);background:#172b49;color:#fff;border-radius:7px;padding:5px 8px;font-size:12px;font-style:normal;white-space:nowrap;opacity:0;pointer-events:none;transition:.18s}
+.fav-dock-panel button:hover em{opacity:1;transform:translateX(-50%) scale(1)}
+.fav-dock-add{display:grid;place-items:center;color:#4e5d73;border:1px dashed #b9cee8;border-radius:12px}
+.fav-dock-add:hover{color:#1857a8;border-color:#7fb0ee;background:rgba(47,124,246,.08)}
+:root[data-theme="dark"] .fav-dock-add{color:#a9bad0;border-color:rgba(171,201,235,.3)}
+@media(max-width:680px){.fav-dock-panel{max-width:calc(100vw - 24px)}}
+
+/* Reserve room under the grid for whichever state the dock is in. */
+.main{padding-bottom:40px}
+.app:has(.fav-dock.closed) .main{padding-bottom:44px}
+.app:has(.fav-dock.open) .main{padding-bottom:110px}
