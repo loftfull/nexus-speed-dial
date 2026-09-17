@@ -6,7 +6,23 @@ import type { BrowserSession, SiteRecord } from '../domain/types';
 
 type Action = { id: string; label: string; description: string; shortcut: string; icon: typeof Search; run: () => void };
 
-export function CommandPalette({ sites, categories, history, sessions, onOpenSession, onCategory, onClose, onAddSite, onSettings, onFavorites, onNotes }: { sites: SiteRecord[]; categories: { id: string; name: string }[]; history: string[]; sessions: BrowserSession[]; onOpenSession: (session: BrowserSession) => void; onCategory: (categoryId: string) => void; onClose: () => void; onAddSite: () => void; onSettings: () => void; onFavorites: () => void; onNotes: () => void }) {
+type CommandPaletteProps = {
+  sites: SiteRecord[];
+  categories: { id: string; name: string }[];
+  history: string[];
+  sessions: BrowserSession[];
+  onOpenSession: (session: BrowserSession) => void;
+  onOpenSite: (site: SiteRecord) => void;
+  onOpenHistory: (item: string) => void;
+  onCategory: (categoryId: string) => void;
+  onClose: () => void;
+  onAddSite: () => void;
+  onSettings: () => void;
+  onFavorites: () => void;
+  onNotes: () => void;
+};
+
+export function CommandPalette({ sites, categories, history, sessions, onOpenSession, onOpenSite, onOpenHistory, onCategory, onClose, onAddSite, onSettings, onFavorites, onNotes }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const dialogRef=useFocusTrap<HTMLElement>(true);
   const [selected, setSelected] = useState(0);
@@ -18,16 +34,15 @@ export function CommandPalette({ sites, categories, history, sessions, onOpenSes
   ];
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const siteResults = sites.filter(site => `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle)).slice(0, 6).map(site => ({ id: `site-${site.id||site.domain}`, label: site.title, description: `${site.domain} · Плитка сайта`, shortcut: '', icon: Library, run: () => window.open(`https://${site.domain}`, '_blank', 'noopener,noreferrer') }));
+    const siteResults = sites.filter(site => `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle)).slice(0, 6).map(site => ({ id: `site-${site.id||site.domain}`, label: site.title, description: `${site.domain} · Плитка сайта`, shortcut: '', icon: Library, run: () => onOpenSite(site) }));
     const categoryResults = categories.filter(category => category.name.toLowerCase().includes(needle)).slice(0, 3).map(category => ({ id: `category-${category.id}`, label: category.name, description: 'Категория в рабочем пространстве', shortcut: '', icon: FolderOpen, run: () => onCategory(category.id) }));
     const sessionResults = sessions.filter(session => session.name.toLowerCase().includes(needle)).slice(0, 3).map(session => ({ id: `session-${session.id}`, label: session.name, description: `${countSites(session.siteIds.length)} · рабочая сессия`, shortcut: '', icon: FolderOpen, run: () => { onOpenSession(session); } }));
     const historyResults = history.filter(item => item.toLowerCase().includes(needle)).slice(0, 3).map(item => {
-      const savedSite = sites.find(site => site.domain === item || site.title === item);
-      const target = savedSite ? `https://${savedSite.domain}` : /^https?:\/\//.test(item) ? item : `https://${item}`;
-      return { id: `history-${item}`, label: item, description: `${savedSite?.domain ? `${savedSite.domain} · ` : ''}Недавно открытый ресурс`, shortcut: '', icon: ArrowRight, run: () => window.open(target, '_blank', 'noopener,noreferrer') };
+      const savedSite = sites.find(site => site.id === item || site.domain === item || site.title === item);
+      return { id: `history-${item}`, label: savedSite?.title ?? item, description: `${savedSite?.domain ? `${savedSite.domain} · ` : ''}Недавно открытый ресурс`, shortcut: '', icon: ArrowRight, run: () => onOpenHistory(item) };
     });
     return needle ? [...siteResults, ...categoryResults, ...sessionResults, ...historyResults] : actions;
-  }, [query, sites, categories, history, sessions, onCategory, onOpenSession, onAddSite, onFavorites, onNotes, onSettings]);
+  }, [query, sites, categories, history, sessions, onCategory, onOpenSession, onOpenSite, onOpenHistory, onAddSite, onFavorites, onNotes, onSettings]);
   useEffect(() => { setSelected(0); }, [query]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
