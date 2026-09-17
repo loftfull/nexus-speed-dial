@@ -1,3 +1,2 @@
-mode=accept
-last-approved-candidate=91f0f0e
-scope=reference-look-light-cards-and-big-icons
+mode=candidate
+scope=reference-working-copy-omnibox-tabs-widgets-dock-trash
