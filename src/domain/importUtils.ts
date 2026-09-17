@@ -11,7 +11,8 @@ function bookmarkFolders(anchor: HTMLAnchorElement): string[] {
     if (heading) folders.unshift(heading);
     list = list.parentElement?.closest('dl') ?? null;
   }
-  return folders;
+  const structuralRoots = new Set(['bookmarks bar', 'other bookmarks', 'mobile bookmarks', 'favorites bar']);
+  return folders.filter(folder => !structuralRoots.has(folder.toLowerCase()));
 }
 
 export function parseBookmarkHtml(text: string): SiteRecord[] {
