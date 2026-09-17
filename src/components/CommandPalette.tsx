@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { sites as countSites } from '../domain/plural';
+import { resolveHistoryTarget, resolveSiteUrl } from '../domain/siteOpen';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ArrowRight, BookmarkPlus, FolderOpen, Keyboard, Library, Search, Settings, StickyNote, X } from 'lucide-react';
 import type { BrowserSession, SiteRecord } from '../domain/types';
@@ -12,8 +13,8 @@ type CommandPaletteProps = {
   history: string[];
   sessions: BrowserSession[];
   onOpenSession: (session: BrowserSession) => void;
-  onOpenSite: (site: SiteRecord) => void;
-  onOpenHistory: (item: string) => void;
+  onOpenSite?: (site: SiteRecord) => void;
+  onOpenHistory?: (item: string) => void;
   onCategory: (categoryId: string) => void;
   onClose: () => void;
   onAddSite: () => void;
@@ -34,12 +35,18 @@ export function CommandPalette({ sites, categories, history, sessions, onOpenSes
   ];
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const siteResults = sites.filter(site => `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle)).slice(0, 6).map(site => ({ id: `site-${site.id||site.domain}`, label: site.title, description: `${site.domain} · Плитка сайта`, shortcut: '', icon: Library, run: () => onOpenSite(site) }));
+    const siteResults = sites.filter(site => `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle)).slice(0, 6).map(site => ({ id: `site-${site.id||site.domain}`, label: site.title, description: `${site.domain} · Плитка сайта`, shortcut: '', icon: Library, run: () => {
+      if (onOpenSite) onOpenSite(site);
+      else window.open(resolveSiteUrl(site), '_blank', 'noopener,noreferrer');
+    } }));
     const categoryResults = categories.filter(category => category.name.toLowerCase().includes(needle)).slice(0, 3).map(category => ({ id: `category-${category.id}`, label: category.name, description: 'Категория в рабочем пространстве', shortcut: '', icon: FolderOpen, run: () => onCategory(category.id) }));
     const sessionResults = sessions.filter(session => session.name.toLowerCase().includes(needle)).slice(0, 3).map(session => ({ id: `session-${session.id}`, label: session.name, description: `${countSites(session.siteIds.length)} · рабочая сессия`, shortcut: '', icon: FolderOpen, run: () => { onOpenSession(session); } }));
-    const historyResults = history.filter(item => item.toLowerCase().includes(needle)).slice(0, 3).map(item => {
+    const historyResults = history.filter(item => item.toLowerCase().includes(needle) || sites.some(site => (site.id === item || site.domain === item || site.title === item) && `${site.title} ${site.domain}`.toLowerCase().includes(needle))).slice(0, 3).map(item => {
       const savedSite = sites.find(site => site.id === item || site.domain === item || site.title === item);
-      return { id: `history-${item}`, label: savedSite?.title ?? item, description: `${savedSite?.domain ? `${savedSite.domain} · ` : ''}Недавно открытый ресурс`, shortcut: '', icon: ArrowRight, run: () => onOpenHistory(item) };
+      return { id: `history-${item}`, label: savedSite?.title ?? item, description: `${savedSite?.domain ? `${savedSite.domain} · ` : ''}Недавно открытый ресурс`, shortcut: '', icon: ArrowRight, run: () => {
+        if (onOpenHistory) onOpenHistory(item);
+        else window.open(resolveHistoryTarget(item, sites).url, '_blank', 'noopener,noreferrer');
+      } };
     });
     return needle ? [...siteResults, ...categoryResults, ...sessionResults, ...historyResults] : actions;
   }, [query, sites, categories, history, sessions, onCategory, onOpenSession, onOpenSite, onOpenHistory, onAddSite, onFavorites, onNotes, onSettings]);
