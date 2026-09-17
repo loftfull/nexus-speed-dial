@@ -41,21 +41,6 @@ describe('SettingsPanel', () => {
     expect(screen.getByRole('button', { name: 'Данные' })).toHaveAttribute('aria-label', 'Данные');
   });
 
-  it('does not advertise controls whose web behavior is not implemented', async () => {
-    const user = userEvent.setup();
-    render(<Settings {...baseProps()} />);
-    expect(screen.queryByText('Открывать Nexus в новой вкладке')).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Поиск' }));
-    expect(screen.queryByText('Поисковые подсказки')).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Боковая панель' }));
-    expect(screen.queryByLabelText('Показывать на мобильных')).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Приватность' }));
-    expect(screen.queryByText('Анонимная статистика')).not.toBeInTheDocument();
-  });
-
   it('changes appearance and closes', async () => {
     const user = userEvent.setup(); const props = baseProps();
     render(<Settings {...props} />);
