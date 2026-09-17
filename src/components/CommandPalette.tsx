@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { sites as countSites } from '../domain/plural';
 import { resolveHistoryTarget, resolveSiteUrl } from '../domain/siteOpen';
+import { buildWebSearchUrl, normalizeSearchEngine } from '../domain/webSearch';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ArrowRight, BookmarkPlus, FolderOpen, Keyboard, Library, Search, Settings, StickyNote, X } from 'lucide-react';
 import type { BrowserSession, SiteRecord } from '../domain/types';
@@ -12,6 +13,7 @@ type CommandPaletteProps = {
   categories: { id: string; name: string }[];
   history: string[];
   sessions: BrowserSession[];
+  searchEngine?: unknown;
   onOpenSession: (session: BrowserSession) => void;
   onOpenSite?: (site: SiteRecord) => void;
   onOpenHistory?: (item: string) => void;
@@ -24,7 +26,7 @@ type CommandPaletteProps = {
   onNotes: () => void;
 };
 
-export function CommandPalette({ sites, categories, history, sessions, onOpenSession, onOpenSite, onOpenHistory, onOpenHistoryItem, onCategory, onClose, onAddSite, onSettings, onFavorites, onNotes }: CommandPaletteProps) {
+export function CommandPalette({ sites, categories, history, sessions, searchEngine, onOpenSession, onOpenSite, onOpenHistory, onOpenHistoryItem, onCategory, onClose, onAddSite, onSettings, onFavorites, onNotes }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const dialogRef=useFocusTrap<HTMLElement>(true);
   const [selected, setSelected] = useState(0);
@@ -36,7 +38,8 @@ export function CommandPalette({ sites, categories, history, sessions, onOpenSes
     { id: 'settings', label: 'Открыть настройки', description: 'Настроить плитки и рабочее пространство', shortcut: 'Ctrl ,', icon: Settings, run: onSettings },
   ];
   const results = useMemo(() => {
-    const needle = query.trim().toLowerCase();
+    const trimmedQuery = query.trim();
+    const needle = trimmedQuery.toLowerCase();
     const siteResults = sites.filter(site => `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle)).slice(0, 6).map(site => ({ id: `site-${site.id||site.domain}`, label: site.title, description: `${site.domain} · Плитка сайта`, shortcut: '', icon: Library, run: () => {
       if (onOpenSite) onOpenSite(site);
       else window.open(resolveSiteUrl(site), '_blank', 'noopener,noreferrer');
@@ -50,8 +53,18 @@ export function CommandPalette({ sites, categories, history, sessions, onOpenSes
         else window.open(resolveHistoryTarget(item, sites).url, '_blank', 'noopener,noreferrer');
       } };
     });
-    return needle ? [...siteResults, ...categoryResults, ...sessionResults, ...historyResults] : actions;
-  }, [query, sites, categories, history, sessions, onCategory, onOpenSession, onOpenSite, historyOpener, onAddSite, onFavorites, onNotes, onSettings]);
+    if (!needle) return actions;
+    const provider = normalizeSearchEngine(searchEngine);
+    const webSearchResult = {
+      id: 'web-search',
+      label: `Искать в ${provider}`,
+      description: `Веб-поиск: ${trimmedQuery}`,
+      shortcut: '',
+      icon: Search,
+      run: () => window.open(buildWebSearchUrl(provider, trimmedQuery), '_blank', 'noopener,noreferrer'),
+    };
+    return [...siteResults, ...categoryResults, ...sessionResults, ...historyResults, webSearchResult];
+  }, [query, sites, categories, history, sessions, searchEngine, onCategory, onOpenSession, onOpenSite, historyOpener, onAddSite, onFavorites, onNotes, onSettings]);
   useEffect(() => { setSelected(0); }, [query]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
