@@ -26,11 +26,14 @@ describe('BrowserImportPanel manual fallback', () => {
     expect(screen.getByText(/2 уникальных вкладок/)).toBeInTheDocument();
     expect(screen.getByText(/2 выбрано/)).toBeInTheDocument();
 
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Категория новых сайтов' }), 'Работа');
+    await user.clear(screen.getByRole('textbox', { name: 'Тег новых сайтов' }));
+    await user.type(screen.getByRole('textbox', { name: 'Тег новых сайтов' }), 'исследование');
     await user.click(screen.getByRole('button', { name: 'Импортировать выбранные вкладки' }));
 
     expect(setSites).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({ domain: 'example.com' }),
-      expect.objectContaining({ domain: 'openai.com' }),
+      expect.objectContaining({ domain: 'example.com', category: 'Работа', tags: ['browser-import', 'исследование'] }),
+      expect.objectContaining({ domain: 'openai.com', category: 'Работа', tags: ['browser-import', 'исследование'] }),
     ]));
   });
 });

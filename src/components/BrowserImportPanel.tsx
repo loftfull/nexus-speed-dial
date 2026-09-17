@@ -58,6 +58,8 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
   const [sessionName, setSessionName] = useState('Открытые вкладки');
   const [result, setResult] = useState('');
   const [manualUrls, setManualUrls] = useState('');
+  const [importCategory, setImportCategory] = useState('');
+  const [importTag, setImportTag] = useState('browser-import');
 
   const selectedTabs = useMemo(
     () => tabs.filter(tab => selectedUrls.includes(tab.url) && isSupportedBrowserImportUrl(tab.url)),
@@ -167,7 +169,12 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
       }
     }
 
-    if (plan.newSites.length) setSites([...plan.newSites, ...sites]);
+    const preparedSites = plan.newSites.map(site => ({
+      ...site,
+      category: importCategory || site.category,
+      tags: Array.from(new Set([...(site.tags ?? []), importTag.trim()].filter(Boolean))),
+    }));
+    if (preparedSites.length) setSites([...preparedSites, ...sites]);
 
     let projectLabel = '';
     let sessionProjectId: string | undefined;
@@ -311,6 +318,24 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
         <div className="browser-model-note">
           <b>Speed Dial + Library</b>
           <span>В текущей модели оба раздела используют общий SiteRecord. Новые домены появятся в общем наборе сайтов; отдельный Library-only тип относится к следующему этапу.</span>
+        </div>
+
+        <div className="browser-import-metadata">
+          <label>
+            <span>Категория новых сайтов</span>
+            <select aria-label="Категория новых сайтов" value={importCategory} onChange={event => setImportCategory(event.target.value)}>
+              <option value="">Сохранить категорию по умолчанию</option>
+              <option>Работа</option>
+              <option>Проект</option>
+              <option>Личное</option>
+              <option>Развлечения</option>
+              <option>Вдохновение</option>
+            </select>
+          </label>
+          <label>
+            <span>Тег новых сайтов</span>
+            <input aria-label="Тег новых сайтов" value={importTag} onChange={event => setImportTag(event.target.value)} placeholder="browser-import"/>
+          </label>
         </div>
 
         <label className="browser-option">
