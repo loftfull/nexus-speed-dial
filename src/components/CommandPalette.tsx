@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ArrowRight, BookmarkPlus, FolderOpen, Keyboard, Library, Search, Settings, StickyNote, X } from 'lucide-react';
 import type { BrowserSession, SiteRecord } from '../domain/types';
 
@@ -6,6 +7,7 @@ type Action = { id: string; label: string; description: string; shortcut: string
 
 export function CommandPalette({ sites, categories, history, sessions, onOpenSession, onCategory, onClose, onAddSite, onSettings, onFavorites, onNotes }: { sites: SiteRecord[]; categories: string[]; history: string[]; sessions: BrowserSession[]; onOpenSession: (session: BrowserSession) => void; onCategory: (category: string) => void; onClose: () => void; onAddSite: () => void; onSettings: () => void; onFavorites: () => void; onNotes: () => void }) {
   const [query, setQuery] = useState('');
+  const dialogRef=useFocusTrap<HTMLElement>(true);
   const [selected, setSelected] = useState(0);
   const actions: Action[] = [
     { id: 'add', label: 'Добавить сайт', description: 'Сохранить новую ссылку в Speed Dial', shortcut: 'Ctrl N', icon: BookmarkPlus, run: onAddSite },
@@ -35,5 +37,5 @@ export function CommandPalette({ sites, categories, history, sessions, onOpenSes
     };
     window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
   }, [results, selected, onClose]);
-  return <div className="command-overlay" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}><section className="command-palette glass" role="dialog" aria-label="Центр команд"><header><Search size={19}/><input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Что вы хотите сделать?"/><kbd>Esc</kbd><button aria-label="Закрыть центр команд" onClick={onClose}><X size={17}/></button></header>{!query&&<div className="command-tabs"><b>Быстрые действия</b><span>Сайты · Категории · История</span></div>}<div className="command-results">{results.length ? results.map((item,index)=>{const Icon=item.icon;return <button className={'command-item '+(index===selected?'selected':'')} key={item.id} onMouseEnter={()=>setSelected(index)} onClick={()=>{item.run();onClose()}}><span className="command-icon"><Icon size={17}/></span><span><b>{item.label}</b><small>{item.description}</small></span>{item.shortcut&&<kbd>{item.shortcut}</kbd>}<ArrowRight size={15}/></button>}) : <div className="command-empty"><Search size={22}/><b>Ничего не найдено</b><span>Попробуйте название сайта, домен или категорию</span></div>}</div><footer><Keyboard size={14}/> ↑ ↓ навигация <span>Enter открыть</span><span>Esc закрыть</span></footer></section></div>;
+  return <div className="command-overlay" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}><section ref={dialogRef} className="command-palette glass" role="dialog" aria-label="Центр команд"><header><Search size={19}/><input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Что вы хотите сделать?"/><kbd>Esc</kbd><button aria-label="Закрыть центр команд" onClick={onClose}><X size={17}/></button></header>{!query&&<div className="command-tabs"><b>Быстрые действия</b><span>Сайты · Категории · История</span></div>}<div className="command-results">{results.length ? results.map((item,index)=>{const Icon=item.icon;return <button className={'command-item '+(index===selected?'selected':'')} key={item.id} onMouseEnter={()=>setSelected(index)} onClick={()=>{item.run();onClose()}}><span className="command-icon"><Icon size={17}/></span><span><b>{item.label}</b><small>{item.description}</small></span>{item.shortcut&&<kbd>{item.shortcut}</kbd>}<ArrowRight size={15}/></button>}) : <div className="command-empty"><Search size={22}/><b>Ничего не найдено</b><span>Попробуйте название сайта, домен или категорию</span></div>}</div><footer><Keyboard size={14}/> ↑ ↓ навигация <span>Enter открыть</span><span>Esc закрыть</span></footer></section></div>;
 }
