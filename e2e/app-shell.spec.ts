@@ -70,7 +70,7 @@ test.describe('Nexus shell', () => {
   test('search engine setting drives the command-center web search action', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Настройки' }).click();
-    await page.getByRole('button', { name: 'Поиск' }).click();
+    await page.getByRole('button', { name: 'Поиск', exact: true }).click();
     await page.getByLabel('Поисковая система').selectOption('Яндекс');
     await page.getByRole('button', { name: 'Сохранить изменения' }).click();
 
