@@ -7,6 +7,7 @@ describe('tile style bridge', () => {
     applyTileStyle({ mode: 'preview', preset: 'aurora', density: 18, radius: 22 }, root);
     expect(root.dataset.tileMode).toBe('preview');
     expect(root.dataset.tilePreset).toBe('aurora');
+    expect(root.dataset.tileSize).toBe('M');
     expect(root.style.getPropertyValue('--tile-gap')).toBe('18px');
     expect(root.style.getPropertyValue('--tile-radius')).toBe('22px');
   });
