@@ -22,6 +22,39 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Diagnose Settings parser regression
+        shell: python
+        run: |
+          import subprocess
+          from pathlib import Path
+
+          path = 'src/components/SettingsPanel.tsx'
+          base = subprocess.check_output([
+              'git', 'show',
+              '8b616743c7e6439165cb4b778c7f9a0b4f6083b8:' + path,
+          ], text=True)
+          current = Path(path).read_text()
+          base_lines = base.splitlines()
+          current_lines = current.splitlines()
+          print('base lines:', len(base_lines), 'current lines:', len(current_lines))
+          for line_no, (old, new) in enumerate(zip(base_lines, current_lines), 1):
+              if old == new:
+                  continue
+              if line_no == 50:
+                  prefix = 0
+                  limit = min(len(old), len(new))
+                  while prefix < limit and old[prefix] == new[prefix]:
+                      prefix += 1
+                  suffix = 0
+                  while suffix < limit - prefix and old[-1 - suffix] == new[-1 - suffix]:
+                      suffix += 1
+                  lo = max(0, prefix - 120)
+                  old_hi = min(len(old), prefix + 120)
+                  new_hi = min(len(new), prefix + 120)
+                  print('DATA line first diff column:', prefix + 1)
+                  print('OLD:', repr(old[lo:old_hi]))
+                  print('NEW:', repr(new[lo:new_hi]))
+                  print('old length:', len(old), 'new length:', len(new), 'common suffix:', suffix)
       - name: Unit tests and build
         run: npm run qa:unit
       - name: Reference guard
