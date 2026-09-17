@@ -9,6 +9,7 @@ const defaultProps = () => ({
   categories: [] as { id: string; name: string }[],
   history: [] as string[],
   sessions: [] as BrowserSession[],
+  searchEngine: 'Google',
   onOpenSession: vi.fn(),
   onOpenSite: vi.fn(),
   onOpenHistory: vi.fn(),
@@ -119,6 +120,19 @@ describe('CommandPalette', () => {
     await user.click(screen.getByRole('button', { name: /http:\/\/example.com\/archive/ }));
 
     expect(props.onOpenHistory).toHaveBeenCalledWith('http://example.com/archive');
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it('offers the configured provider as a real web-search action', async () => {
+    const user = userEvent.setup();
+    const props = { ...defaultProps(), searchEngine: 'Яндекс' };
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<CommandPalette {...props} />);
+
+    await user.type(screen.getByPlaceholderText('Что вы хотите сделать?'), 'Nexus Speed Dial');
+    await user.click(screen.getByRole('button', { name: /Искать в Яндекс/ }));
+
+    expect(open).toHaveBeenCalledWith('https://yandex.com/search/?text=Nexus%20Speed%20Dial', '_blank', 'noopener,noreferrer');
     expect(props.onClose).toHaveBeenCalled();
   });
 
