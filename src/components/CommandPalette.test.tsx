@@ -9,7 +9,10 @@ const defaultProps = () => ({
   categories: [] as { id: string; name: string }[],
   history: [] as string[],
   sessions: [] as BrowserSession[],
+  searchEngine: 'Google',
   onOpenSession: vi.fn(),
+  onOpenSite: vi.fn(),
+  onOpenHistory: vi.fn(),
   onCategory: vi.fn(),
   onClose: vi.fn(),
   onAddSite: vi.fn(),
@@ -19,6 +22,7 @@ const defaultProps = () => ({
 });
 
 const githubSite: SiteRecord = {
+  id: 'site-github',
   title: 'GitHub',
   desc: 'Код',
   domain: 'github.com',
@@ -53,19 +57,19 @@ describe('CommandPalette', () => {
     render(<CommandPalette {...props} />);
 
     await user.type(screen.getByPlaceholderText('Что вы хотите сделать?'), 'Работа');
-    await user.click(screen.getByRole('button', { name: /Работа/ }));
+    await user.click(screen.getByRole('button', { name: /Работа.*Категория в рабочем пространстве/ }));
 
     expect(props.onCategory).toHaveBeenCalledWith('cat-work');
     expect(props.onClose).toHaveBeenCalled();
   });
 
-  it('opens a saved session from search results', async () => {
+  it('opens a saved session from search results through the application callback', async () => {
     const user = userEvent.setup();
     const props = defaultProps();
     const session: BrowserSession = {
       id: 'session-1',
       name: 'Утренний обзор',
-      siteIds: ['GitHub'],
+      siteIds: ['site-github'],
       createdAt: 1,
     };
     props.sessions = [session];
@@ -78,39 +82,36 @@ describe('CommandPalette', () => {
     expect(props.onClose).toHaveBeenCalled();
   });
 
-  it('opens a matching site in a new protected tab', async () => {
+  it('routes a matching saved site through the application open callback', async () => {
     const user = userEvent.setup();
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     const props = defaultProps();
     props.sites = [githubSite];
     render(<CommandPalette {...props} />);
 
     await user.type(screen.getByPlaceholderText('Что вы хотите сделать?'), 'GitHub');
-    await user.click(screen.getByRole('button', { name: /GitHub/ }));
+    await user.click(screen.getByRole('button', { name: /GitHub.*github\.com · Плитка сайта/ }));
 
-    expect(open).toHaveBeenCalledWith('https://github.com', '_blank', 'noopener,noreferrer');
+    expect(props.onOpenSite).toHaveBeenCalledWith(githubSite);
     expect(props.onClose).toHaveBeenCalled();
   });
 
-  it('resolves current history titles back to their saved site domain', async () => {
+  it('routes saved-site history through the history application callback', async () => {
     const user = userEvent.setup();
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     const props = defaultProps();
     props.sites = [githubSite];
-    props.history = ['GitHub'];
+    props.history = ['site-github'];
     render(<CommandPalette {...props} />);
 
     await user.type(screen.getByPlaceholderText('Что вы хотите сделать?'), 'GitHub');
     const historyResult = screen.getByRole('button', { name: /Недавно открытый ресурс/ });
     await user.click(historyResult);
 
-    expect(open).toHaveBeenCalledWith('https://github.com', '_blank', 'noopener,noreferrer');
+    expect(props.onOpenHistory).toHaveBeenCalledWith('site-github');
     expect(props.onClose).toHaveBeenCalled();
   });
 
-  it('keeps legacy history URLs without corrupting their protocol', async () => {
+  it('routes legacy history URLs unchanged through the application callback', async () => {
     const user = userEvent.setup();
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     const props = defaultProps();
     props.history = ['http://example.com/archive'];
     render(<CommandPalette {...props} />);
@@ -118,7 +119,20 @@ describe('CommandPalette', () => {
     await user.type(screen.getByPlaceholderText('Что вы хотите сделать?'), 'example');
     await user.click(screen.getByRole('button', { name: /http:\/\/example.com\/archive/ }));
 
-    expect(open).toHaveBeenCalledWith('http://example.com/archive', '_blank', 'noopener,noreferrer');
+    expect(props.onOpenHistory).toHaveBeenCalledWith('http://example.com/archive');
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it('offers the configured provider as a real web-search action', async () => {
+    const user = userEvent.setup();
+    const props = { ...defaultProps(), searchEngine: 'Яндекс' };
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<CommandPalette {...props} />);
+
+    await user.type(screen.getByPlaceholderText('Что вы хотите сделать?'), 'Nexus Speed Dial');
+    await user.click(screen.getByRole('button', { name: /Искать в Яндекс/ }));
+
+    expect(open).toHaveBeenCalledWith('https://yandex.com/search/?text=Nexus%20Speed%20Dial', '_blank', 'noopener,noreferrer');
     expect(props.onClose).toHaveBeenCalled();
   });
 

@@ -46,11 +46,19 @@ export function reorderSites(sites: SiteRecord[], dragged: string, target: strin
   return next;
 }
 
+function createSiteId(): string {
+  const random = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `site-${random}`;
+}
+
 export function createSite(input: Partial<SiteRecord>): SiteRecord {
   const title = (input.title ?? '').trim();
   const domain = normalizeDomain(input.domain ?? '');
   if (!title || !domain) throw new Error('Название и адрес сайта обязательны');
   return {
+    id: input.id || createSiteId(),
     title,
     domain,
     desc: input.desc?.trim() || 'Сохранённый сайт',

@@ -40,6 +40,14 @@ describe('site utilities', () => {
     expect(() => createSite({ title: '', domain: 'linear.app' })).toThrow();
   });
 
+  it('assigns a unique identity immediately when a site is created', () => {
+    const first = createSite({ title: 'GitHub Docs', domain: 'github.com/docs' });
+    const second = createSite({ title: 'GitHub Issues', domain: 'github.com/issues' });
+    expect(first.id).toMatch(/^site-/);
+    expect(second.id).toMatch(/^site-/);
+    expect(first.id).not.toBe(second.id);
+  });
+
   it('reorders by id so two bookmarks on one domain stay independent', () => {
     const withDuplicate = [...sites, { id: 's-yt-subs', title: 'Подписки', desc: '', domain: 'youtube.com', color: '#f00', icon: 'A', category: 'Соцсети' }];
     const reordered = reorderSites(withDuplicate, 's-yt-subs', 's-figma');

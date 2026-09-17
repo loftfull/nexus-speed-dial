@@ -1,15 +1,36 @@
 import { useEffect, useMemo, useState } from 'react';
 import { sites as countSites } from '../domain/plural';
+import { resolveHistoryTarget, resolveSiteUrl } from '../domain/siteOpen';
+import { buildWebSearchUrl, normalizeSearchEngine } from '../domain/webSearch';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ArrowRight, BookmarkPlus, FolderOpen, Keyboard, Library, Search, Settings, StickyNote, X } from 'lucide-react';
 import type { BrowserSession, SiteRecord } from '../domain/types';
 
 type Action = { id: string; label: string; description: string; shortcut: string; icon: typeof Search; run: () => void };
 
-export function CommandPalette({ sites, categories, history, sessions, onOpenSession, onCategory, onClose, onAddSite, onSettings, onFavorites, onNotes }: { sites: SiteRecord[]; categories: { id: string; name: string }[]; history: string[]; sessions: BrowserSession[]; onOpenSession: (session: BrowserSession) => void; onCategory: (categoryId: string) => void; onClose: () => void; onAddSite: () => void; onSettings: () => void; onFavorites: () => void; onNotes: () => void }) {
+type CommandPaletteProps = {
+  sites: SiteRecord[];
+  categories: { id: string; name: string }[];
+  history: string[];
+  sessions: BrowserSession[];
+  searchEngine?: unknown;
+  onOpenSession: (session: BrowserSession) => void;
+  onOpenSite?: (site: SiteRecord) => void;
+  onOpenHistory?: (item: string) => void;
+  onOpenHistoryItem?: (item: string) => void;
+  onCategory: (categoryId: string) => void;
+  onClose: () => void;
+  onAddSite: () => void;
+  onSettings: () => void;
+  onFavorites: () => void;
+  onNotes: () => void;
+};
+
+export function CommandPalette({ sites, categories, history, sessions, searchEngine, onOpenSession, onOpenSite, onOpenHistory, onOpenHistoryItem, onCategory, onClose, onAddSite, onSettings, onFavorites, onNotes }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const dialogRef=useFocusTrap<HTMLElement>(true);
   const [selected, setSelected] = useState(0);
+  const historyOpener=onOpenHistoryItem ?? onOpenHistory;
   const actions: Action[] = [
     { id: 'add', label: 'Добавить сайт', description: 'Сохранить новую ссылку в Speed Dial', shortcut: 'Ctrl N', icon: BookmarkPlus, run: onAddSite },
     { id: 'favorites', label: 'Открыть избранное', description: 'Показать отмеченные плитки', shortcut: 'Ctrl B', icon: Library, run: onFavorites },
@@ -17,17 +38,33 @@ export function CommandPalette({ sites, categories, history, sessions, onOpenSes
     { id: 'settings', label: 'Открыть настройки', description: 'Настроить плитки и рабочее пространство', shortcut: 'Ctrl ,', icon: Settings, run: onSettings },
   ];
   const results = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const siteResults = sites.filter(site => `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle)).slice(0, 6).map(site => ({ id: `site-${site.id||site.domain}`, label: site.title, description: `${site.domain} · Плитка сайта`, shortcut: '', icon: Library, run: () => window.open(`https://${site.domain}`, '_blank', 'noopener,noreferrer') }));
+    const trimmedQuery = query.trim();
+    const needle = trimmedQuery.toLowerCase();
+    const siteResults = sites.filter(site => `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle)).slice(0, 6).map(site => ({ id: `site-${site.id||site.domain}`, label: site.title, description: `${site.domain} · Плитка сайта`, shortcut: '', icon: Library, run: () => {
+      if (onOpenSite) onOpenSite(site);
+      else window.open(resolveSiteUrl(site), '_blank', 'noopener,noreferrer');
+    } }));
     const categoryResults = categories.filter(category => category.name.toLowerCase().includes(needle)).slice(0, 3).map(category => ({ id: `category-${category.id}`, label: category.name, description: 'Категория в рабочем пространстве', shortcut: '', icon: FolderOpen, run: () => onCategory(category.id) }));
     const sessionResults = sessions.filter(session => session.name.toLowerCase().includes(needle)).slice(0, 3).map(session => ({ id: `session-${session.id}`, label: session.name, description: `${countSites(session.siteIds.length)} · рабочая сессия`, shortcut: '', icon: FolderOpen, run: () => { onOpenSession(session); } }));
-    const historyResults = history.filter(item => item.toLowerCase().includes(needle)).slice(0, 3).map(item => {
-      const savedSite = sites.find(site => site.domain === item || site.title === item);
-      const target = savedSite ? `https://${savedSite.domain}` : /^https?:\/\//.test(item) ? item : `https://${item}`;
-      return { id: `history-${item}`, label: item, description: `${savedSite?.domain ? `${savedSite.domain} · ` : ''}Недавно открытый ресурс`, shortcut: '', icon: ArrowRight, run: () => window.open(target, '_blank', 'noopener,noreferrer') };
+    const historyResults = history.filter(item => item.toLowerCase().includes(needle) || sites.some(site => (site.id === item || site.domain === item || site.title === item) && `${site.title} ${site.domain}`.toLowerCase().includes(needle))).slice(0, 3).map(item => {
+      const savedSite = sites.find(site => site.id === item || site.domain === item || site.title === item);
+      return { id: `history-${item}`, label: savedSite?.title ?? item, description: `${savedSite?.domain ? `${savedSite.domain} · ` : ''}Недавно открытый ресурс`, shortcut: '', icon: ArrowRight, run: () => {
+        if (historyOpener) historyOpener(item);
+        else window.open(resolveHistoryTarget(item, sites).url, '_blank', 'noopener,noreferrer');
+      } };
     });
-    return needle ? [...siteResults, ...categoryResults, ...sessionResults, ...historyResults] : actions;
-  }, [query, sites, categories, history, sessions, onCategory, onOpenSession, onAddSite, onFavorites, onNotes, onSettings]);
+    if (!needle) return actions;
+    const provider = normalizeSearchEngine(searchEngine);
+    const webSearchResult = {
+      id: 'web-search',
+      label: `Искать в ${provider}`,
+      description: `Веб-поиск: ${trimmedQuery}`,
+      shortcut: '',
+      icon: Search,
+      run: () => window.open(buildWebSearchUrl(provider, trimmedQuery), '_blank', 'noopener,noreferrer'),
+    };
+    return [...siteResults, ...categoryResults, ...sessionResults, ...historyResults, webSearchResult];
+  }, [query, sites, categories, history, sessions, searchEngine, onCategory, onOpenSession, onOpenSite, historyOpener, onAddSite, onFavorites, onNotes, onSettings]);
   useEffect(() => { setSelected(0); }, [query]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

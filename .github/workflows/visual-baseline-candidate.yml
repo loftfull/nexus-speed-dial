@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Detect review mode
         id: review
         shell: bash
@@ -28,7 +28,7 @@ jobs:
           fi
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -41,7 +41,7 @@ jobs:
       - name: Capture candidate baselines
         run: npx playwright test e2e/visual.spec.ts --update-snapshots
       - name: Upload candidate baselines
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nexus-visual-baseline-candidate-${{ github.sha }}
           path: e2e/visual.spec.ts-snapshots
