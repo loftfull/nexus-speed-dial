@@ -17,6 +17,13 @@ describe('SiteTile', () => {
     expect(callbacks.onSelect).not.toHaveBeenCalled();
   });
 
+  it('uses the persisted screenshot URL in screenshot mode', () => {
+    document.documentElement.dataset.tileMode = 'screenshot';
+    const { container } = render(<SiteTile {...props()} site={{ ...site, screenshotUrl: 'https://cdn.example/screenshot.png' }} />);
+    expect(container.querySelector('.tile-preview img')).toHaveAttribute('src', 'https://cdn.example/screenshot.png');
+    delete document.documentElement.dataset.tileMode;
+  });
+
   it('toggles multi-selection when selection mode is enabled', async () => {
     const user = userEvent.setup(); const callbacks = { ...props(), selectionMode: true };
     render(<SiteTile {...callbacks} />);
