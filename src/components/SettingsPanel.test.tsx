@@ -22,6 +22,17 @@ describe('SettingsPanel', () => {
     expect(props.setTile).toHaveBeenCalledWith(expect.objectContaining({ preset: 'neumorphic' }));
   });
 
+  it('resets the active section instead of unrelated settings', async () => {
+    const user = userEvent.setup(); const props = baseProps();
+    render(<Settings {...props} />);
+    await user.click(screen.getByRole('button', { name: /Плитки сайтов/ }));
+    const uiCallsBeforeReset = props.setUi.mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Сбросить раздел' }));
+    expect(props.setDensity).toHaveBeenCalledWith(20);
+    expect(props.setTile).toHaveBeenCalledWith(expect.objectContaining({ mode: 'standard', preset: 'glass' }));
+    expect(props.setUi.mock.calls).toHaveLength(uiCallsBeforeReset);
+  });
+
   it('keeps collapsed settings navigation accessible by section name', () => {
     const props = baseProps();
     render(<Settings {...props} />);
