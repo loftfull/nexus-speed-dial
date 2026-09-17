@@ -362,3 +362,9 @@
   .topbar .mini-avatar{display:none}
   .add-button.compact{padding:9px}
 }
+
+/* The sidebar clips its overflow, so the calendar popover, which hangs off the
+   clock card at the very bottom of it, has to be anchored to the viewport. */
+@media (min-width:681px){
+  .calendar{position:fixed;top:auto;bottom:24px;left:calc(var(--sidebar-width,292px) + 36px);z-index:6}
+}

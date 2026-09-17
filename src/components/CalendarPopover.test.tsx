@@ -26,4 +26,17 @@ describe('CalendarPopover', () => {
     await user.click(screen.getByRole('button', { name: 'Закрыть календарь' }));
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it('не закрывается от нажатия на кнопку, которая его открыла', async () => {
+    const user = userEvent.setup(); const onClose = vi.fn();
+    const button = document.createElement('button');
+    document.body.append(button);
+    const trigger = { current: button };
+    render(<CalendarPopover onClose={onClose} trigger={trigger} />);
+    await user.click(button);
+    expect(onClose).not.toHaveBeenCalled();
+    await user.click(document.body);
+    expect(onClose).toHaveBeenCalledOnce();
+    button.remove();
+  });
 });
