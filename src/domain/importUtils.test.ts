@@ -9,6 +9,11 @@ describe('import utilities', () => {
     expect(sites[1].icon).toBe('N');
   });
 
+  it('preserves bookmark folders as category and tags', () => {
+    const sites = parseBookmarkHtml('<DL><p><DT><H3>Работа</H3><DL><p><DT><H3>Research</H3><DL><p><DT><A HREF="https://nested.test">Nested</A></DL></DL></DL>');
+    expect(sites[0]).toMatchObject({ category: 'Работа', tags: ['импорт', 'Research'] });
+  });
+
   it('removes imported domains already present locally', () => {
     const imported = [{ title: 'A', domain: 'a.test' }, { title: 'B', domain: 'b.test' }] as any[];
     const fresh = withoutExistingDomains(imported, [{ title: 'Existing', domain: 'a.test' }] as any[]);
