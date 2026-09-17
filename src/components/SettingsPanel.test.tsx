@@ -116,4 +116,20 @@ describe('SettingsPanel', () => {
     expect(screen.getByText('Подключение не проверено')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Запросить открытые вкладки/ })).toBeInTheDocument();
   });
+
+  it('does not advertise settings that have no product behavior', async () => {
+    const user = userEvent.setup(); const props = baseProps();
+    render(<Settings {...props} />);
+
+    expect(screen.queryByText('Открывать Nexus в новой вкладке')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Поиск' }));
+    expect(screen.queryByText('Поисковые подсказки')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Боковая панель' }));
+    expect(screen.queryByRole('option', { name: 'Постоянно' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Приватность' }));
+    expect(screen.queryByText('Анонимная статистика')).not.toBeInTheDocument();
+  });
 });

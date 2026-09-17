@@ -5,7 +5,7 @@ test.describe('Nexus shell', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Быстрый доступ' })).toBeVisible();
     // The grid is scoped to the selected project, so assert it against the
-    // counter the section subtitle shows rather than a hard-coded seed size.
+    // current workspace summary rather than a hard-coded seed size.
     const shown = await page.locator('.site-card').count();
     expect(shown).toBeGreaterThan(0);
     await expect(page.locator('.workspace-head p')).toContainText(String(shown));

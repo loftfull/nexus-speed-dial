@@ -60,8 +60,6 @@ async function sendExternalMessage(page: import('@playwright/test').Page, extens
 }
 
 test.describe('Nexus Workspace Bridge', () => {
-  test.skip(({ }, testInfo) => testInfo.project.name !== 'desktop', 'Chromium extension E2E runs once on desktop.');
-
   test.beforeAll(async () => {
     extensionDir = await prepareExtension();
   });
@@ -70,7 +68,8 @@ test.describe('Nexus Workspace Bridge', () => {
     if (extensionDir) await rm(extensionDir, { recursive: true, force: true });
   });
 
-  test('allowed Nexus origin can ping the real MV3 service worker', async () => {
+  test('allowed Nexus origin can ping the real MV3 service worker', async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Chromium extension E2E runs once on desktop.');
     const { context, extensionId } = await launchExtensionContext();
     try {
       const page = await context.newPage();
@@ -85,13 +84,15 @@ test.describe('Nexus Workspace Bridge', () => {
     }
   });
 
-  test('allowed Nexus origin can request real open HTTP tabs', async () => {
+  test('allowed Nexus origin can request real open HTTP tabs', async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Chromium extension E2E runs once on desktop.');
     const { context, extensionId } = await launchExtensionContext();
     try {
       const requester = await context.newPage();
       const visibleTab = await context.newPage();
       await requester.goto('http://127.0.0.1:4173');
       await visibleTab.goto('http://127.0.0.1:4173/?bridge-probe=1');
+      const visibleTabUrl = visibleTab.url();
 
       const response = await sendExternalMessage(requester, extensionId, {
         type: 'NEXUS_REQUEST_TABS',
@@ -100,7 +101,7 @@ test.describe('Nexus Workspace Bridge', () => {
 
       expect(response.type).toBe('NEXUS_TABS_RESPONSE');
       expect(response.requestId).toBe('e2e-tabs');
-      expect(response.tabs?.some(tab => tab.url === 'http://127.0.0.1:4173/?bridge-probe=1')).toBe(true);
+      expect(response.tabs?.some(tab => tab.url === visibleTabUrl)).toBe(true);
     } finally {
       await context.close();
     }
