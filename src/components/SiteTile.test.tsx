@@ -7,6 +7,12 @@ const site = { title: 'Figma', desc: 'Design', domain: 'figma.com', color: '#f00
 const props = () => ({ site, selected: false, onSelect: vi.fn(), onFav: vi.fn(), onToast: vi.fn(), onEdit: vi.fn(), onDelete: vi.fn(), onOpen: vi.fn(), onDragStart: vi.fn(), onDragEnd: vi.fn(), onDrop: vi.fn(), selectionMode: false, selectedMany: false, onToggleSelect: vi.fn() });
 
 describe('SiteTile', () => {
+  it('uses a local icon fallback without requesting a remote favicon', () => {
+    const { container } = render(<SiteTile {...props()} />);
+    expect(container.querySelector('.site-icon img')).not.toBeInTheDocument();
+    expect(container.querySelector('.site-icon span')).toHaveTextContent('F');
+  });
+
   it('supports favorite and edit actions without selecting the card', async () => {
     const user = userEvent.setup(); const callbacks = props();
     render(<SiteTile {...callbacks} />);
