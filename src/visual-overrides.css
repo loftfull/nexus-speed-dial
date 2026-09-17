@@ -45,7 +45,7 @@
 :root[data-theme="dark"] .site-copy p,:root[data-theme="dark"] .workspace-head p,:root[data-theme="dark"] .site-copy span{color:#a9bad0}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 [data-tile-mode="preview"] .site-card:before,[data-tile-mode="screenshot"] .site-card:before{display:none}.tile-preview{position:absolute;left:0;right:0;top:0;height:112px;border-radius:inherit inherit 0 0;overflow:hidden;background:linear-gradient(135deg,#eaf3fc,#f7fbff);display:grid;place-items:center;color:#5f6e83;font-size:13px;letter-spacing:1px}.tile-preview img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;opacity:.92}.tile-preview span{position:relative;z-index:1;background:#ffffffbb;border-radius:5px;padding:4px 6px}
-:root{--app-font:Manrope}.site-card,.site-card *{font-family:var(--app-font),Manrope,sans-serif}.site-card{border-radius:var(--tile-radius-value,18px)}.site-icon{width:var(--tile-icon-size,40px);height:var(--tile-icon-size,40px)}[data-tile-hover="none"] .site-card:hover{transform:none}[data-tile-hover="float"] .site-card:hover{transform:translateY(-6px) scale(1.015)}[data-tile-shadow="none"] .site-card{box-shadow:none}
+:root{--app-font:Manrope}.site-card,.site-card *{font-family:var(--app-font),Manrope,sans-serif}.site-card{border-radius:var(--tile-radius-value,18px)}.site-icon{width:var(--tile-icon-size,40px);height:var(--tile-icon-size,40px)}[data-tile-hover="none"] .site-card:hover{transform:none}[data-tile-hover="float"] .site-card:hover{transform:translateY(-5px) scale(1.008)}[data-tile-shadow="none"] .site-card{box-shadow:none}
 [data-tile-mode="screenshot"] .tile-preview{height:auto;aspect-ratio:16/7;min-height:112px;max-height:170px}
 [data-tile-mode="screenshot"] .site-card{padding-top:calc(clamp(112px, 14vw, 170px) + 16px);min-height:calc(clamp(112px, 14vw, 170px) + 110px)}
 :root[data-tile-size="S"] .site-grid:not(.list-view) .site-card{min-height:140px}
@@ -469,7 +469,7 @@
    the sidebar footer, which is hidden below 680px, so they get their own card. */
 .mobile-timecard{display:none}
 @media (max-width:680px){
-  .mobile-timecard{display:flex;align-items:center;gap:12px;width:100%;margin:6px 0 2px;padding:11px 14px;border-radius:17px;text-align:left}
+  .mobile-timecard{display:flex;align-items:center;gap:12px;width:100%;margin:6px 0 2px;padding:11px 14px;border-radius:16px;text-align:left}
   .mobile-timecard-main{display:flex;flex-direction:column;min-width:0;margin-right:auto}
   .mobile-timecard-main b{font-size:21px;font-weight:700;letter-spacing:-.6px;line-height:1.15;color:#14213a}
   .mobile-timecard-main small{font-size:12px;color:#55637a;margin-top:2px;white-space:nowrap}
@@ -534,16 +534,19 @@
    a tighter directional one for the contact, and a top rim that reads as a lit
    edge. Tile presets keep control of their own shadow and hover transform. */
 :root{
-  --lift-1:0 1px 2px rgba(31,58,95,.05),0 5px 12px rgba(31,58,95,.07);
-  --lift-2:0 2px 6px rgba(31,58,95,.06),0 14px 30px rgba(31,58,95,.10);
-  --lift-3:0 6px 14px rgba(31,58,95,.10),0 26px 54px rgba(31,58,95,.16);
+  /* Light comes from the upper left, so every shadow carries the same small
+     positive x-offset; higher elevation spreads wider, it does not go darker. */
+  --lift-1:1px 1px 2px rgba(31,58,95,.05),1px 5px 14px rgba(31,58,95,.07);
+  --lift-2:1px 2px 6px rgba(31,58,95,.06),2px 14px 34px rgba(31,58,95,.09);
+  --lift-3:2px 6px 14px rgba(31,58,95,.08),3px 26px 58px rgba(31,58,95,.13);
   --lift-rim:inset 0 1px 0 rgba(255,255,255,.7);
 }
 :root[data-theme="dark"]{
-  --lift-1:0 1px 2px rgba(0,0,0,.3),0 5px 14px rgba(0,0,0,.3);
-  --lift-2:0 3px 10px rgba(0,0,0,.34),0 16px 34px rgba(0,0,0,.4);
-  --lift-3:0 8px 20px rgba(0,0,0,.42),0 30px 60px rgba(0,0,0,.5);
-  --lift-rim:inset 0 1px 0 rgba(255,255,255,.06);
+  /* Dark theme separates layers with edge light and spread, not black weight. */
+  --lift-1:1px 1px 2px rgba(3,8,18,.26),1px 5px 16px rgba(3,8,18,.26);
+  --lift-2:1px 2px 8px rgba(3,8,18,.28),2px 16px 38px rgba(3,8,18,.32);
+  --lift-3:2px 6px 16px rgba(3,8,18,.3),3px 30px 66px rgba(3,8,18,.36);
+  --lift-rim:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 0 1px rgba(171,201,235,.05);
 }
 .sidebar,.settings-page,.command-palette,.site-form,.fav-dock-panel,.calendar,.mobile-timecard{box-shadow:var(--lift-2),var(--lift-rim)}
 .settings-page,.command-palette,.site-form{box-shadow:var(--lift-3),var(--lift-rim)}
@@ -563,9 +566,15 @@
 .mobile-timecard:active{transform:scale(.995)}
 /* The default glass tiles carry the depth of the preset system, so their
    elevation is tuned here — without taking the «без тени» setting away. */
-:root[data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card{box-shadow:0 2px 6px rgba(31,58,95,.07),0 18px 40px rgba(72,104,143,.15),inset 0 1px 0 #fff}
+:root[data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card{box-shadow:1px 2px 6px rgba(31,58,95,.06),2px 16px 40px rgba(72,104,143,.13),inset 0 1px 0 #fff}
 :root[data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card:hover,
-:root[data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card.menu-open{box-shadow:0 8px 16px rgba(31,58,95,.12),0 30px 62px rgba(72,104,143,.22),inset 0 1px 0 #fff}
-:root[data-theme="dark"][data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card{box-shadow:0 2px 8px rgba(0,0,0,.34),0 20px 44px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.06)}
+:root[data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card.menu-open{box-shadow:2px 6px 14px rgba(31,58,95,.1),3px 28px 64px rgba(72,104,143,.2),inset 0 1px 0 #fff}
+:root[data-theme="dark"][data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card{box-shadow:1px 2px 8px rgba(3,8,18,.28),2px 18px 44px rgba(3,8,18,.32),inset 0 1px 0 rgba(255,255,255,.07)}
 :root[data-theme="dark"][data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card:hover,
-:root[data-theme="dark"][data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card.menu-open{box-shadow:0 10px 22px rgba(0,0,0,.42),0 34px 66px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+:root[data-theme="dark"][data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card.menu-open{box-shadow:2px 8px 20px rgba(3,8,18,.3),3px 32px 70px rgba(3,8,18,.38),inset 0 1px 0 rgba(255,255,255,.09)}
+/* The premium canvas carries light fields, not a visible dot grid: the pattern
+   stays only as a faint texture that makes floating surfaces read. */
+.app:before{opacity:.1}
+:root[data-theme="dark"] .app:before{opacity:.16}
+.app:after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(60% 45% at 18% 8%,rgba(255,255,255,.55),transparent 70%),radial-gradient(50% 40% at 88% 4%,rgba(214,232,255,.4),transparent 72%)}
+:root[data-theme="dark"] .app:after{background:radial-gradient(60% 45% at 18% 8%,rgba(96,140,200,.16),transparent 70%),radial-gradient(52% 40% at 88% 4%,rgba(64,104,160,.14),transparent 72%)}
