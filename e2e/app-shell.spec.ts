@@ -32,12 +32,18 @@ test.describe('Nexus shell', () => {
     expect(title).toBeTruthy();
 
     await firstTile.click();
-    await expect.poll(() => page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen)).not.toBeNull();
+    await expect.poll(() => page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen)).toBeTruthy();
     const opened = await page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen);
     expect(opened?.[1]).toBe('_blank');
     expect(opened?.[2]).toBe('noopener,noreferrer');
 
-    await page.locator('.section-nav').getByRole('button', { name: 'Недавние' }).click();
+    const recentTopNav = page.locator('.section-nav').getByRole('button', { name: 'Недавние' });
+    if (await recentTopNav.isVisible()) {
+      await recentTopNav.click();
+    } else {
+      await page.getByRole('button', { name: 'Разделы' }).click();
+      await page.locator('.mobile-sections-card').getByRole('button', { name: 'Недавние', exact: true }).click();
+    }
     await expect(page.locator('.history-item').filter({ hasText: title! })).toBeVisible();
   });
 
