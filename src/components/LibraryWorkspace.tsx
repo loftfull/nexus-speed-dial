@@ -2,15 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Check, ExternalLink, Filter, FolderOpen, Search, Star, Tag, X } from 'lucide-react';
 import type { Project, SiteRecord } from '../domain/types';
 
-export function LibraryWorkspace({ sites, onOpen, onToggleFavorite, onChange, projects, onChangeProjects }: { sites: SiteRecord[]; onOpen: (site: SiteRecord) => void; onToggleFavorite: (title: string) => void; onChange: (sites: SiteRecord[] | ((current: SiteRecord[]) => SiteRecord[])) => void; initialTag?: string; projects: Project[]; onChangeProjects: (projects: Project[] | ((current: Project[]) => Project[])) => void }) {
+export function LibraryWorkspace({ sites, onOpen, onToggleFavorite, onChange, initialTag, projects, onChangeProjects }: { sites: SiteRecord[]; onOpen: (site: SiteRecord) => void; onToggleFavorite: (title: string) => void; onChange: (sites: SiteRecord[] | ((current: SiteRecord[]) => SiteRecord[])) => void; initialTag?: string; projects: Project[]; onChangeProjects: (projects: Project[] | ((current: Project[]) => Project[])) => void }) {
   const [query, setQuery] = useState('');
-  const [tag, setTag] = useState('Все');
+  const [tag, setTag] = useState(initialTag || 'Все');
+  useEffect(() => { if (initialTag) setTag(initialTag); }, [initialTag]);
   const [type, setType] = useState<'Все' | 'С заметками' | 'Избранное'>('Все');
   const [selected, setSelected] = useState<string[]>([]); const [bulkTag, setBulkTag] = useState(''); const [bulkProject, setBulkProject] = useState('');
   const tags = ['Все', ...Array.from(new Set(sites.flatMap(site => site.tags ?? []))).sort()];
   const items = useMemo(() => sites.filter(site => {
     const needle = query.toLowerCase().trim();
-    const matchesQuery = !needle || `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle);
+    const matchesQuery = !needle || `${site.title} ${site.domain} ${site.desc} ${site.note ?? ''} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle);
     const matchesTag = tag === 'Все' || site.tags?.includes(tag);
     const matchesType = type === 'Все' || (type === 'С заметками' ? Boolean(site.note) : Boolean(site.favorite));
     return matchesQuery && matchesTag && matchesType;
