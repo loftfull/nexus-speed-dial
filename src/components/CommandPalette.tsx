@@ -17,7 +17,7 @@ export function CommandPalette({ sites, categories, history, sessions, onOpenSes
   ];
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const siteResults = sites.filter(site => `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle)).slice(0, 6).map(site => ({ id: `site-${site.title}`, label: site.title, description: `${site.domain} · Плитка сайта`, shortcut: '', icon: Library, run: () => window.open(`https://${site.domain}`, '_blank', 'noopener,noreferrer') }));
+    const siteResults = sites.filter(site => `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle)).slice(0, 6).map(site => ({ id: `site-${site.id||site.domain}`, label: site.title, description: `${site.domain} · Плитка сайта`, shortcut: '', icon: Library, run: () => window.open(`https://${site.domain}`, '_blank', 'noopener,noreferrer') }));
     const categoryResults = categories.filter(category => category.toLowerCase().includes(needle)).slice(0, 3).map(category => ({ id: `category-${category}`, label: category, description: 'Категория в рабочем пространстве', shortcut: '', icon: FolderOpen, run: () => onCategory(category) }));
     const sessionResults = sessions.filter(session => session.name.toLowerCase().includes(needle)).slice(0, 3).map(session => ({ id: `session-${session.id}`, label: session.name, description: `${session.siteIds.length} сайтов · рабочая сессия`, shortcut: '', icon: FolderOpen, run: () => { onOpenSession(session); } }));
     const historyResults = history.filter(item => item.toLowerCase().includes(needle)).slice(0, 3).map(item => {
