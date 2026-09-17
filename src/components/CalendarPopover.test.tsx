@@ -13,6 +13,13 @@ describe('CalendarPopover', () => {
     expect(screen.getByRole('dialog').querySelector('b')?.textContent).not.toBe(month);
   });
 
+  it('closes when clicking outside the popover', async () => {
+    const user = userEvent.setup(); const onClose = vi.fn();
+    render(<CalendarPopover onClose={onClose} />);
+    await user.click(document.body);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it('calls close from the close button', async () => {
     const user = userEvent.setup(); const onClose = vi.fn();
     render(<CalendarPopover onClose={onClose} />);
