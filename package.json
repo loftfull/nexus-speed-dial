@@ -14,7 +14,7 @@
     "test:visual": "playwright test e2e/visual.spec.ts",
     "qa:e2e:all": "playwright test",
     "qa:reference": "node scripts/qa-reference.mjs",
-    "qa:full": "npm run qa:unit && npm run qa:reference && npm run qa:e2e"
+    "qa:full": "npm run qa:unit && npm run qa:reference && npm run qa:e2e && npm run test:visual"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.1.1",
