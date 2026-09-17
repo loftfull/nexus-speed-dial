@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { LibraryWorkspace } from './LibraryWorkspace';
@@ -61,7 +61,9 @@ describe('LibraryWorkspace', () => {
     const updater = onChangeProjects.mock.calls[0][0] as (current: Project[]) => Project[];
     expect(updater(projects)[0].siteIds).toEqual(['docs']);
 
-    await user.click(screen.getByLabelText('Добавить в избранное', { selector: 'button' }).first());
+    const docsCard = screen.getByText('GitHub Docs').closest('article');
+    expect(docsCard).not.toBeNull();
+    await user.click(within(docsCard!).getByLabelText('Добавить в избранное'));
     expect(onToggleFavorite).toHaveBeenCalledWith('docs');
   });
 });
