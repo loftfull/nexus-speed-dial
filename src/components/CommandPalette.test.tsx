@@ -57,7 +57,7 @@ describe('CommandPalette', () => {
     render(<CommandPalette {...props} />);
 
     await user.type(screen.getByPlaceholderText('Что вы хотите сделать?'), 'Работа');
-    await user.click(screen.getByRole('button', { name: /Работа/ }));
+    await user.click(screen.getByRole('button', { name: /Работа.*Категория в рабочем пространстве/ }));
 
     expect(props.onCategory).toHaveBeenCalledWith('cat-work');
     expect(props.onClose).toHaveBeenCalled();
@@ -89,7 +89,7 @@ describe('CommandPalette', () => {
     render(<CommandPalette {...props} />);
 
     await user.type(screen.getByPlaceholderText('Что вы хотите сделать?'), 'GitHub');
-    await user.click(screen.getByRole('button', { name: /GitHub/ }));
+    await user.click(screen.getByRole('button', { name: /GitHub.*github\.com · Плитка сайта/ }));
 
     expect(props.onOpenSite).toHaveBeenCalledWith(githubSite);
     expect(props.onClose).toHaveBeenCalled();
