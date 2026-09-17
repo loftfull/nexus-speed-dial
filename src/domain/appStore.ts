@@ -62,7 +62,7 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
     history: readStorage('nexus-history', []),
     density: readStorage('nexus-density', 20),
     ui: { ...defaultUi, ...(storedUi ?? {}), sidebarWidth: normalizeSidebarWidth(storedUi?.sidebarWidth) },
-    tile: readStorage('nexus-tile', { mode: 'standard' as TileMode, preset: 'glass' as VisualPreset, radius: 20, iconSize: 40, hover: 'lift', shadow: 'soft', font: 'Manrope', size: 'M', showDescription: true, showDomain: true, showNotifications: true }),
+    tile: readStorage('nexus-tile', { mode: 'standard' as TileMode, preset: 'glass' as VisualPreset, radius: 20, iconSize: 40, hover: 'lift', shadow: 'soft', font: 'Manrope', size: 'M', showDescription: true, showDomain: false, showNotifications: true }),
     appearance: readStorage('nexus-appearance', { theme: 'light', accent: '#2f7cf6', wallpaper: 'aurora' }),
     sessions: storedSessions,
     projects: storedProjects,

@@ -13,14 +13,48 @@ describe('SiteTile', () => {
     expect(container.querySelector('.site-icon span')).toHaveTextContent('F');
   });
 
-  it('supports favorite and edit actions without selecting the card', async () => {
+  it('прячет действия в меню и не выбирает карточку при работе с ним', async () => {
     const user = userEvent.setup(); const callbacks = props();
     render(<SiteTile {...callbacks} />);
-    await user.click(screen.getByRole('button', { name: 'Добавить в избранное' }));
-    await user.click(screen.getByRole('button', { name: /^Редактировать/ }));
+    // До открытия меню на плитке нет ни одной кнопки действия.
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+    const toggle = screen.getByRole('button', { name: 'Действия: Figma' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(toggle);
+    await user.click(screen.getByRole('menuitem', { name: /Добавить в избранное/ }));
     expect(callbacks.onFav).toHaveBeenCalledOnce();
+    // Меню закрывается после выбора пункта.
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'Действия: Figma' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Редактировать' }));
     expect(callbacks.onEdit).toHaveBeenCalledOnce();
     expect(callbacks.onSelect).not.toHaveBeenCalled();
+    expect(callbacks.onOpen).not.toHaveBeenCalled();
+  });
+
+  it('закрывает меню по Escape и по клику мимо', async () => {
+    const user = userEvent.setup(); const callbacks = props();
+    render(<SiteTile {...callbacks} />);
+    await user.click(screen.getByRole('button', { name: 'Действия: Figma' }));
+    expect(screen.getAllByRole('menuitem')).toHaveLength(4);
+    await user.keyboard('{Escape}');
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'Действия: Figma' }));
+    await user.click(document.body);
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+    expect(callbacks.onOpen).not.toHaveBeenCalled();
+  });
+
+  it('показывает отметку избранного и не дублирует адрес сайта', () => {
+    const { container, rerender } = render(<SiteTile {...props()} />);
+    expect(container.querySelector('.card-fav')).not.toBeInTheDocument();
+    expect(container.querySelector('.site-copy span')).not.toBeInTheDocument();
+    rerender(<SiteTile {...props()} site={{ ...site, favorite: true }} showDomain />);
+    expect(container.querySelector('.card-fav')).toBeInTheDocument();
+    expect(container.querySelector('.site-copy span')).toHaveTextContent('figma.com');
   });
 
   it('opens the site from keyboard focus', async () => {

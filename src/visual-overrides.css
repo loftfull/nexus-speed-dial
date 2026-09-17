@@ -492,3 +492,80 @@
   .calendar{top:146px;bottom:auto;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:380px}
 }
 :root[data-theme="dark"] .cal-note{border-top-color:rgba(171,201,235,.18)}
+
+/* While the calendar is open it already shows the weekday and the date, so the
+   clock takes over the freed line. */
+.clock-row .clock{transition:font-size .2s ease}
+.clock-row.expanded .clock{font-size:33px;letter-spacing:-1.2px;line-height:1.05}
+.clock-row.expanded{padding:2px 0}
+@media (max-width:680px){
+  .mobile-timecard-main b{transition:font-size .2s ease}
+  .mobile-timecard[aria-expanded="true"] .mobile-timecard-main b{font-size:30px;letter-spacing:-1.1px}
+}
+
+/* Mobile keeps the tile display controls to two rows: filters, then tools. */
+.tool-select-label{font-size:13px;color:inherit;white-space:nowrap}
+.tool-pick span{font-size:13px}
+@media (max-width:680px){
+  .toolbar{gap:8px}
+  .segmented-tabs{width:100%;overflow-x:auto;scrollbar-width:none}
+  .segmented-tabs::-webkit-scrollbar{display:none}
+  .tools{width:100%;flex-wrap:nowrap;gap:6px;justify-content:flex-start;padding-bottom:0}
+  .tools button:not(.on){display:grid}
+  .tool-select-label{display:none}
+  .tool-select{flex:1 1 auto;min-width:0;padding:0 7px;gap:4px}
+  .tool-select svg{display:none}
+  .tool-select select{min-width:0;width:100%;text-overflow:ellipsis}
+  .tool-pick span{display:none}
+  .tool-pick{width:34px;height:34px;flex:none;display:grid;place-items:center;padding:0;border:1px solid #dce6f1;border-radius:10px;background:#fff9}
+  .tools .divider{display:none}
+}
+@media (max-width:400px){
+  .tools .tool-select select{font-size:12px}
+  .tools{gap:5px}
+  /* The sort chip needs a couple of pixels more than the size chip to show
+     its longest value without an ellipsis on a 360px screen. */
+  .tools .tool-select{flex:1 1 92px}
+  .tools .tool-select+.tool-select{flex:1 1 110px}
+}
+
+/* ── Depth system ───────────────────────────────────────────────────────────
+   Main surfaces float above the workspace: an ambient shadow for the volume,
+   a tighter directional one for the contact, and a top rim that reads as a lit
+   edge. Tile presets keep control of their own shadow and hover transform. */
+:root{
+  --lift-1:0 1px 2px rgba(31,58,95,.05),0 5px 12px rgba(31,58,95,.07);
+  --lift-2:0 2px 6px rgba(31,58,95,.06),0 14px 30px rgba(31,58,95,.10);
+  --lift-3:0 6px 14px rgba(31,58,95,.10),0 26px 54px rgba(31,58,95,.16);
+  --lift-rim:inset 0 1px 0 rgba(255,255,255,.7);
+}
+:root[data-theme="dark"]{
+  --lift-1:0 1px 2px rgba(0,0,0,.3),0 5px 14px rgba(0,0,0,.3);
+  --lift-2:0 3px 10px rgba(0,0,0,.34),0 16px 34px rgba(0,0,0,.4);
+  --lift-3:0 8px 20px rgba(0,0,0,.42),0 30px 60px rgba(0,0,0,.5);
+  --lift-rim:inset 0 1px 0 rgba(255,255,255,.06);
+}
+.sidebar,.settings-page,.command-palette,.site-form,.fav-dock-panel,.calendar,.mobile-timecard{box-shadow:var(--lift-2),var(--lift-rim)}
+.settings-page,.command-palette,.site-form{box-shadow:var(--lift-3),var(--lift-rim)}
+.site-card{box-shadow:var(--lift-1),var(--lift-rim);transition:transform .22s cubic-bezier(.2,.7,.3,1),box-shadow .22s ease}
+.site-card:hover,.site-card:focus-visible,.site-card.menu-open{box-shadow:var(--lift-3),var(--lift-rim)}
+.site-card.menu-open{transform:translateY(-3px)}
+.side-card,.bulk-bar,.hint-bar{box-shadow:var(--lift-1),var(--lift-rim)}
+.brand-card,.space-pill.active{box-shadow:var(--lift-1)}
+.add-button{box-shadow:0 2px 5px rgba(29,109,219,.28),0 12px 24px rgba(29,109,219,.3)}
+.add-button:hover{transform:translateY(-1px);box-shadow:0 3px 7px rgba(29,109,219,.3),0 16px 30px rgba(29,109,219,.34)}
+.top-icon,.history button{transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+.top-icon:hover{transform:translateY(-1px);box-shadow:var(--lift-1)}
+.fav-dock-panel button:hover{transform:translateY(-3px) scale(1.06)}
+.card-menu-list{box-shadow:var(--lift-3)}
+.site-icon{box-shadow:inset 0 -5px 10px rgba(0,0,0,.09),0 6px 14px rgba(31,58,95,.18)}
+.mobile-timecard{transition:transform .2s ease,box-shadow .2s ease}
+.mobile-timecard:active{transform:scale(.995)}
+/* The default glass tiles carry the depth of the preset system, so their
+   elevation is tuned here — without taking the «без тени» setting away. */
+:root[data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card{box-shadow:0 2px 6px rgba(31,58,95,.07),0 18px 40px rgba(72,104,143,.15),inset 0 1px 0 #fff}
+:root[data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card:hover,
+:root[data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card.menu-open{box-shadow:0 8px 16px rgba(31,58,95,.12),0 30px 62px rgba(72,104,143,.22),inset 0 1px 0 #fff}
+:root[data-theme="dark"][data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card{box-shadow:0 2px 8px rgba(0,0,0,.34),0 20px 44px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.06)}
+:root[data-theme="dark"][data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card:hover,
+:root[data-theme="dark"][data-tile-preset="glass"]:not([data-tile-shadow="none"]) .site-card.menu-open{box-shadow:0 10px 22px rgba(0,0,0,.42),0 34px 66px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
