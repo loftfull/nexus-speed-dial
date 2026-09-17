@@ -22,3 +22,4 @@
 .import-selection-actions{display:flex;gap:6px;margin:4px 0 7px}.import-selection-actions button{border:0;background:transparent;color:#3988ee;font-size:9px;padding:2px 0;cursor:pointer}.import-selection-actions button+button{color:#8b98a8}
 .session-actions{display:flex;align-items:center;gap:5px}.session-icon-button{display:inline-flex!important;align-items:center;justify-content:center;padding:6px!important;min-width:27px}.session-icon-button.danger{color:#d65c6b}
 .metadata-status{display:flex;align-items:center;gap:5px;margin-top:-11px;margin-bottom:10px;font-size:9px;color:#8b9bb0}.metadata-status svg{animation:metadata-spin .9s linear infinite}.metadata-status.ready{color:#2d9b72}.metadata-status.ready svg{display:none}@keyframes metadata-spin{to{transform:rotate(360deg)}}
+.import-feedback{margin-top:10px;padding:9px 11px;border:1px solid #bfe8d5;background:#effbf5;color:#2d8c68;border-radius:8px;font-size:9px}
