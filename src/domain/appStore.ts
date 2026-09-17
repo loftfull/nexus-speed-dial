@@ -1,4 +1,6 @@
-import type { SiteRecord, TileMode, VisualPreset, Project, BrowserSession } from './types';
+import type { SiteRecord, TileMode, VisualPreset, Project, BrowserSession, Category, SiteGroup } from './types';
+import { migrateHierarchy } from './hierarchy';
+import { seedCategories, seedGroups, seedProjects } from './seed';
 import { readStorage, writeStorage } from './storage';
 
 export type TileState = { mode: TileMode; preset: VisualPreset; radius: number; iconSize: number; hover: string; shadow: string; font: string; size?: string; showDescription?: boolean; showDomain?: boolean; showNotifications?: boolean };
@@ -8,7 +10,8 @@ export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; an
 
 export type AppState = {
   sites: SiteRecord[];
-  categories: string[];
+  categories: Category[];
+  groups: SiteGroup[];
   history: string[];
   density: number;
   ui: UiState;
@@ -20,7 +23,8 @@ export type AppState = {
 
 export type AppAction =
   | { type: 'sites/set'; value: SiteRecord[] | ((current: SiteRecord[]) => SiteRecord[]) }
-  | { type: 'categories/set'; value: string[] | ((current: string[]) => string[]) }
+  | { type: 'categories/set'; value: Category[] | ((current: Category[]) => Category[]) }
+  | { type: 'groups/set'; value: SiteGroup[] | ((current: SiteGroup[]) => SiteGroup[]) }
   | { type: 'history/set'; value: string[] | ((current: string[]) => string[]) }
   | { type: 'density/set'; value: number }
   | { type: 'ui/set'; value: UiState | ((current: UiState) => UiState) }
@@ -29,7 +33,8 @@ export type AppAction =
   | { type: 'projects/set'; value: Project[] | ((current: Project[]) => Project[]) }
   | { type: 'sessions/set'; value: BrowserSession[] | ((current: BrowserSession[]) => BrowserSession[]) };  
 
-export const defaultCategories = ['Проект', 'Работа', 'Личное', 'Развлечения', 'Вдохновение'];
+export const defaultProjects = seedProjects;
+export const defaultCategories = seedCategories;
 
 function normalizeSidebarWidth(value: unknown): string {
   if (typeof value !== 'string') return '292px';
@@ -40,13 +45,20 @@ function normalizeSidebarWidth(value: unknown): string {
 export function createInitialAppState(initialSites: SiteRecord[]): AppState {
   const storedSites = readStorage('nexus-sites', initialSites).map((site, index) => site.id ? site : { ...site, id: `site-${site.domain.replace(/[^a-z0-9]+/gi, '-')}-${index}` });
   const resolveSiteRef = (reference: string) => storedSites.find(site => site.id === reference || site.domain === reference || site.title === reference)?.id || reference;
-  const storedProjects = readStorage('nexus-projects', defaultCategories.map((name, index) => ({ id: `project-${index}`, name, color: ['#3988ee','#8b63e8','#2aa879','#e5a43a','#e66c83'][index % 5], icon: name[0], siteIds: [], createdAt: Date.now(), updatedAt: Date.now() }))).map(project => ({ ...project, siteIds: project.siteIds.map(resolveSiteRef) }));
+  const storedProjects = readStorage('nexus-projects', defaultProjects).map(project => ({ ...project, siteIds: project.siteIds.map(resolveSiteRef) }));
+  const hierarchy = migrateHierarchy({
+    projects: storedProjects,
+    categories: readStorage<unknown>('nexus-categories', defaultCategories),
+    groups: readStorage<unknown>('nexus-groups', seedGroups),
+    sites: storedSites,
+  });
   const storedSessions = readStorage<BrowserSession[]>('nexus-sessions', []).map(session => ({ ...session, siteIds: session.siteIds.map(resolveSiteRef), noteSiteIds: session.noteSiteIds?.map(resolveSiteRef) }));
   const storedUi = readStorage('nexus-ui', null as UiState | null);
   const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, remotePreviews: true, projects: true, sidebarWidth: '292px', mobileMode: 'В виде меню' };
   return {
-    sites: storedSites,
-    categories: readStorage('nexus-categories', defaultCategories),
+    sites: hierarchy.sites,
+    categories: hierarchy.categories,
+    groups: hierarchy.groups,
     history: readStorage('nexus-history', []),
     density: readStorage('nexus-density', 20),
     ui: { ...defaultUi, ...(storedUi ?? {}), sidebarWidth: normalizeSidebarWidth(storedUi?.sidebarWidth) },
@@ -61,6 +73,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'sites/set': return { ...state, sites: typeof action.value === 'function' ? action.value(state.sites) : action.value };
     case 'categories/set': return { ...state, categories: typeof action.value === 'function' ? action.value(state.categories) : action.value };
+    case 'groups/set': return { ...state, groups: typeof action.value === 'function' ? action.value(state.groups) : action.value };
     case 'history/set': return { ...state, history: typeof action.value === 'function' ? action.value(state.history) : action.value };
     case 'density/set': return { ...state, density: Math.max(4, Math.min(32, action.value)) };
     case 'ui/set': return { ...state, ui: typeof action.value === 'function' ? action.value(state.ui) : action.value };
@@ -75,6 +88,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 export function persistAppState(state: AppState): void {
   writeStorage('nexus-sites', state.sites);
   writeStorage('nexus-categories', state.categories);
+  writeStorage('nexus-groups', state.groups);
   writeStorage('nexus-history', state.history);
   writeStorage('nexus-density', state.density);
   writeStorage('nexus-ui', state.ui);

@@ -3,9 +3,9 @@ import { createSite, filterSites, normalizeDomain, reorderSites } from './siteUt
 import type { SiteRecord } from './types';
 
 const sites: SiteRecord[] = [
-  { title: 'Figma', desc: 'Design', domain: 'figma.com', color: '#f24e35', icon: 'F', category: 'Проект', favorite: true, lastOpened: 2 },
-  { title: 'Notion', desc: 'Workspace', domain: 'notion.so', color: '#111', icon: 'N', category: 'Работа', note: 'План недели', lastOpened: 3 },
-  { title: 'YouTube', desc: 'Video', domain: 'youtube.com', color: '#f00', icon: 'Y', category: 'Развлечения', lastOpened: 1 },
+  { title: 'Figma', desc: 'Design', domain: 'figma.com', color: '#f24e35', icon: 'F', category: 'Проект', categoryId: 'c-project', favorite: true, lastOpened: 2 },
+  { title: 'Notion', desc: 'Workspace', domain: 'notion.so', color: '#111', icon: 'N', category: 'Работа', categoryId: 'c-work', groupId: 'g-docs', note: 'План недели', lastOpened: 3 },
+  { title: 'YouTube', desc: 'Video', domain: 'youtube.com', color: '#f00', icon: 'Y', category: 'Развлечения', categoryId: 'c-fun', lastOpened: 1 },
 ];
 
 describe('site utilities', () => {
@@ -13,12 +13,20 @@ describe('site utilities', () => {
     expect(normalizeDomain(' https://www.example.com/path?q=1 ')).toBe('example.com');
   });
 
-  it('filters by query, category, favorites, notes and recency', () => {
+  it('filters by query, favorites, notes and recency', () => {
     expect(filterSites(sites, 'workspace')).toHaveLength(1);
-    expect(filterSites(sites, '', 'Работа').map(site => site.title)).toEqual(['Notion']);
-    expect(filterSites(sites, '', 'Все', 'Избранное').map(site => site.title)).toEqual(['Figma']);
-    expect(filterSites(sites, '', 'Все', 'Недавние').map(site => site.title)).toEqual(['Notion', 'Figma', 'YouTube']);
-    expect(filterSites(sites, '', 'Все', 'Заметки').map(site => site.title)).toEqual(['Notion']);
+    expect(filterSites(sites, '', {}, 'Избранное').map(site => site.title)).toEqual(['Figma']);
+    expect(filterSites(sites, '', {}, 'Недавние').map(site => site.title)).toEqual(['Notion', 'Figma', 'YouTube']);
+    expect(filterSites(sites, '', {}, 'Заметки').map(site => site.title)).toEqual(['Notion']);
+  });
+
+  it('scopes the grid to a project, a category or a group', () => {
+    const categoryIdsOfProject = (projectId: string) => projectId === 'p-home' ? ['c-project', 'c-fun'] : ['c-work'];
+    expect(filterSites(sites, '', { categoryId: 'c-work' }).map(site => site.title)).toEqual(['Notion']);
+    expect(filterSites(sites, '', { groupId: 'g-docs' }).map(site => site.title)).toEqual(['Notion']);
+    expect(filterSites(sites, '', { categoryId: 'c-work', groupId: 'g-none' })).toEqual([]);
+    expect(filterSites(sites, '', { projectId: 'p-home' }, 'Быстрый доступ', categoryIdsOfProject).map(site => site.title)).toEqual(['Figma', 'YouTube']);
+    expect(filterSites(sites, '', { projectId: 'p-work' }, 'Быстрый доступ', categoryIdsOfProject).map(site => site.title)).toEqual(['Notion']);
   });
 
   it('reorders without mutating the source', () => {

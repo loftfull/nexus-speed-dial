@@ -6,7 +6,7 @@ import { AddSiteModal } from './AddSiteModal';
 describe('AddSiteModal', () => {
   it('validates and submits a new site', async () => {
     const user = userEvent.setup(); const onSave = vi.fn();
-    render(<AddSiteModal categories={['Личное']} onClose={vi.fn()} onSave={onSave} />);
+    render(<AddSiteModal categories={[{id:'c-personal',name:'Личное'}]} onClose={vi.fn()} onSave={onSave} />);
     await user.type(screen.getByLabelText('Название'), 'Linear');
     await user.type(screen.getByLabelText('Адрес сайта'), 'https://linear.app/projects');
     await user.click(screen.getByRole('button', { name: 'Добавить сайт' }));
@@ -14,7 +14,7 @@ describe('AddSiteModal', () => {
   });
 
   it('prefills an existing site for editing', () => {
-    render(<AddSiteModal categories={['Работа']} existing={{ title: 'Figma', domain: 'figma.com', desc: 'Design', color: '#f00', icon: 'F', category: 'Работа' }} onClose={vi.fn()} onSave={vi.fn()} />);
+    render(<AddSiteModal categories={[{id:'c-work',name:'Работа'}]} existing={{ title: 'Figma', domain: 'figma.com', desc: 'Design', color: '#f00', icon: 'F', category: 'Работа' }} onClose={vi.fn()} onSave={vi.fn()} />);
     expect(screen.getByDisplayValue('Figma')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Редактировать сайт' })).toBeInTheDocument();
   });

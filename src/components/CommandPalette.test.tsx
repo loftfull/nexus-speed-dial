@@ -6,7 +6,7 @@ import { CommandPalette } from './CommandPalette';
 
 const defaultProps = () => ({
   sites: [] as SiteRecord[],
-  categories: [] as string[],
+  categories: [] as { id: string; name: string }[],
   history: [] as string[],
   sessions: [] as BrowserSession[],
   onOpenSession: vi.fn(),
@@ -49,13 +49,13 @@ describe('CommandPalette', () => {
   it('routes category search results through the category callback', async () => {
     const user = userEvent.setup();
     const props = defaultProps();
-    props.categories = ['Работа'];
+    props.categories = [{ id: 'cat-work', name: 'Работа' }];
     render(<CommandPalette {...props} />);
 
     await user.type(screen.getByPlaceholderText('Что вы хотите сделать?'), 'Работа');
     await user.click(screen.getByRole('button', { name: /Работа/ }));
 
-    expect(props.onCategory).toHaveBeenCalledWith('Работа');
+    expect(props.onCategory).toHaveBeenCalledWith('cat-work');
     expect(props.onClose).toHaveBeenCalled();
   });
 

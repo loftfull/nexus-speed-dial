@@ -235,57 +235,6 @@
 :root[data-theme="dark"] .topbar .mobile-sections{background:rgba(255,255,255,.06);border-color:rgba(171,201,235,.16);color:#b3c3d7}
 
 /* ===================================================================
-   Sidebar: project pills + two-level category tree
-   =================================================================== */
-.space-list{display:flex;flex-direction:column;gap:8px}
-.space-pill{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border-radius:14px;font-size:13px;font-weight:600;color:#3f4e63;background:#fff;border:1px solid #e6edf6;box-shadow:0 2px 5px rgba(60,92,130,.06);transition:background .16s ease,color .16s ease,border-color .16s ease,transform .16s ease}
-.space-pill-icon{display:grid;place-items:center;width:20px;height:20px;flex:none;color:#7e8fa6}
-.space-pill-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
-.space-pill:hover{transform:translateY(-1px);border-color:#c4d9f2}
-.space-pill.active{background:#e6f0ff;border-color:#bcd8ff;color:#1857a8}
-.space-pill.active .space-pill-icon{color:#1857a8}
-:root[data-theme="dark"] .space-pill{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.14);color:#c3d1e3;box-shadow:none}
-:root[data-theme="dark"] .space-pill-icon{color:#8fa1b8}
-:root[data-theme="dark"] .space-pill:hover{border-color:rgba(171,201,235,.3)}
-:root[data-theme="dark"] .space-pill.active{background:rgba(59,130,246,.2);border-color:rgba(99,160,255,.38);color:#9fc6ff}
-:root[data-theme="dark"] .space-pill.active .space-pill-icon{color:#9fc6ff}
-
-.cat-node{display:flex;flex-direction:column}
-.cat-row{display:flex;align-items:center;gap:4px;width:100%;padding:0;border-radius:11px;color:#4e5d73;transition:background .16s ease,color .16s ease}
-.cat-row:hover{background:rgba(120,145,180,.1)}
-.cat-row.active{background:#e6f0ff;color:#1857a8}
-.cat-row.active .cat-icon,.cat-row.active .count{color:#1857a8}
-.cat-caret{display:grid;place-items:center;width:22px;height:34px;flex:none;color:#93a3b8;border-radius:8px}
-button.cat-caret:hover{background:rgba(120,145,180,.16);color:#33435b}
-.cat-main{display:flex;align-items:center;gap:10px;flex:1;min-width:0;padding:8px 10px 8px 0;color:inherit;text-align:left}
-.cat-icon{display:grid;place-items:center;width:20px;height:20px;flex:none;color:#8697ad}
-.cat-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
-.cat-row .count{font-size:12px;font-weight:600;color:#5f6e83}
-.cat-row-ghost{color:#5f6e83}
-.cat-row-ghost .cat-icon{color:#9aaabf}
-/* Rows without a nested .cat-main (Все / Новая категория) still need the same
-   left rhythm and a left-aligned label. */
-.cat-row>.cat-icon{margin-right:10px}
-.cat-row>.cat-label{text-align:left}
-.cat-row:not(:has(.cat-main)){padding:8px 10px 8px 0;gap:0}
-.cat-row:not(:has(.cat-main))>.cat-caret{pointer-events:none}
-
-.cat-children{display:flex;flex-direction:column;gap:2px;margin:2px 0 6px 22px;padding-left:10px;border-left:1px solid #e2eaf4}
-.cat-child{display:flex;align-items:center;gap:9px;width:100%;padding:7px 9px;border-radius:9px;color:#4e5d73;text-align:left}
-.cat-child:hover{background:rgba(120,145,180,.12)}
-.cat-child-icon{display:grid;place-items:center;width:20px;height:20px;flex:none;border-radius:6px;color:#fff;font-size:11px;font-weight:700}
-.cat-empty{padding:7px 9px;font-size:12px;color:#5f6e83}
-:root[data-theme="dark"] .cat-row{color:#b3c3d7}
-:root[data-theme="dark"] .cat-row:hover{background:rgba(255,255,255,.06)}
-:root[data-theme="dark"] .cat-row.active{background:rgba(59,130,246,.2);color:#9fc6ff}
-:root[data-theme="dark"] .cat-icon,:root[data-theme="dark"] .cat-caret{color:#8fa1b8}
-:root[data-theme="dark"] .cat-row .count,:root[data-theme="dark"] .cat-row-ghost,:root[data-theme="dark"] .cat-empty{color:#9fb0c6}
-:root[data-theme="dark"] .cat-row.active .cat-icon,:root[data-theme="dark"] .cat-row.active .count{color:#9fc6ff}
-:root[data-theme="dark"] .cat-children{border-left-color:rgba(171,201,235,.18)}
-:root[data-theme="dark"] .cat-child{color:#b3c3d7}
-:root[data-theme="dark"] .cat-child:hover{background:rgba(255,255,255,.07)}
-
-/* ===================================================================
    Favourites dock: hidden by default, revealed by a star handle whose
    top half peeks above the bottom edge while collapsed.
    =================================================================== */
@@ -312,3 +261,95 @@ button.cat-caret:hover{background:rgba(120,145,180,.16);color:#33435b}
 .main{padding-bottom:40px}
 .app:has(.fav-dock.closed) .main{padding-bottom:44px}
 .app:has(.fav-dock.open) .main{padding-bottom:110px}
+
+/* ===================================================================
+   Sidebar, laid out after the reference: a brand card, project pills,
+   a two-level category tree and one compact footer card.
+   =================================================================== */
+.sidebar{padding:16px 14px 14px;gap:0}
+.brand-card{display:flex;align-items:center;gap:12px;padding:12px 13px;margin-bottom:20px;border-radius:16px;background:#fff;border:1px solid #e9eff7;box-shadow:0 2px 6px rgba(60,92,130,.06)}
+.brand-card .brand-mark{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex:none;color:#fff;font-size:19px;font-weight:800;background:linear-gradient(135deg,#2477f0,#5aa0ff);box-shadow:0 6px 14px rgba(47,124,246,.32)}
+.brand-card strong{display:block;font-size:15px;letter-spacing:-.2px;color:#16233c}
+.brand-card small{display:block;font-size:12px;margin-top:2px;color:#5f6e83}
+:root[data-theme="dark"] .brand-card{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.14);box-shadow:none}
+:root[data-theme="dark"] .brand-card strong{color:#eef5ff}
+:root[data-theme="dark"] .brand-card small{color:#a9bad0}
+
+.section-label{display:flex;align-items:center;justify-content:space-between;font-size:11px;letter-spacing:1.1px;font-weight:700;color:#5c6b81;padding:0 6px 10px}
+.section-add{display:grid;place-items:center;width:20px;height:20px;border-radius:6px;color:inherit;opacity:0;transition:opacity .16s ease,background .16s ease}
+.side-section:hover .section-add,.section-add:focus-visible{opacity:1}
+.section-add:hover{background:rgba(120,145,180,.16)}
+:root[data-theme="dark"] .section-label{color:#8fa1b8}
+
+.side-section{margin-bottom:20px}
+.space-list{display:flex;flex-direction:column;gap:8px}
+.space-pill{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;border-radius:13px;font-size:13px;font-weight:600;color:#33435b;background:#fff;border:1px solid #e9eff7;box-shadow:0 2px 5px rgba(60,92,130,.05);transition:border-color .16s ease,background .16s ease,color .16s ease}
+.space-pill-icon{display:grid;place-items:center;width:20px;height:20px;flex:none;color:#7e8fa6}
+.space-pill-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.space-pill:hover{border-color:#c4d9f2}
+.space-pill.active{background:#e9f1fd;border-color:#d3e4fb;color:#1857a8}
+.space-pill.active .space-pill-icon{color:#1857a8}
+:root[data-theme="dark"] .space-pill{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.14);color:#c3d1e3;box-shadow:none}
+:root[data-theme="dark"] .space-pill-icon{color:#8fa1b8}
+:root[data-theme="dark"] .space-pill.active{background:rgba(59,130,246,.2);border-color:rgba(99,160,255,.38);color:#9fc6ff}
+:root[data-theme="dark"] .space-pill.active .space-pill-icon{color:#9fc6ff}
+
+/* Category tree: caret on the left, state chevron on the right, no counters —
+   the reference keeps these rows quiet. */
+.cat-node{display:flex;flex-direction:column}
+.cat-row{display:flex;align-items:center;width:100%;border-radius:11px;color:#3f4e63;transition:background .16s ease,color .16s ease}
+.cat-row:hover{background:rgba(120,145,180,.1)}
+.cat-row.active{background:#e9f1fd;color:#1857a8}
+.cat-row.active .cat-icon,.cat-row.active .cat-state{color:#1857a8}
+.cat-caret{display:grid;place-items:center;width:20px;height:36px;flex:none;color:#93a3b8;border-radius:7px}
+.cat-caret:hover{background:rgba(120,145,180,.18);color:#33435b}
+.cat-main{display:flex;align-items:center;gap:11px;flex:1;min-width:0;padding:9px 11px 9px 3px;color:inherit;text-align:left}
+.cat-icon{display:grid;place-items:center;width:20px;height:20px;flex:none;color:#7e8fa6}
+.cat-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}
+.cat-state{display:grid;place-items:center;flex:none;color:#a4b3c6}
+:root[data-theme="dark"] .cat-row{color:#c3d1e3}
+:root[data-theme="dark"] .cat-row:hover{background:rgba(255,255,255,.06)}
+:root[data-theme="dark"] .cat-row.active{background:rgba(59,130,246,.2);color:#9fc6ff}
+:root[data-theme="dark"] .cat-icon,:root[data-theme="dark"] .cat-caret,:root[data-theme="dark"] .cat-state{color:#8fa1b8}
+:root[data-theme="dark"] .cat-row.active .cat-icon,:root[data-theme="dark"] .cat-row.active .cat-state{color:#9fc6ff}
+
+.cat-children{display:flex;flex-direction:column;gap:3px;margin:3px 0 6px;padding-left:20px}
+.cat-child{display:flex;align-items:center;gap:10px;width:100%;padding:8px 11px;border-radius:10px;color:#3f4e63;text-align:left}
+.cat-child:hover{background:rgba(120,145,180,.12)}
+.cat-child.active{background:#e9f1fd;color:#1857a8}
+.cat-child-icon{display:grid;place-items:center;width:22px;height:22px;flex:none;border-radius:7px;background:rgba(120,145,180,.12);color:#5f6e83;font-size:11px;font-weight:700}
+.cat-child.active .cat-child-icon{background:rgba(24,87,168,.14);color:#1857a8}
+:root[data-theme="dark"] .cat-child-icon{background:rgba(255,255,255,.08);color:#a9bad0}
+:root[data-theme="dark"] .cat-child.active .cat-child-icon{background:rgba(99,160,255,.24);color:#9fc6ff}
+.cat-empty{padding:8px 11px 8px 31px;font-size:12px;color:#5f6e83}
+:root[data-theme="dark"] .cat-child{color:#c3d1e3}
+:root[data-theme="dark"] .cat-child:hover{background:rgba(255,255,255,.07)}
+:root[data-theme="dark"] .cat-child.active{background:rgba(59,130,246,.2);color:#9fc6ff}
+:root[data-theme="dark"] .cat-empty{color:#9fb0c6}
+
+/* Footer: clock, weather and two quick actions in a single card. */
+.side-footer{flex:none;padding-top:14px}
+.side-card{position:relative;padding:14px;border-radius:16px;background:#fff;border:1px solid #e9eff7;box-shadow:0 2px 6px rgba(60,92,130,.06)}
+.clock-row{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border-radius:10px}
+.clock-row-icon,.weather-row-icon{display:grid;place-items:center;width:22px;height:22px;flex:none;color:#7e8fa6}
+.clock-row .clock{display:block;font-size:22px;font-weight:700;letter-spacing:-.6px;color:#16233c}
+.clock-row small{display:block;font-size:12px;margin-top:1px;color:#5f6e83;text-transform:none}
+.weather-row{display:flex;align-items:center;gap:11px;margin-top:12px;padding-top:12px;border-top:1px solid #edf2f8}
+.weather-row>b{font-size:15px;font-weight:700;color:#16233c}
+.weather-row-icon{color:#e0a53a}
+.weather-row-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#5f6e83}
+.side-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.side-card-actions button{display:grid;place-items:center;height:36px;border-radius:11px;border:1px solid #e9eff7;background:#f7fafd;color:#5f6e83;transition:.16s}
+.side-card-actions button:hover{border-color:#c4d9f2;color:#1857a8}
+.side-card-actions button.on{background:#e9f1fd;border-color:#d3e4fb;color:#1857a8}
+:root[data-theme="dark"] .side-card{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.14);box-shadow:none}
+:root[data-theme="dark"] .clock-row .clock,:root[data-theme="dark"] .weather-row>b{color:#eef5ff}
+:root[data-theme="dark"] .clock-row small,:root[data-theme="dark"] .weather-row-label{color:#a9bad0}
+:root[data-theme="dark"] .clock-row-icon{color:#8fa1b8}
+:root[data-theme="dark"] .weather-row{border-top-color:rgba(171,201,235,.16)}
+:root[data-theme="dark"] .side-card-actions button{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.14);color:#a9bad0}
+:root[data-theme="dark"] .side-card-actions button.on{background:rgba(59,130,246,.2);border-color:rgba(99,160,255,.38);color:#9fc6ff}
+
+.side-card .storage{margin-top:12px;padding:12px 0 0;border-top:1px solid #edf2f8}
+.side-card .storage>div:first-child{margin-bottom:7px}
+:root[data-theme="dark"] .side-card .storage{border-top-color:rgba(171,201,235,.16)}

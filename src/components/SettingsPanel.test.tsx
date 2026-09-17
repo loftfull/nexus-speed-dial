@@ -65,6 +65,8 @@ describe('SettingsPanel', () => {
       color: '#2f7cf6', icon: 'D', category: 'Личное', tags: ['docs'],
     };
     const backup = createBackup({
+      categories: [],
+      groups: [],
       sites: [importedSite],
       projects: [{ id: 'imported-project', name: 'Imported', siteIds: [] }],
       sessions: [{ id: 'session-1', name: 'Morning', siteIds: [] }],
@@ -99,7 +101,7 @@ describe('SettingsPanel', () => {
     const { container } = render(<Settings {...props} />);
     await user.click(screen.getByRole('button', { name: /Данные/ }));
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
-    await user.upload(input, new File([createBackup({ sites: [], projects: [{ id: 'p', name: 'Imported', siteIds: [] }], sessions: [] })], 'backup.json', { type: 'application/json' }));
+    await user.upload(input, new File([createBackup({ sites: [], projects: [{ id: 'p', name: 'Imported', siteIds: [] }], categories: [], groups: [], sessions: [] })], 'backup.json', { type: 'application/json' }));
     expect(await screen.findByText(/1 проект/)).toBeInTheDocument();
     await user.upload(input, new File(['<DL><A HREF="https://fresh.test">Fresh</A></DL>'], 'bookmarks.html', { type: 'text/html' }));
     expect(await screen.findByText('Fresh')).toBeInTheDocument();

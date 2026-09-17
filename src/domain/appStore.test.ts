@@ -6,8 +6,23 @@ describe('app store reducer', () => {
   it('updates collections through functional actions', () => {
     const next = appReducer(initial, { type: 'sites/set', value: sites => [...sites, { title: 'Notion', desc: '', domain: 'notion.so', color: '#111', icon: 'N', category: 'Работа' }] });
     expect(next.sites).toHaveLength(2);
-    expect(appReducer(next, { type: 'categories/set', value: ['Проект', 'Работа'] }).categories).toEqual(['Проект', 'Работа']);
+    const categories = [{ id: 'c-1', name: 'Проект', projectId: 'project-home' }, { id: 'c-2', name: 'Работа', projectId: 'project-home' }];
+    expect(appReducer(next, { type: 'categories/set', value: categories }).categories).toEqual(categories);
+    const groups = [{ id: 'g-1', name: 'Видео', categoryId: 'c-1' }];
+    expect(appReducer(next, { type: 'groups/set', value: groups }).groups).toEqual(groups);
   });
+  it('attaches a legacy site to a category created from its name', () => {
+    expect(initial.categories.map(category => category.name)).toContain('Проект');
+    expect(initial.sites[0].categoryId).toBe(initial.categories.find(category => category.name === 'Проект')?.id);
+  });
+
+  it('ships the default hierarchy when nothing is stored yet', () => {
+    const fresh = createInitialAppState([]);
+    expect(fresh.projects.map(project => project.name)).toEqual(['Дом', 'Работа', 'Личное']);
+    expect(fresh.categories.filter(category => category.projectId === 'project-home').map(category => category.name)).toEqual(['Соцсети', 'Развлечения']);
+    expect(fresh.groups.filter(group => group.categoryId === 'cat-home-social').map(group => group.name)).toEqual(['Видео', 'Чаты', 'Почта']);
+  });
+
   it('clamps density to a safe range', () => {
     expect(appReducer(initial, { type: 'density/set', value: 1 }).density).toBe(4);
     expect(appReducer(initial, { type: 'density/set', value: 100 }).density).toBe(32);

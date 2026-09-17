@@ -6,6 +6,9 @@ export type NexusBackup = {
   exportedAt: string;
   sites: unknown[];
   projects: unknown[];
+  /** Project → Category → Group, so a restore keeps the whole tree. */
+  categories: unknown[];
+  groups: unknown[];
   sessions: unknown[];
   settings?: { density?: number; ui?: unknown; tile?: unknown; appearance?: unknown };
 };
@@ -24,6 +27,8 @@ export function parseBackup(text: string): NexusBackup {
     exportedAt: typeof raw?.exportedAt === 'string' ? raw.exportedAt : new Date().toISOString(),
     sites: data.sites,
     projects: Array.isArray(data.projects) ? data.projects : [],
+    categories: Array.isArray(data.categories) ? data.categories : [],
+    groups: Array.isArray(data.groups) ? data.groups : [],
     sessions: Array.isArray(data.sessions) ? data.sessions : [],
     settings: data.settings && typeof data.settings === 'object' ? data.settings : undefined,
   };
