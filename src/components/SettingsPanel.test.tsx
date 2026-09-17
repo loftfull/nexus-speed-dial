@@ -71,9 +71,12 @@ describe('SettingsPanel', () => {
 
     expect(props.setSites).toHaveBeenCalledWith([expect.objectContaining({ domain: 'docs.example.com', category: 'Личное', tags: ['docs', 'импорт'] })]);
     expect(props.setDensity).toHaveBeenCalledWith(24);
-    expect(props.setUi).toHaveBeenCalledWith({ compact: true });
-    expect(props.setTile).toHaveBeenCalledWith({ mode: 'screenshot' });
-    expect(props.setAppearance).toHaveBeenCalledWith({ theme: 'dark' });
+    expect(props.setUi).toHaveBeenCalledWith(expect.any(Function));
+    expect(props.setTile).toHaveBeenCalledWith(expect.any(Function));
+    expect(props.setAppearance).toHaveBeenCalledWith(expect.any(Function));
+    expect(props.setUi.mock.calls[props.setUi.mock.calls.length - 1]?.[0]({ sidebar: true })).toEqual({ sidebar: true, compact: true });
+    expect(props.setTile.mock.calls[props.setTile.mock.calls.length - 1]?.[0]({ preset: 'glass' })).toEqual({ preset: 'glass', mode: 'screenshot' });
+    expect(props.setAppearance.mock.calls[props.setAppearance.mock.calls.length - 1]?.[0]({ accent: '#2f7cf6' })).toEqual({ accent: '#2f7cf6', theme: 'dark' });
     expect(props.setProjects).toHaveBeenCalled();
     expect(props.setSessions).toHaveBeenCalled();
     expect(await screen.findByRole('status')).toHaveTextContent('Импорт применён: 1 сайтов, 1 проектов, 1 сессий.');
