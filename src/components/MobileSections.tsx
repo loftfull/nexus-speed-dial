@@ -1,7 +1,9 @@
 import { ChevronRight, X } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import type { ComponentType } from 'react';
 
-export function MobileSections({active,setActive,onClose,onSelect,items}:{active:string;setActive:(s:string)=>void;onClose:()=>void;onSelect?:(s:string)=>void;items:readonly (readonly [string, LucideIcon])[]}){
+type SectionIcon = ComponentType<{ size?: number }>;
+
+export function MobileSections({active,setActive,onClose,onSelect,items}:{active:string;setActive:(s:string)=>void;onClose:()=>void;onSelect?:(s:string)=>void;items:readonly (readonly [string, SectionIcon])[]}){
  const select=(label:string)=>{
   if(onSelect) onSelect(label);
   else if(label==='Настройки') window.dispatchEvent(new KeyboardEvent('keydown',{key:',',ctrlKey:true,bubbles:true}));
