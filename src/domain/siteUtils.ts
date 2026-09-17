@@ -21,8 +21,8 @@ export function filterSites(sites: SiteRecord[], query: string, category = 'Вс
 export function reorderSites(sites: SiteRecord[], dragged: string, target: string): SiteRecord[] {
   if (!dragged || dragged === target) return sites;
   const next = [...sites];
-  const from = next.findIndex(site => site.title === dragged);
-  const to = next.findIndex(site => site.title === target);
+  const from = next.findIndex(site => site.domain === dragged);
+  const to = next.findIndex(site => site.domain === target);
   if (from < 0 || to < 0) return sites;
   const [item] = next.splice(from, 1);
   next.splice(to, 0, item);

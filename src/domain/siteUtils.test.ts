@@ -22,7 +22,7 @@ describe('site utilities', () => {
   });
 
   it('reorders without mutating the source', () => {
-    const reordered = reorderSites(sites, 'YouTube', 'Figma');
+    const reordered = reorderSites(sites, 'youtube.com', 'figma.com');
     expect(reordered.map(site => site.title)).toEqual(['YouTube', 'Figma', 'Notion']);
     expect(sites.map(site => site.title)).toEqual(['Figma', 'Notion', 'YouTube']);
   });
