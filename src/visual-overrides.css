@@ -353,3 +353,12 @@
 .side-card .storage{margin-top:12px;padding:12px 0 0;border-top:1px solid #edf2f8}
 .side-card .storage>div:first-child{margin-bottom:7px}
 :root[data-theme="dark"] .side-card .storage{border-top-color:rgba(171,201,235,.16)}
+
+/* styles.css hides .top-icon below 680px — that rule predates the redesign and
+   now buries search, settings and the theme toggle. Keep them reachable. */
+@media(max-width:680px){
+  .topbar-actions .top-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px}
+  .topbar-actions{gap:6px}
+  .topbar .mini-avatar{display:none}
+  .add-button.compact{padding:9px}
+}

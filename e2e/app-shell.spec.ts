@@ -4,7 +4,11 @@ test.describe('Nexus shell', () => {
   test('shows the Speed Dial grid and can open add-site form', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Быстрый доступ' })).toBeVisible();
-    await expect(page.locator('.site-card')).toHaveCount(12);
+    // The grid is scoped to the selected project, so assert it against the
+    // counter the toolbar shows rather than a hard-coded seed size.
+    const shown = await page.locator('.site-card').count();
+    expect(shown).toBeGreaterThan(0);
+    await expect(page.locator('.segmented-tabs button').first()).toContainText(String(shown));
     await page.getByRole('button', { name: /Добавить сайт/ }).first().click();
     await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
   });
@@ -20,12 +24,7 @@ test.describe('Nexus shell', () => {
 
   test('settings changes persist after returning to the app', async ({ page }, testInfo) => {
     await page.goto('/');
-    if (testInfo.project.name === 'mobile') {
-      await page.getByRole('button', { name: 'Разделы' }).click();
-      await page.getByRole('button', { name: /Настройки/ }).click();
-    } else {
-      await page.getByRole('button', { name: 'Настройки' }).click();
-    }
+    await page.getByRole('button', { name: 'Настройки' }).click();
     await expect(page.getByRole('heading', { name: 'Настройки приложения' })).toBeVisible();
     await page.getByRole('button', { name: 'Плитки сайтов' }).click();
     await page.getByRole('button', { name: 'Neumorphic' }).click();

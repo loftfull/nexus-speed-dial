@@ -48,7 +48,6 @@ test.describe('Nexus visual baselines', () => {
     test.skip(testInfo.project.name !== 'mobile', 'Mobile baseline only.');
     await prepareVisualPage(page);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Разделы' }).click();
     await page.getByRole('button', { name: 'Настройки' }).click();
     await expect(page.getByRole('heading', { name: 'Настройки приложения' })).toBeVisible();
     await expect(page).toHaveScreenshot('mobile-settings.png', screenshotOptions);
