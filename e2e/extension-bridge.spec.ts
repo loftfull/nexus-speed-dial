@@ -60,8 +60,6 @@ async function sendExternalMessage(page: import('@playwright/test').Page, extens
 }
 
 test.describe('Nexus Workspace Bridge', () => {
-  test.skip(({ }, testInfo) => testInfo.project.name !== 'desktop', 'Chromium extension E2E runs once on desktop.');
-
   test.beforeAll(async () => {
     extensionDir = await prepareExtension();
   });
@@ -70,7 +68,8 @@ test.describe('Nexus Workspace Bridge', () => {
     if (extensionDir) await rm(extensionDir, { recursive: true, force: true });
   });
 
-  test('allowed Nexus origin can ping the real MV3 service worker', async () => {
+  test('allowed Nexus origin can ping the real MV3 service worker', async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Chromium extension E2E runs once on desktop.');
     const { context, extensionId } = await launchExtensionContext();
     try {
       const page = await context.newPage();
@@ -85,7 +84,8 @@ test.describe('Nexus Workspace Bridge', () => {
     }
   });
 
-  test('allowed Nexus origin can request real open HTTP tabs', async () => {
+  test('allowed Nexus origin can request real open HTTP tabs', async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Chromium extension E2E runs once on desktop.');
     const { context, extensionId } = await launchExtensionContext();
     try {
       const requester = await context.newPage();
