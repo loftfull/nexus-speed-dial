@@ -4,7 +4,7 @@ import { readStorage, writeStorage } from './storage';
 export type TileState = { mode: TileMode; preset: VisualPreset; radius: number; iconSize: number; hover: string; shadow: string; font: string; size?: string; showDescription?: boolean; showDomain?: boolean; showNotifications?: boolean };
 export type AppearanceState = { theme: string; accent: string; wallpaper: string };
 
-export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: string };
+export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; remotePreviews?: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: string };
 
 export type AppState = {
   sites: SiteRecord[];
@@ -39,7 +39,7 @@ function normalizeSidebarWidth(value: unknown): string {
 
 export function createInitialAppState(initialSites: SiteRecord[]): AppState {
   const storedUi = readStorage('nexus-ui', null as UiState | null);
-  const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, projects: true, sidebarWidth: '292px', mobileMode: 'В виде меню' };
+  const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, remotePreviews: true, projects: true, sidebarWidth: '292px', mobileMode: 'В виде меню' };
   return {
     sites: readStorage('nexus-sites', initialSites),
     categories: readStorage('nexus-categories', defaultCategories),
