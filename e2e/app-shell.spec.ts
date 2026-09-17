@@ -67,6 +67,18 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('html')).toHaveAttribute('data-tile-preset', 'neumorphic');
   });
 
+  test('search engine setting drives the command-center web search action', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Настройки' }).click();
+    await page.getByRole('button', { name: 'Поиск' }).click();
+    await page.getByLabel('Поисковая система').selectOption('Яндекс');
+    await page.getByRole('button', { name: 'Сохранить изменения' }).click();
+
+    await page.keyboard.press('Control+K');
+    await page.getByPlaceholder('Что вы хотите сделать?').fill('Nexus Speed Dial');
+    await expect(page.getByRole('button', { name: /Искать в Яндекс/ })).toBeVisible();
+  });
+
   test('mobile keeps the clock, the weather and the calendar in one compact card', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'The compact card replaces the sidebar footer below 680px.');
     await page.goto('/');
