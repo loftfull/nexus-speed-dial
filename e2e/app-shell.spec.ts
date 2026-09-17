@@ -13,10 +13,10 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
   });
 
-  test('calendar is an overlay and closes with Escape', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'Calendar entry point is currently sidebar-only.');
+  test('calendar is an overlay and closes with Escape', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Открыть календарь' }).click();
+    // Desktop opens it from the sidebar clock, mobile from the compact card.
+    await page.locator('[data-calendar-trigger]:visible').first().click();
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeHidden();
@@ -31,6 +31,19 @@ test.describe('Nexus shell', () => {
     await page.getByRole('button', { name: 'Сохранить изменения' }).click();
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-tile-preset', 'neumorphic');
+  });
+
+  test('mobile keeps the clock, the weather and the calendar in one compact card', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'The compact card replaces the sidebar footer below 680px.');
+    await page.goto('/');
+    const card = page.locator('.mobile-timecard');
+    await expect(card).toBeVisible();
+    await expect(card).toContainText(/\d{1,2}:\d{2}/);
+    await expect(card.locator('.mobile-timecard-weather')).toBeVisible();
+    await card.click();
+    await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeVisible();
+    await card.click();
+    await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeHidden();
   });
 
   test('mobile replaces the persistent sidebar with sections sheet', async ({ page }, testInfo) => {

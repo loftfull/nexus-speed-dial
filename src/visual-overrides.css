@@ -464,3 +464,31 @@
 :root[data-theme="dark"] .site-form select:focus{border-color:#5b9ae8;box-shadow:0 0 0 3px rgba(59,130,246,.22)}
 :root[data-theme="dark"] .site-form header{border-color:rgba(171,201,235,.16)}
 :root[data-theme="dark"] .site-form footer{border-color:rgba(171,201,235,.16)}
+
+/* Compact mobile widget: the clock, the weather and the calendar trigger live in
+   the sidebar footer, which is hidden below 680px, so they get their own card. */
+.mobile-timecard{display:none}
+@media (max-width:680px){
+  .mobile-timecard{display:flex;align-items:center;gap:12px;width:100%;margin:6px 0 2px;padding:11px 14px;border-radius:17px;text-align:left}
+  .mobile-timecard-main{display:flex;flex-direction:column;min-width:0;margin-right:auto}
+  .mobile-timecard-main b{font-size:21px;font-weight:700;letter-spacing:-.6px;line-height:1.15;color:#14213a}
+  .mobile-timecard-main small{font-size:12px;color:#55637a;margin-top:2px;white-space:nowrap}
+  .mobile-timecard-weather{display:grid;grid-template-columns:auto auto;align-items:center;gap:0 8px;padding-left:13px;border-left:1px solid #dce6f1;min-width:0}
+  .mobile-timecard-weather svg{grid-row:span 2;color:#e79a2b}
+  .mobile-timecard-weather b{font-size:15px;font-weight:700;color:#14213a;line-height:1.2}
+  .mobile-timecard-weather small{font-size:12px;color:#55637a;max-width:128px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-timecard-icon{display:grid;place-items:center;width:32px;height:32px;flex:none;border-radius:10px;background:rgba(120,145,180,.12);color:#4d5b6e}
+  .mobile-timecard[aria-expanded="true"] .mobile-timecard-icon{background:rgba(59,130,246,.16);color:#1a63c9}
+  :root[data-theme="dark"] .mobile-timecard-main b,
+  :root[data-theme="dark"] .mobile-timecard-weather b{color:#eef5ff}
+  :root[data-theme="dark"] .mobile-timecard-main small,
+  :root[data-theme="dark"] .mobile-timecard-weather small{color:#a9bbd2}
+  :root[data-theme="dark"] .mobile-timecard-weather{border-left-color:rgba(171,201,235,.2)}
+  :root[data-theme="dark"] .mobile-timecard-icon{background:rgba(255,255,255,.08);color:#cdd9e8}
+  :root[data-theme="dark"] .mobile-timecard[aria-expanded="true"] .mobile-timecard-icon{background:rgba(59,130,246,.24);color:#a8ccff}
+}
+@media (max-width:680px){
+  /* Open the calendar right under the compact card instead of on top of it. */
+  .calendar{top:146px;bottom:auto;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:380px}
+}
+:root[data-theme="dark"] .cal-note{border-top-color:rgba(171,201,235,.18)}
