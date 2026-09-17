@@ -21,8 +21,9 @@ export function readStorage<T>(key: string, fallback: T, storage: StorageAdapter
   }
 }
 
-export function writeStorage<T>(key: string, value: T, storage: StorageAdapter = browserStorage): void {
-  try { storage.setItem(key, JSON.stringify(value)); } catch { /* keep the app usable when storage is unavailable */ }
+/** Returns false when the value could not be stored, e.g. the quota is full. */
+export function writeStorage<T>(key: string, value: T, storage: StorageAdapter = browserStorage): boolean {
+  try { storage.setItem(key, JSON.stringify(value)); return true; } catch { return false; /* keep the app usable when storage is unavailable */ }
 }
 
 export function getStorageUsage(storage: StorageAdapter = browserStorage, limitBytes = 5 * 1024 * 1024) {

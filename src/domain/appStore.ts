@@ -85,15 +85,18 @@ export function appReducer(state: AppState, action: AppAction): AppState {
   }
 }
 
-export function persistAppState(state: AppState): void {
-  writeStorage('nexus-sites', state.sites);
-  writeStorage('nexus-categories', state.categories);
-  writeStorage('nexus-groups', state.groups);
-  writeStorage('nexus-history', state.history);
-  writeStorage('nexus-density', state.density);
-  writeStorage('nexus-ui', state.ui);
-  writeStorage('nexus-tile', state.tile);
-  writeStorage('nexus-appearance', state.appearance);
-  writeStorage('nexus-projects', state.projects);
-  writeStorage('nexus-sessions', state.sessions);
+/** Returns false when at least one key could not be written, e.g. the quota is full. */
+export function persistAppState(state: AppState): boolean {
+  return [
+    writeStorage('nexus-sites', state.sites),
+    writeStorage('nexus-categories', state.categories),
+    writeStorage('nexus-groups', state.groups),
+    writeStorage('nexus-history', state.history),
+    writeStorage('nexus-density', state.density),
+    writeStorage('nexus-ui', state.ui),
+    writeStorage('nexus-tile', state.tile),
+    writeStorage('nexus-appearance', state.appearance),
+    writeStorage('nexus-projects', state.projects),
+    writeStorage('nexus-sessions', state.sessions),
+  ].every(Boolean);
 }
