@@ -129,12 +129,24 @@
 .dock-bar .favorites-dock,.dock-bar .dock{position:static;left:auto;right:auto;bottom:auto;transform:none;max-width:none}
 .dock-bar .favorites-dock{flex:0 1 auto;overflow:hidden}
 @media(min-width:901px){.favorites-dock{bottom:auto;right:auto}}
-@media(max-width:900px){.main{padding-bottom:110px}.dock-bar{left:10px;right:10px;bottom:10px;transform:none;max-width:none}.dock-bar .dock{flex:1;min-width:0}}
+@media(max-width:900px){.main{padding-bottom:110px}}
+/* Full-width bottom bar only once the sidebar is gone, otherwise it would
+   slide underneath it. */
+@media(max-width:680px){.dock-bar{left:10px;right:10px;bottom:10px;transform:none;max-width:none}.dock-bar .dock{flex:1;min-width:0}}
 @media(max-width:680px){.dock-bar .favorites-dock{display:none}}
 
 /* The dock sits over scrolling content, so it needs a denser surface on small
    screens where it spans the full width. */
 @media(max-width:900px){
-  .dock-bar .dock{background:rgba(255,255,255,.93);backdrop-filter:blur(22px) saturate(125%)}
+  .dock-bar .dock{background:rgba(255,255,255,.93);-webkit-backdrop-filter:blur(22px) saturate(125%);backdrop-filter:blur(22px) saturate(125%)}
   :root[data-theme="dark"] .dock-bar .dock{background:rgba(23,35,55,.95)}
+}
+
+/* Keep the omnibox on one line when the sidebar still takes its share. */
+@media(max-width:900px){.search-trigger{white-space:nowrap;overflow:hidden}.search-trigger span{overflow:hidden;text-overflow:ellipsis}.search-trigger kbd{flex:none}}
+
+/* Centre the bottom bar over the workspace, not over the whole window, so it
+   cannot slide under the sidebar on narrow desktops and tablets. */
+@media(min-width:681px){
+  .app:has(>.sidebar) .dock-bar{left:calc(var(--sidebar-width,292px) + 40px);right:20px;transform:none;justify-content:center;max-width:none}
 }
