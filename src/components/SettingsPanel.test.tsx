@@ -77,7 +77,7 @@ describe('SettingsPanel', () => {
     await user.upload(input, new File([backup], 'nexus-backup.json', { type: 'application/json' }));
 
     expect(await screen.findByText('Предпросмотр импорта')).toBeInTheDocument();
-    expect(screen.getByText(/1 из 1 сайтов выбрано/)).toBeInTheDocument();
+    expect(screen.getByText(/1 из 1 сайт выбрано/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Применить импорт' }));
 
     expect(props.setSites).toHaveBeenCalledWith([expect.objectContaining({ domain: 'docs.example.com', category: 'Личное', tags: ['docs', 'импорт'] })]);
@@ -90,7 +90,7 @@ describe('SettingsPanel', () => {
     expect(props.setAppearance.mock.calls[props.setAppearance.mock.calls.length - 1]?.[0]({ accent: '#2f7cf6' })).toEqual({ accent: '#2f7cf6', theme: 'dark' });
     expect(props.setProjects).toHaveBeenCalled();
     expect(props.setSessions).toHaveBeenCalled();
-    expect(await screen.findByRole('status')).toHaveTextContent('Импорт применён: 1 сайтов, 1 проектов, 1 сессий.');
+    expect(await screen.findByRole('status')).toHaveTextContent('Импорт применён: 1 сайт, 1 проект, 1 сессия.');
   });
 
   it('clears an earlier backup preview when a new file is selected', async () => {
@@ -100,10 +100,10 @@ describe('SettingsPanel', () => {
     await user.click(screen.getByRole('button', { name: /Данные/ }));
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(input, new File([createBackup({ sites: [], projects: [{ id: 'p', name: 'Imported', siteIds: [] }], sessions: [] })], 'backup.json', { type: 'application/json' }));
-    expect(await screen.findByText(/1 проектов/)).toBeInTheDocument();
+    expect(await screen.findByText(/1 проект/)).toBeInTheDocument();
     await user.upload(input, new File(['<DL><A HREF="https://fresh.test">Fresh</A></DL>'], 'bookmarks.html', { type: 'text/html' }));
     expect(await screen.findByText('Fresh')).toBeInTheDocument();
-    expect(screen.queryByText(/1 проектов/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/1 проект/)).not.toBeInTheDocument();
   });
 
   it('exposes real browser bridge controls in the Data section', async () => {

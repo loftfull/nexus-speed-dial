@@ -26,10 +26,10 @@
 [data-tile-mode="list"] .site-card{min-height:74px;display:flex;align-items:center;gap:14px;padding:11px 16px}
 [data-tile-mode="list"] .site-copy{margin:0;flex:1}
 [data-tile-mode="preview"] .site-card{min-height:220px;padding-top:128px;overflow:hidden}
-[data-tile-mode="preview"] .site-card:before,[data-tile-mode="screenshot"] .site-card:before{content:"PREVIEW";position:absolute;left:0;right:0;top:0;height:112px;display:grid;place-items:center;color:#98a7b9;font-size:10px;letter-spacing:1px;background:linear-gradient(135deg,#eaf3fc,#f7fbff);border-bottom:1px solid #e3ebf4}
+[data-tile-mode="preview"] .site-card:before,[data-tile-mode="screenshot"] .site-card:before{content:"PREVIEW";position:absolute;left:0;right:0;top:0;height:112px;display:grid;place-items:center;color:#5f6e83;font-size:13px;letter-spacing:1px;background:linear-gradient(135deg,#eaf3fc,#f7fbff);border-bottom:1px solid #e3ebf4}
 [data-tile-mode="screenshot"] .site-card{min-height:220px;padding-top:128px;overflow:hidden}
 [data-tile-mode="screenshot"] .site-card:before{content:"SCREENSHOT";background:linear-gradient(135deg,#dbe9f7,#f8fbfe)}
-[data-tile-mode="mobile"] .site-card{border-radius:22px;background:rgba(255,255,255,.82);box-shadow:0 8px 22px rgba(46,74,111,.1);border-color:rgba(255,255,255,.9)}
+[data-tile-mode="mobile"] .site-card{border-radius:22px}
 /* tactile dock: adjacent-item magnification from the reference implementation */
 .dock{transition:transform .4s cubic-bezier(.175,.885,.32,1.275),box-shadow .25s;padding:8px 11px}
 .dock button{transition:transform .3s cubic-bezier(.175,.885,.32,1.275),color .2s,background .2s;position:relative}
@@ -44,7 +44,7 @@
 :root[data-theme="dark"] .site-copy h3,:root[data-theme="dark"] .workspace-head h1,:root[data-theme="dark"] .brand strong{color:#eef5ff}
 :root[data-theme="dark"] .site-copy p,:root[data-theme="dark"] .workspace-head p,:root[data-theme="dark"] .site-copy span{color:#a9bad0}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
-[data-tile-mode="preview"] .site-card:before,[data-tile-mode="screenshot"] .site-card:before{display:none}.tile-preview{position:absolute;left:0;right:0;top:0;height:112px;border-radius:inherit inherit 0 0;overflow:hidden;background:linear-gradient(135deg,#eaf3fc,#f7fbff);display:grid;place-items:center;color:#98a7b9;font-size:10px;letter-spacing:1px}.tile-preview img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;opacity:.92}.tile-preview span{position:relative;z-index:1;background:#ffffffbb;border-radius:5px;padding:4px 6px}
+[data-tile-mode="preview"] .site-card:before,[data-tile-mode="screenshot"] .site-card:before{display:none}.tile-preview{position:absolute;left:0;right:0;top:0;height:112px;border-radius:inherit inherit 0 0;overflow:hidden;background:linear-gradient(135deg,#eaf3fc,#f7fbff);display:grid;place-items:center;color:#5f6e83;font-size:13px;letter-spacing:1px}.tile-preview img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;opacity:.92}.tile-preview span{position:relative;z-index:1;background:#ffffffbb;border-radius:5px;padding:4px 6px}
 :root{--app-font:Manrope}.site-card,.site-card *{font-family:var(--app-font),Manrope,sans-serif}.site-card{border-radius:var(--tile-radius-value,18px)}.site-icon{width:var(--tile-icon-size,40px);height:var(--tile-icon-size,40px)}[data-tile-hover="none"] .site-card:hover{transform:none}[data-tile-hover="float"] .site-card:hover{transform:translateY(-6px) scale(1.015)}[data-tile-shadow="none"] .site-card{box-shadow:none}
 [data-tile-mode="screenshot"] .tile-preview{height:auto;aspect-ratio:16/7;min-height:112px;max-height:170px}
 [data-tile-mode="screenshot"] .site-card{padding-top:calc(clamp(112px, 14vw, 170px) + 16px);min-height:calc(clamp(112px, 14vw, 170px) + 110px)}
@@ -52,7 +52,89 @@
 :root[data-tile-size="M"] .site-grid:not(.list-view) .site-card{min-height:164px}
 :root[data-tile-size="L"] .site-grid:not(.list-view) .site-card{min-height:190px}
 :root[data-tile-size="XL"] .site-grid:not(.list-view) .site-card{min-height:220px}
-:root[data-tile-size="S"] .site-grid:not(.list-view){grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
-:root[data-tile-size="M"] .site-grid:not(.list-view){grid-template-columns:repeat(auto-fill,minmax(196px,1fr))}
-:root[data-tile-size="L"] .site-grid:not(.list-view){grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
-:root[data-tile-size="XL"] .site-grid:not(.list-view){grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+/* Tile size drives a single --tile-min token so narrow viewports can shrink it
+   instead of being overridden by a higher-specificity desktop rule. */
+:root[data-tile-size="S"]{--tile-min:160px}
+:root[data-tile-size="M"]{--tile-min:196px}
+:root[data-tile-size="L"]{--tile-min:230px}
+:root[data-tile-size="XL"]{--tile-min:270px}
+@media(max-width:900px){:root[data-tile-size]{--tile-min:150px}}
+@media(max-width:680px){:root[data-tile-size]{--tile-min:148px}}
+.site-grid:not(.list-view){grid-template-columns:repeat(auto-fill,minmax(min(var(--tile-min,196px),100%),1fr))}
+
+/* Dark theme: surfaces and text that were still hard-coded for the light palette.
+   The clock in particular rendered at 1.12:1 against the dark sidebar. */
+:root[data-theme="dark"] .clock{color:#eef5ff}
+:root[data-theme="dark"] .date-line{color:#a9bad0}
+:root[data-theme="dark"] .date-button{border-bottom-color:rgba(171,201,235,.16)}
+:root[data-theme="dark"] .section-label,:root[data-theme="dark"] .section-label svg{color:#93a7c0}
+:root[data-theme="dark"] .chip{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.16);color:#bccbdd}
+:root[data-theme="dark"] .chip b{color:#8fa1b8}
+:root[data-theme="dark"] .blue-chip{background:rgba(59,130,246,.18);border-color:rgba(99,160,255,.4);color:#8fbcff}
+:root[data-theme="dark"] .project{color:#b3c3d7}
+:root[data-theme="dark"] .project.active{background:rgba(59,130,246,.18);color:#8fbcff}
+:root[data-theme="dark"] .count{color:#8fa1b8}
+:root[data-theme="dark"] .weather{background:rgba(255,255,255,.05);border-color:rgba(171,201,235,.16)}
+:root[data-theme="dark"] .weather span,:root[data-theme="dark"] .weather>strong{color:#a9bad0}
+:root[data-theme="dark"] .storage,:root[data-theme="dark"] .profile{border-top-color:rgba(171,201,235,.16)}
+:root[data-theme="dark"] .storage>div:first-child,:root[data-theme="dark"] .storage b{color:#a9bad0}
+:root[data-theme="dark"] .progress{background:rgba(255,255,255,.08)}
+:root[data-theme="dark"] .profile span{color:#a9bad0}
+:root[data-theme="dark"] .history button,:root[data-theme="dark"] .top-icon{background:rgba(255,255,255,.06);border-color:rgba(171,201,235,.16);color:#b3c3d7}
+:root[data-theme="dark"] .history button:hover,:root[data-theme="dark"] .top-icon:hover{background:rgba(255,255,255,.12);color:#eef5ff}
+:root[data-theme="dark"] .search-trigger{background:rgba(255,255,255,.06);border-color:rgba(171,201,235,.16);color:#a9bad0}
+:root[data-theme="dark"] .search-trigger kbd,:root[data-theme="dark"] .command-palette header kbd{background:rgba(255,255,255,.08);border-color:rgba(171,201,235,.2);color:#a9bad0}
+:root[data-theme="dark"] .sort-select{background:rgba(255,255,255,.06);border-color:rgba(171,201,235,.16);color:#cfdcec}
+:root[data-theme="dark"] .sort-select option{background:#1c2b40;color:#e7eef8}
+:root[data-theme="dark"] .tools button{color:#a9bad0}
+:root[data-theme="dark"] .tools button.on{background:rgba(59,130,246,.18);color:#8fbcff}
+:root[data-theme="dark"] .tabs button{color:#a9bad0}
+:root[data-theme="dark"] .tabs button.selected{color:#8fbcff}
+:root[data-theme="dark"] .tabs b{background:rgba(255,255,255,.08);color:#a9bad0}
+:root[data-theme="dark"] .toolbar{border-bottom-color:rgba(171,201,235,.16)}
+:root[data-theme="dark"] .dock button{color:#a9bad0}
+:root[data-theme="dark"] .dock button:hover,:root[data-theme="dark"] .dock .dock-active{background:rgba(59,130,246,.18);color:#8fbcff}
+:root[data-theme="dark"] .add-card{background:rgba(255,255,255,.04);border-color:rgba(122,163,214,.38);color:#9fc2ef}
+:root[data-theme="dark"] .add-card:hover{background:rgba(59,130,246,.14);border-color:#5b9ae8}
+:root[data-theme="dark"] .add-card span{color:#8fa1b8}
+:root[data-theme="dark"] .empty{color:#a9bad0}
+:root[data-theme="dark"] .empty b{color:#eef5ff}
+:root[data-theme="dark"] .star{color:#7f90a6}
+
+/* Toolbar must stay inside the viewport on tablet/mobile instead of overflowing. */
+.toolbar{flex-wrap:wrap;gap:8px}
+.tools{flex-wrap:wrap;justify-content:flex-end;min-width:0}
+@media(max-width:900px){.tabs{overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}.tools{width:100%;justify-content:flex-start}}
+
+/* The sidebar scrolls internally so the clock, weather, storage and profile
+   stay reachable on short viewports (.app is overflow:hidden). */
+.sidebar{max-height:calc(100vh - 40px);overflow:hidden}
+.sidebar>.side-section.categories{overflow-y:auto;min-height:0;scrollbar-width:thin}
+.side-footer{flex:none}
+@media(max-width:680px){.sidebar{max-height:none;overflow:visible}}
+
+/* Favourites dock used to float in the middle of the grid, overlapping the last
+   row and the section dock. Park it on the same baseline as the dock on wide
+   screens, and reserve room for it on narrow ones. */
+@media(min-width:901px){
+  .favorites-dock{bottom:20px;left:auto;right:20px;transform:none}
+}
+@media(max-width:900px){
+  .main{padding-bottom:150px}
+  .favorites-dock{bottom:78px}
+}
+
+/* One bottom bar instead of two stacked floating panels. */
+.dock-bar{position:fixed;z-index:4;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:calc(100% - 40px)}
+.dock-bar .favorites-dock,.dock-bar .dock{position:static;left:auto;right:auto;bottom:auto;transform:none;max-width:none}
+.dock-bar .favorites-dock{flex:0 1 auto;overflow:hidden}
+@media(min-width:901px){.favorites-dock{bottom:auto;right:auto}}
+@media(max-width:900px){.main{padding-bottom:110px}.dock-bar{left:10px;right:10px;bottom:10px;transform:none;max-width:none}.dock-bar .dock{flex:1;min-width:0}}
+@media(max-width:680px){.dock-bar .favorites-dock{display:none}}
+
+/* The dock sits over scrolling content, so it needs a denser surface on small
+   screens where it spans the full width. */
+@media(max-width:900px){
+  .dock-bar .dock{background:rgba(255,255,255,.93);backdrop-filter:blur(22px) saturate(125%)}
+  :root[data-theme="dark"] .dock-bar .dock{background:rgba(23,35,55,.95)}
+}

@@ -23,7 +23,7 @@ describe('BrowserImportPanel manual fallback', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Подготовить URL' }));
 
-    expect(screen.getByText(/2 уникальных вкладок/)).toBeInTheDocument();
+    expect(screen.getByText(/2 вкладки без дублей/)).toBeInTheDocument();
     expect(screen.getByText(/2 выбрано/)).toBeInTheDocument();
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Категория новых сайтов' }), 'Работа');

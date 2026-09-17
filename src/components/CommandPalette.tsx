@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { sites as countSites } from '../domain/plural';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ArrowRight, BookmarkPlus, FolderOpen, Keyboard, Library, Search, Settings, StickyNote, X } from 'lucide-react';
 import type { BrowserSession, SiteRecord } from '../domain/types';
@@ -19,7 +20,7 @@ export function CommandPalette({ sites, categories, history, sessions, onOpenSes
     const needle = query.trim().toLowerCase();
     const siteResults = sites.filter(site => `${site.title} ${site.domain} ${site.desc} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle)).slice(0, 6).map(site => ({ id: `site-${site.id||site.domain}`, label: site.title, description: `${site.domain} · Плитка сайта`, shortcut: '', icon: Library, run: () => window.open(`https://${site.domain}`, '_blank', 'noopener,noreferrer') }));
     const categoryResults = categories.filter(category => category.toLowerCase().includes(needle)).slice(0, 3).map(category => ({ id: `category-${category}`, label: category, description: 'Категория в рабочем пространстве', shortcut: '', icon: FolderOpen, run: () => onCategory(category) }));
-    const sessionResults = sessions.filter(session => session.name.toLowerCase().includes(needle)).slice(0, 3).map(session => ({ id: `session-${session.id}`, label: session.name, description: `${session.siteIds.length} сайтов · рабочая сессия`, shortcut: '', icon: FolderOpen, run: () => { onOpenSession(session); } }));
+    const sessionResults = sessions.filter(session => session.name.toLowerCase().includes(needle)).slice(0, 3).map(session => ({ id: `session-${session.id}`, label: session.name, description: `${countSites(session.siteIds.length)} · рабочая сессия`, shortcut: '', icon: FolderOpen, run: () => { onOpenSession(session); } }));
     const historyResults = history.filter(item => item.toLowerCase().includes(needle)).slice(0, 3).map(item => {
       const savedSite = sites.find(site => site.domain === item || site.title === item);
       const target = savedSite ? `https://${savedSite.domain}` : /^https?:\/\//.test(item) ? item : `https://${item}`;

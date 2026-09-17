@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react';
+import { tabs as countTabs, plural } from '../domain/plural';
+const countNewSites=(n:number)=>plural(n,'новый сайт','новых сайта','новых сайтов');
+const countDomains=(n:number)=>plural(n,'новый домен','новых домена','новых доменов');
 import { CheckCircle2, FolderPlus, Monitor, RefreshCw, Save, Unplug } from 'lucide-react';
 import type { BrowserSession, Project, SiteRecord } from '../domain/types';
 import {
@@ -208,7 +211,7 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
     }
 
     const details = [
-      `${plan.newSites.length} новых сайтов`,
+      `${countNewSites(plan.newSites.length)}`,
       plan.existingDomainMatches ? `${plan.existingDomainMatches} уже были в Nexus` : '',
       plan.collapsedTabCount ? `${plan.collapsedTabCount} вкладок объединено по домену` : '',
     ].filter(Boolean).join(' · ');
@@ -286,7 +289,7 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
       <div className="browser-preview-head">
         <div>
           <b>Предпросмотр вкладок</b>
-          <small>{selectedTabs.length} выбрано · {tabs.length} уникальных вкладок · {previewPlan.newSites.length} новых доменов</small>
+          <small>{selectedTabs.length} выбрано · {countTabs(tabs.length)} без дублей · {countDomains(previewPlan.newSites.length)}</small>
         </div>
         <div>
           <button type="button" onClick={() => setSelectedUrls(importableTabs.map(tab => tab.url))}>Выбрать все</button>
@@ -358,9 +361,9 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
       </div>
 
       <div className="browser-import-summary">
-        <span>{previewPlan.existingDomainMatches} вкладок уже представлены сохранёнными сайтами</span>
+        <span>{countTabs(previewPlan.existingDomainMatches)} уже представлены сохранёнными сайтами</span>
         <span>{previewPlan.collapsedTabCount} будут объединены по домену</span>
-        {unsupportedTabCount > 0 && <span>{unsupportedTabCount} FTP-вкладок доступны только для просмотра</span>}
+        {unsupportedTabCount > 0 && <span>{countTabs(unsupportedTabCount)} по FTP доступны только для просмотра</span>}
       </div>
 
       <button type="button" className="save browser-import-apply" onClick={applyImport} disabled={!selectedTabs.length}>
