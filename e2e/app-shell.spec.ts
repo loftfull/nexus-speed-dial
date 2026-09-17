@@ -13,6 +13,34 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
   });
 
+  test('production navigation hides unfinished sections and tile opens update recent history', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'open', {
+        configurable: true,
+        writable: true,
+        value: (...args: unknown[]) => {
+          (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen = args;
+          return null;
+        },
+      });
+    });
+    await page.goto('/');
+
+    await expect(page.getByRole('button', { name: 'Загрузки' })).toHaveCount(0);
+    const firstTile = page.locator('.site-card').first();
+    const title = (await firstTile.locator('h3').textContent())?.trim();
+    expect(title).toBeTruthy();
+
+    await firstTile.click();
+    await expect.poll(() => page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen)).not.toBeNull();
+    const opened = await page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen);
+    expect(opened?.[1]).toBe('_blank');
+    expect(opened?.[2]).toBe('noopener,noreferrer');
+
+    await page.locator('.section-nav').getByRole('button', { name: 'Недавние' }).click();
+    await expect(page.locator('.history-item').filter({ hasText: title! })).toBeVisible();
+  });
+
   test('calendar is an overlay and closes with Escape', async ({ page }) => {
     await page.goto('/');
     // Desktop opens it from the sidebar clock, mobile from the compact card.
@@ -52,5 +80,6 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.sidebar')).toBeHidden();
     await page.getByRole('button', { name: 'Разделы' }).click();
     await expect(page.getByText('Разделы и проекты')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Загрузки' })).toHaveCount(0);
   });
 });
