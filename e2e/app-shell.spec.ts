@@ -16,7 +16,7 @@ test.describe('Nexus shell', () => {
   test('a pending site icon is invisible but still loads', async ({ page }) => {
     await page.goto('/');
     const mark = page.locator('.nx-mark').first();
-    await expect(mark).not.toBeEmpty();
+    await expect(mark).toBeVisible();
     // Прятать незагруженную картинку через display:none нельзя: браузер тогда
     // её не загружает и на плитке навсегда остаётся буква. Она должна быть
     // прозрачной, но оставаться в раскладке.
@@ -33,8 +33,23 @@ test.describe('Nexus shell', () => {
   });
 
   test('tiles carry real brand marks, not letters', async ({ page }) => {
+    // Иконки с самих сайтов отключаем: знак обязан найтись локально, иначе
+    // проверка прошла бы за счёт сети и скрыла бы неверный путь к набору.
+    await page.route('https://**', route => route.abort());
     await page.goto('/');
-    // Знаки лежат рядом с приложением, поэтому ждать сети не нужно.
+
+    // Набор отдаётся рядом с приложением и по базовому пути сборки.
+    const index = await page.evaluate(async () => {
+      // Относительно самой страницы: так адрес верен и в корне, и в подкаталоге.
+      const response = await fetch(new URL('brands/index.txt', location.href));
+      const text = await response.text();
+      return { status: response.status, size: text.length, looksLikeIndex: text.includes('\t') };
+    });
+    expect(index.status, 'указатель фирменных знаков должен отдаваться').toBe(200);
+    // Подстраховка от подмены на index.html, который сервер отдаёт на неизвестный путь.
+    expect(index.looksLikeIndex, 'по адресу должен лежать указатель, а не страница').toBe(true);
+    expect(index.size).toBeGreaterThan(10_000);
+
     await expect(page.locator('.nx-main .nx-mark.brand img.ready').first()).toBeVisible();
     const marks = await page.locator('.nx-main .nx-tile .nx-mark').evaluateAll(nodes => nodes.map(node => {
       const image = node.querySelector('img');
@@ -47,6 +62,7 @@ test.describe('Nexus shell', () => {
   });
 
   test('a site without a brand mark still gets a designed plate', async ({ page }) => {
+    await page.route('https://**', route => route.abort());
     await page.goto('/');
     const plain = page.locator('.nx-main .nx-tile .nx-mark:not(.brand)').first();
     if (await plain.count() === 0) test.skip(true, 'Все сайты этого проекта получили фирменный знак.');
@@ -637,7 +653,7 @@ test.describe('Nexus shell', () => {
     };
     const rootStyle = getComputedStyle(root);
     // Параметры наведения и нажатия живут в переменных: их читают правила :hover/:active.
-    const vars = ['--nx-tile-lift', '--nx-tile-hover-scale', '--nx-tile-glow', '--nx-tile-press-scale',
+    const vars = ['--nx-tile-lift', '--nx-tile-hover-scale', '--nx-tile-shadow-hover', '--nx-tile-press-scale',
       '--nx-tile-focus-width', '--nx-tile-drag-opacity', '--nx-tile-easing', '--nx-tile-load']
       .map(name => name + '=' + rootStyle.getPropertyValue(name).trim()).join(';');
     const tileStyle = getComputedStyle(tile);
@@ -740,13 +756,15 @@ test.describe('Nexus shell', () => {
     test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
     await page.goto('/');
     await openTiles(page);
-    const blur = page.getByLabel('Размытие фона');
-    await expect(blur).toBeDisabled();
-    await expect(page.locator('.nx-cell.off', { hasText: 'Размытие фона' })).toContainText('прозрачной подложке');
+    // Тень выключена — её числовые параметры гаснут и объясняют причину.
+    await page.getByLabel('Тень', { exact: true }).selectOption('none');
+    const depth = page.getByLabel('Глубина тени');
+    await expect(depth).toBeDisabled();
+    await expect(page.locator('.nx-cell.off', { hasText: 'Глубина тени' })).toContainText('Тень выключена');
 
-    // Прозрачная подложка включает его обратно.
-    await page.getByLabel('Подложка').selectOption('translucent');
-    await expect(blur).toBeEnabled();
+    // Вернули тень — контрол снова работает.
+    await page.getByLabel('Тень', { exact: true }).selectOption('soft');
+    await expect(depth).toBeEnabled();
   });
 
   test('образцы показывают наведение и нажатие отдельно от обычного состояния', async ({ page }, testInfo) => {
@@ -754,7 +772,7 @@ test.describe('Nexus shell', () => {
     await page.goto('/');
     await openTiles(page);
     // Берём вид с заметной реакцией, чтобы состояния расходились наверняка.
-    await page.getByRole('button', { name: 'Готовый вид «Приподнятый»' }).click();
+    await page.getByRole('button', { name: 'Готовый вид «Парящий»' }).click();
 
     const transforms = await page.locator('.nx-sample-stage .nx-tile').evaluateAll(
       nodes => nodes.map(node => getComputedStyle(node).transform));

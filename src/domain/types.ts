@@ -20,10 +20,19 @@ export type SiteRecord = {
 };
 
 export type TileMode = 'standard' | 'icon' | 'list' | 'preview' | 'screenshot' | 'mobile';
-export type VisualPreset = 'soft' | 'compact' | 'flat' | 'neon' | 'glass' | 'neumorphic' | 'layered' | 'aurora' | 'elevated';
+/**
+ * Готовые виды плитки. Прежний набор включал неон, стекло с размытием,
+ * неоморфизм и слоистые тени — приёмы, которые устарели; они убраны
+ * вместе со всей механикой размытия.
+ */
+export type VisualPreset =
+  | 'soft' | 'compact' | 'flat' | 'outline' | 'floating'
+  | 'aurora' | 'sand' | 'contrast' | 'accent';
 
 export const TILE_MODES: TileMode[] = ['standard', 'icon', 'list', 'preview', 'screenshot', 'mobile'];
-export const VISUAL_PRESETS: VisualPreset[] = ['soft', 'compact', 'flat', 'neon', 'glass', 'neumorphic', 'layered', 'aurora', 'elevated'];
+export const VISUAL_PRESETS: VisualPreset[] = [
+  'soft', 'compact', 'flat', 'outline', 'floating', 'aurora', 'sand', 'contrast', 'accent',
+];
 
 /** Workspace → Category → Group is the navigation hierarchy. */
 export type Category = { id: string; name: string; projectId: string; icon?: string };

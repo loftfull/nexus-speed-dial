@@ -6,7 +6,7 @@ import {
   Tag, Type, Waves, Zap,
 } from './icons.generated';
 import {
-  PRESET_LABELS, PRESET_ORDER, TILE_BOUNDS, TILE_PRESETS, backdropVisible, toTileVars,
+  PRESET_LABELS, PRESET_ORDER, TILE_BOUNDS, TILE_PRESETS, toTileVars,
   type TileAppearance, type TileNumberKey,
 } from '../domain/tileAppearance';
 import type { VisualPreset } from '../domain/types';
@@ -23,13 +23,11 @@ export type TileSettingsProps = {
   setSiteIcons: (value: boolean) => void;
 };
 
-const SURFACES: [TileAppearance['surface'], string, Icon][] = [
-  ['solid', 'Плотная', Square], ['tinted', 'Подложка', SquareStack], ['translucent', 'Прозрачная', Blend],
-  ['gradient', 'Градиент', Waves], ['contrast', 'Тёмная', Contrast],
+const SURFACES: [TileAppearance['surface'], string][] = [
+  ['solid', 'Плотная'], ['tinted', 'Подложка'], ['gradient', 'Градиент'], ['contrast', 'Тёмная'],
 ];
-const SHADOWS: [TileAppearance['shadowStyle'], string, Icon][] = [
-  ['none', 'Нет', SquareDashed], ['drop', 'Обычная', Square], ['neumorphic', 'Объёмная', Boxes],
-  ['layered', 'Слоями', Layers3], ['ring', 'Свечение', CircleDot],
+const SHADOWS: [TileAppearance['shadowStyle'], string][] = [
+  ['none', 'Нет'], ['drop', 'Обычная'], ['soft', 'Мягкая'],
 ];
 const MODES: [TileAppearance['mode'], string, Icon][] = [
   ['standard', 'Плитки', LayoutGrid], ['icon', 'Иконки', Grid2X2], ['list', 'Список', Rows3], ['preview', 'Превью', PanelTop],
@@ -60,8 +58,6 @@ function SampleTile({ tile, state, label }: { tile: TileAppearance; state?: 'hov
 }
 
 export function TileSettings({ tile, patch, applyPreset, siteIcons, setSiteIcons }: TileSettingsProps) {
-  const backdrop = backdropVisible(tile);
-
   return (
     <>
       <div className="nx-card">
@@ -120,17 +116,12 @@ export function TileSettings({ tile, patch, applyPreset, siteIcons, setSiteIcons
       <Group title="Поверхность">
         <Pick icon={Palette} label="Подложка" options={SURFACES.map(([id, text]) => [id, text])}
           value={tile.surface} onChange={value => patch({ surface: value as TileAppearance['surface'] })} />
-        <Slider icon={Droplet} label="Непрозрачность" field="opacity" tile={tile} patch={patch} unit="%" />
         <Slider icon={Sun} label="Оттенок акцента" field="tint" tile={tile} patch={patch} unit="%" />
-        <Slider icon={Blend} label="Размытие фона" field="blur" tile={tile} patch={patch}
-          disabled={!backdrop} why="Видно только на прозрачной подложке" />
-        <Slider icon={Contrast} label="Насыщенность" field="saturation" tile={tile} patch={patch} unit="%"
-          disabled={!backdrop} why="Видно только на прозрачной подложке" />
+        <Switch icon={Sparkles} label="Верхний блик" value={tile.innerHighlight}
+          onChange={value => patch({ innerHighlight: value })} />
         <Slider icon={Square} label="Рамка" field="borderWidth" tile={tile} patch={patch} />
         <Slider icon={SquareDashed} label="Плотность рамки" field="borderOpacity" tile={tile} patch={patch} unit="%"
           disabled={tile.borderWidth === 0} why="Сначала задайте толщину рамки" />
-        <Switch icon={Sparkles} label="Верхний блик" value={tile.innerHighlight}
-          onChange={value => patch({ innerHighlight: value })} />
         <Pick icon={Layers3} label="Тень" options={SHADOWS.map(([id, text]) => [id, text])}
           value={tile.shadowStyle} onChange={value => patch({ shadowStyle: value as TileAppearance['shadowStyle'] })} />
         <Slider icon={MoveVertical} label="Глубина тени" field="shadowDepth" tile={tile} patch={patch}
@@ -144,7 +135,8 @@ export function TileSettings({ tile, patch, applyPreset, siteIcons, setSiteIcons
       <Group title="Реакция на взаимодействие">
         <Slider icon={MoveVertical} label="Подъём" field="hoverLift" tile={tile} patch={patch} />
         <Slider icon={Scaling} label="Увеличение" field="hoverScale" tile={tile} patch={patch} unit="%" />
-        <Slider icon={Sparkles} label="Свечение" field="hoverGlow" tile={tile} patch={patch} unit="%" />
+        <Slider icon={Layers3} label="Тень под курсором" field="hoverShadow" tile={tile} patch={patch} unit="%"
+          disabled={tile.shadowStyle === 'none'} why="Тень выключена" />
         <Slider icon={MousePointerClick} label="Нажатие" field="pressedScale" tile={tile} patch={patch} unit="%" />
         <Slider icon={Gauge} label="Длительность" field="transitionMs" tile={tile} patch={patch} unit="мс" />
         <Pick icon={Zap} label="Кривая" options={EASINGS.map(([id, text]) => [id, text])}

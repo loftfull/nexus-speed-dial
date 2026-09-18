@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_TILE_APPEARANCE, PRESET_ORDER, TILE_BOUNDS, TILE_PRESETS, backdropVisible,
+  DEFAULT_TILE_APPEARANCE, PRESET_ORDER, TILE_BOUNDS, TILE_PRESETS,
   normalizeTileAppearance, tileLayoutClass, toTileVars, type TileAppearance, type TileNumberKey,
 } from './tileAppearance';
 
 /** Значение, заведомо отличное от текущего, для каждого поля настроек. */
 const OTHER: { [K in keyof TileAppearance]: (current: TileAppearance[K]) => TileAppearance[K] } = {
-  preset: current => (current === 'soft' ? 'neon' : 'soft'),
+  preset: current => (current === 'soft' ? 'contrast' : 'soft'),
   mode: current => (current === 'standard' ? 'list' : 'standard'),
   align: current => (current === 'center' ? 'left' : 'center'),
   font: current => (current === 'Manrope' ? 'Inter' : 'Manrope'),
   surface: current => (current === 'solid' ? 'contrast' : 'solid'),
-  shadowStyle: current => (current === 'drop' ? 'neumorphic' : 'drop'),
+  shadowStyle: current => (current === 'drop' ? 'soft' : 'drop'),
   easing: current => (current === 'standard' ? 'snappy' : 'standard'),
   focusRing: current => (current === 'standard' ? 'strong' : 'standard'),
   loadAnimation: current => (current === 'fade' ? 'rise' : 'fade'),
@@ -23,9 +23,9 @@ const OTHER: { [K in keyof TileAppearance]: (current: TileAppearance[K]) => Tile
   showCategory: current => !current,
   showFavorite: current => !current,
   width: () => 210, minHeight: () => 200, gap: () => 8, radius: () => 4, iconSize: () => 64,
-  columns: () => 4, opacity: () => 50, tint: () => 40, blur: () => 20, saturation: () => 150,
+  columns: () => 4, tint: () => 40,
   borderWidth: () => 2, borderOpacity: () => 80, shadowDepth: () => 18, shadowSoftness: () => 40,
-  shadowOpacity: () => 25, hoverLift: () => 10, hoverScale: () => 106, hoverGlow: () => 30,
+  shadowOpacity: () => 25, hoverLift: () => 10, hoverScale: () => 106, hoverShadow: () => 200,
   pressedScale: () => 92, transitionMs: () => 400,
 };
 
@@ -49,7 +49,7 @@ describe('tileAppearance', () => {
       const changed = { ...DEFAULT_TILE_APPEARANCE, [key]: (OTHER[key] as (value: unknown) => unknown)(DEFAULT_TILE_APPEARANCE[key]) };
       if (key === 'preset') {
         // Пресет не переменная, а набор значений: он меняет плитку через них.
-        expect(JSON.stringify(toTileVars(TILE_PRESETS.neon))).not.toBe(JSON.stringify(before));
+        expect(JSON.stringify(toTileVars(TILE_PRESETS.contrast))).not.toBe(JSON.stringify(before));
         return;
       }
       if (key === 'mode') {
@@ -89,17 +89,6 @@ describe('tileAppearance', () => {
     expect(value.preset).toBe('soft');
   });
 
-  it('насыщенность работает и без размытия, но только на прозрачной подложке', () => {
-    const plain = toTileVars({ ...DEFAULT_TILE_APPEARANCE, blur: 0, saturation: 100 });
-    const saturated = toTileVars({ ...DEFAULT_TILE_APPEARANCE, blur: 0, saturation: 150 });
-    expect(plain['--nx-tile-blur']).toBe('none');
-    expect(saturated['--nx-tile-blur']).toContain('saturate(150%)');
-    // Непрозрачная подложка перекрывает фон, поэтому контрол помечается неактивным.
-    expect(backdropVisible(DEFAULT_TILE_APPEARANCE)).toBe(false);
-    expect(backdropVisible({ ...DEFAULT_TILE_APPEARANCE, surface: 'translucent' })).toBe(true);
-    expect(backdropVisible({ ...DEFAULT_TILE_APPEARANCE, opacity: 70 })).toBe(true);
-  });
-
   it('не выдаёт тень, когда тень выключена', () => {
     expect(toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'none' })['--nx-tile-shadow']).toBe('none');
   });
@@ -112,5 +101,38 @@ describe('tileAppearance', () => {
     expect(bare['--nx-tile-star']).toBe('none');
     const shown = toTileVars({ ...DEFAULT_TILE_APPEARANCE, showCategory: true });
     expect(shown['--nx-tile-category']).toBe('block');
+  });
+
+  // Пользователь попросил убрать неон, размытие и устаревшие приёмы целиком.
+  it('нигде не осталось размытия, свечения и неонового вида', () => {
+    const everything = JSON.stringify([
+      DEFAULT_TILE_APPEARANCE,
+      ...PRESET_ORDER.map(id => [TILE_PRESETS[id], toTileVars(TILE_PRESETS[id])]),
+    ]);
+    for (const forbidden of ['blur', 'saturate', 'neon', 'glass', 'translucent',
+      'neumorphic', 'layered', 'elevated', 'glow']) {
+      expect(everything).not.toContain(forbidden);
+    }
+  });
+
+  it('старые значения из хранилища заменяются на действующие', () => {
+    // Профиль, сохранённый прежней версией приложения.
+    const old = normalizeTileAppearance({
+      preset: 'neon', surface: 'translucent', shadowStyle: 'ring',
+      blur: 18, saturation: 140, opacity: 62, hoverGlow: 34,
+    });
+    expect(old.preset).toBe(DEFAULT_TILE_APPEARANCE.preset);
+    expect(old.surface).toBe(DEFAULT_TILE_APPEARANCE.surface);
+    expect(old.shadowStyle).toBe(DEFAULT_TILE_APPEARANCE.shadowStyle);
+    expect(JSON.stringify(old)).not.toContain('blur');
+  });
+
+  it('усиливает тень под курсором ровно на заданную долю', () => {
+    const calm = toTileVars({ ...DEFAULT_TILE_APPEARANCE, hoverShadow: 100 });
+    const strong = toTileVars({ ...DEFAULT_TILE_APPEARANCE, hoverShadow: 200 });
+    expect(calm['--nx-tile-shadow-hover']).toBe(calm['--nx-tile-shadow']);
+    expect(strong['--nx-tile-shadow-hover']).not.toBe(strong['--nx-tile-shadow']);
+    // Выключенная тень остаётся выключенной и под курсором.
+    expect(toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'none' })['--nx-tile-shadow-hover']).toBe('none');
   });
 });

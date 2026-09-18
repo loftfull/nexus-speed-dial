@@ -19,9 +19,7 @@
  --nx-r-md:14px;
  --nx-r-sm:10px;
  --nx-shade-rgb:20,28,45;
- --nx-light-rgb:255,255,255;
  --nx-line-rgb:189,199,214;
- --nx-glow-rgb:47,124,246;
 }
 :root[data-theme="dark"]{
  --nx-canvas:#0e1217;
@@ -37,9 +35,7 @@
  --nx-shadow-sm:0 1px 2px rgba(0,0,0,.35),0 5px 16px rgba(0,0,0,.35);
  --nx-shadow-lg:0 2px 8px rgba(0,0,0,.5),0 28px 64px rgba(0,0,0,.6);
  --nx-shade-rgb:0,0,0;
- --nx-light-rgb:62,76,95;
  --nx-line-rgb:70,84,104;
- --nx-glow-rgb:138,184,255;
 }
 
 @layer nx-reset, nx-ui;
@@ -179,7 +175,6 @@
  background:var(--nx-tile-bg,var(--nx-surface));border:var(--nx-tile-border,0 solid transparent);
  border-radius:var(--nx-tile-radius,var(--nx-r-lg));
  box-shadow:var(--nx-tile-shadow,var(--nx-shadow-sm)),var(--nx-tile-highlight,inset 0 0 0 rgba(0,0,0,0));
- backdrop-filter:var(--nx-tile-blur,none);-webkit-backdrop-filter:var(--nx-tile-blur,none);
  padding:24px 14px 20px;min-height:var(--nx-tile-min-h,148px);color:var(--nx-tile-ink,var(--nx-text));
  text-align:var(--nx-tile-text-align,center);font-family:var(--nx-tile-font,inherit);
  animation-name:var(--nx-tile-load,none);animation-duration:var(--nx-tile-transition,180ms);
@@ -189,7 +184,7 @@
   opacity var(--nx-tile-transition,180ms) var(--nx-tile-easing,ease)}
 .nx-tile:hover,.nx-tile.is-hover{
  transform:translateY(var(--nx-tile-lift,-2px)) scale(var(--nx-tile-hover-scale,1));
- box-shadow:var(--nx-tile-shadow,var(--nx-shadow)),var(--nx-tile-glow,0 0 0 0 transparent),
+ box-shadow:var(--nx-tile-shadow-hover,var(--nx-tile-shadow,var(--nx-shadow))),
   var(--nx-tile-highlight,inset 0 0 0 rgba(0,0,0,0))}
 .nx-tile:active,.nx-tile.is-press{transform:scale(var(--nx-tile-press-scale,.98))}
 .nx-tile[draggable="true"]:active{opacity:var(--nx-tile-drag-opacity,1)}
@@ -314,7 +309,7 @@
 
 .nx-root .calendar{position:fixed;left:calc(var(--nx-panel-w,272px) + 14px);bottom:104px;top:auto;z-index:40;
  width:284px;padding:15px;border-radius:var(--nx-r-lg);background:var(--nx-surface);border:0;
- box-shadow:var(--nx-shadow-lg);backdrop-filter:none;color:var(--nx-text);
+ box-shadow:var(--nx-shadow-lg);color:var(--nx-text);
  animation:nx-forecast-in .2s cubic-bezier(.2,.85,.25,1)}
 .nx-root .cal-head b{font-size:13px;color:var(--nx-text)}
 .nx-root .cal-head span,.nx-root .cal-head button,.nx-root .week{color:var(--nx-muted)}
@@ -461,9 +456,10 @@
 /* ── окно «Добавить сайт» ──────────────────────────────────────
    Раскладка этого окна жила в product-overrides.css и пропала вместе
    с ним, когда настройки переехали в свою панель. */
-.nx-root ~ .overlay,.overlay{background:rgba(20,28,45,.28);backdrop-filter:blur(3px);display:grid;place-items:center;padding:16px}
+.nx-root ~ .overlay,.overlay{position:fixed;inset:0;z-index:100;background:rgba(20,28,45,.42);
+ display:grid;place-items:center;padding:16px}
 .site-form{width:min(460px,100%);max-height:calc(100vh - 32px);overflow-y:auto;border:0;border-radius:var(--nx-r-lg);
- background:var(--nx-surface);box-shadow:var(--nx-shadow-lg);backdrop-filter:none;color:var(--nx-text);padding:0}
+ background:var(--nx-surface);box-shadow:var(--nx-shadow-lg);color:var(--nx-text);padding:0}
 .site-form header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px 14px;
  border-bottom:1px solid var(--nx-line)}
 .site-form .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:1.3px;color:var(--nx-muted)}
@@ -493,7 +489,7 @@
 
 /* ── action dialogs ── */
 .nx-dialog-layer{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:24px;
- background:rgba(19,27,40,.2);backdrop-filter:blur(12px) saturate(118%)}
+ background:rgba(19,27,40,.42)}
 .nx-action-dialog{width:min(440px,100%);border:1px solid color-mix(in srgb,var(--nx-surface) 74%,var(--nx-line));
  border-radius:24px;background:color-mix(in srgb,var(--nx-surface) 94%,transparent);
  box-shadow:0 2px 5px rgba(20,28,45,.08),0 30px 90px rgba(20,28,45,.22);
@@ -738,4 +734,46 @@
  .nx-triples,.nx-presets,.nx-samples{gap:6px}
  .nx-cell{padding:8px 5px 7px}
  .nx-cell-label{font-size:10px}
+}
+
+/* ── остатки прежнего листа стилей ───────────────────────────────
+   src/styles.css содержал целый прошлый макет приложения: боковую
+   колонку, карточки сайтов, док, окно настроек — всё с жёстко
+   прописанными цветами 2020 года и размытием. Лист удалён целиком;
+   сюда перенесено только то, что действительно рисуют живые окна,
+   и уже на общих токенах. */
+.calendar{position:fixed;z-index:40;width:284px;padding:15px;border-radius:var(--nx-r-lg);
+ background:var(--nx-surface);border:0;box-shadow:var(--nx-shadow-lg);color:var(--nx-text)}
+.cal-head{display:flex;justify-content:space-between;align-items:center}
+.cal-head b{display:block;font-size:13px;color:var(--nx-text)}
+.cal-head span{font-size:12px;color:var(--nx-muted)}
+.cal-head button{width:26px;height:26px;display:inline-grid;place-items:center;border-radius:8px;color:var(--nx-muted)}
+.cal-head button:hover{background:var(--nx-sunken);color:var(--nx-accent)}
+.week,.days{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;gap:3px}
+.week{margin-top:16px;color:var(--nx-muted);font-size:12px}
+.days{margin-top:8px}
+.days button{font-size:13px;width:26px;height:26px;border-radius:8px;color:var(--nx-text);justify-self:center}
+.days button:hover{background:var(--nx-sunken);color:var(--nx-accent)}
+.days .today{background:var(--nx-accent);color:var(--nx-surface)}
+.cal-note{border-top:1px solid var(--nx-line);margin-top:13px;padding-top:12px;display:flex;gap:8px;align-items:center}
+.cal-note span{flex:1;min-width:0}
+.cal-note b,.cal-note small{display:block;font-size:12px}
+.cal-note b{color:var(--nx-text)}
+.cal-note small{color:var(--nx-muted);margin-top:2px}
+.cal-note svg{color:var(--nx-muted);flex:none}
+.note-dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--nx-accent)}
+.close-cal{display:none}
+
+.metadata-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--nx-muted)}
+.metadata-status svg{animation:metadata-spin .9s linear infinite}
+.metadata-status.ready{color:#1f8a63}
+.metadata-status.ready svg{display:none}
+:root[data-theme="dark"] .metadata-status.ready{color:#4fd0a4}
+@keyframes metadata-spin{to{transform:rotate(360deg)}}
+
+.mobile-sheet{align-items:end}
+@keyframes nx-panel-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.site-form,.mobile-sections-card{animation:nx-panel-in .26s cubic-bezier(.22,1,.36,1) both}
+@media(prefers-reduced-motion:reduce){
+ .site-form,.mobile-sections-card,.nx-settings{animation:none!important}
 }

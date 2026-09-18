@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  brandMarkUrl, loadBrandIndex, lookupBrand, parseBrandIndex, resetBrandIndex, siteIconCandidates,
+  BRAND_INDEX_URL, brandMarkUrl, loadBrandIndex, lookupBrand, parseBrandIndex, resetBrandIndex,
+  siteIconCandidates,
 } from './brandMark';
 
 const INDEX = parseBrandIndex([
@@ -38,8 +39,12 @@ describe('brandMark', () => {
     expect(lookupBrand(INDEX, 'localhost')).toBeNull();
   });
 
-  it('строит адрес файла знака', () => {
-    expect(brandMarkUrl('figma')).toBe('/brands/figma.svg');
+  it('строит адрес файла знака от базового пути сборки', () => {
+    // Под GitHub Actions база — подкаталог, поэтому адрес не может начинаться с корня вслепую.
+    const base = (import.meta.env?.BASE_URL ?? '/').replace(/\/*$/, '/');
+    expect(brandMarkUrl('figma')).toBe(`${base}brands/figma.svg`);
+    expect(BRAND_INDEX_URL).toBe(`${base}brands/index.txt`);
+    expect(brandMarkUrl('figma').startsWith(base)).toBe(true);
   });
 
   it('загружает указатель один раз', async () => {

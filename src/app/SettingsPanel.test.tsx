@@ -44,8 +44,8 @@ describe('SettingsPanel', () => {
     const user = userEvent.setup();
     const props = setup();
     await user.click(screen.getByRole('button', { name: 'Плитки' }));
-    await user.click(screen.getByRole('button', { name: 'Готовый вид «Неон»' }));
-    expect(props.setTile).toHaveBeenCalledWith(expect.objectContaining({ preset: 'neon', surface: 'contrast' }));
+    await user.click(screen.getByRole('button', { name: 'Готовый вид «Тёмный»' }));
+    expect(props.setTile).toHaveBeenCalledWith(expect.objectContaining({ preset: 'contrast', surface: 'contrast' }));
   });
 
   it('включает категорию на плитке', async () => {
@@ -66,15 +66,19 @@ describe('SettingsPanel', () => {
     expect(screen.getAllByRole('button', { name: /^Готовый вид «/ })).toHaveLength(9);
   });
 
-  it('гасит контрол, который на текущей подложке ничего не изменит', async () => {
+  it('гасит контрол, который при текущих значениях ничего не изменит', async () => {
     const user = userEvent.setup();
-    setup();
+    setup({ tile: { ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'none', borderWidth: 0 } });
     await user.click(screen.getByRole('button', { name: 'Плитки' }));
-    // Плотная подложка перекрывает фон, поэтому размытие отключено и объясняет почему.
-    expect(screen.getByLabelText('Размытие фона')).toBeDisabled();
-    expect(screen.getByLabelText('Насыщенность')).toBeDisabled();
-    // Причина написана рядом с каждым из погашенных контролов.
-    expect(screen.getAllByText('Видно только на прозрачной подложке')).toHaveLength(2);
+    // Тень выключена — её числовые параметры и усиление под курсором погашены.
+    expect(screen.getByLabelText('Глубина тени')).toBeDisabled();
+    expect(screen.getByLabelText('Мягкость тени')).toBeDisabled();
+    expect(screen.getByLabelText('Плотность тени')).toBeDisabled();
+    expect(screen.getByLabelText('Тень под курсором')).toBeDisabled();
+    expect(screen.getAllByText('Тень выключена')).toHaveLength(4);
+    // Рамки нет — её плотность тоже ни на что не влияет.
+    expect(screen.getByLabelText('Плотность рамки')).toBeDisabled();
+    expect(screen.getByText('Сначала задайте толщину рамки')).toBeInTheDocument();
   });
 
   it('меняет поисковую систему', async () => {

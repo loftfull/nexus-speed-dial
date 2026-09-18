@@ -9,8 +9,15 @@
 export type BrandMark = { slug: string; hex: string };
 export type BrandIndex = Map<string, BrandMark>;
 
-export const BRAND_INDEX_URL = '/brands/index.txt';
-export const brandMarkUrl = (slug: string) => `/brands/${slug}.svg`;
+/**
+ * Адреса строятся от базового пути сборки, а не от корня: под GitHub Actions
+ * приложение отдаётся из подкаталога, и абсолютный «/brands/…» там даёт 404 —
+ * фирменные знаки молча не находились.
+ */
+const BASE = (import.meta.env?.BASE_URL ?? '/').replace(/\/*$/, '/');
+
+export const BRAND_INDEX_URL = `${BASE}brands/index.txt`;
+export const brandMarkUrl = (slug: string) => `${BASE}brands/${slug}.svg`;
 
 /** Разбирает строки вида «домен\tзнак\tцвет». */
 export function parseBrandIndex(text: string): BrandIndex {

@@ -6,7 +6,6 @@ import {
   Star, StickyNote, Table2, Tag, Trash2, Wind, X,
 } from './icons.generated';
 
-import '../styles.css';
 import './theme.css';
 
 import { appReducer, createInitialAppState, persistAppState } from '../domain/appStore';
