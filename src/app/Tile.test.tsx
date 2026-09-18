@@ -89,6 +89,15 @@ describe('Tile', () => {
     expect(container.querySelector('.nx-mark')).toHaveTextContent('F');
   });
 
+  it('после неудачного знака переходит к иконке с самого сайта', async () => {
+    // Знак может не отдаться — например, в урезанной сборке предпросмотра.
+    // Тогда должен работать следующий уровень, а не сразу монограмма.
+    const { container } = render(<Tile site={site} useFavicons {...handlers()} />);
+    const image = () => container.querySelector('img') as HTMLImageElement;
+    await act(async () => { fireEvent.error(image()); });
+    expect(image().src).toContain('apple-touch-icon-precomposed');
+  });
+
   it('не запрашивает иконку сайта, когда логотипы выключены', () => {
     const { container } = render(<Tile site={site} useFavicons={false} {...handlers()} />);
     expect(container.querySelector('img')).toBeNull();

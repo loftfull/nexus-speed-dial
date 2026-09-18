@@ -52,10 +52,14 @@ export function SiteIcon({ title, domain, color, logos = true, className = 'nx-m
   const candidates = useMemo(() => (logos ? siteIconCandidates(domain) : []), [logos, domain]);
   const [step, setStep] = useState(0);
   const [loaded, setLoaded] = useState(false);
-  useEffect(() => { setStep(0); setLoaded(false); }, [domain, logos, brand?.slug]);
+  // Файл знака может не отдаться — например, в урезанной сборке предпросмотра.
+  // Тогда знак отбрасывается и работают следующие уровни, а не монограмма сразу.
+  const [brandFailed, setBrandFailed] = useState(false);
+  useEffect(() => { setStep(0); setLoaded(false); setBrandFailed(false); }, [domain, logos, brand?.slug]);
 
-  const palette = brand ? brandPlate(brand.hex) : markPalette(domain, color);
-  const source = brand ? brandMarkUrl(brand.slug) : candidates[step];
+  const mark = brandFailed ? null : brand;
+  const palette = mark ? brandPlate(mark.hex) : markPalette(domain, color);
+  const source = mark ? brandMarkUrl(mark.slug) : candidates[step];
   const style = {
     '--nx-mark-from': palette.from,
     '--nx-mark-to': palette.to,
@@ -64,7 +68,7 @@ export function SiteIcon({ title, domain, color, logos = true, className = 'nx-m
   } as React.CSSProperties;
 
   return (
-    <span className={className + (brand ? ' brand' : '') + (loaded ? ' filled' : '')} style={style} aria-hidden="true">
+    <span className={className + (mark ? ' brand' : '') + (loaded ? ' filled' : '')} style={style} aria-hidden="true">
       {source && (
         <img
           key={source}
@@ -78,7 +82,11 @@ export function SiteIcon({ title, domain, color, logos = true, className = 'nx-m
           onLoad={() => setLoaded(true)}
           // Не загрузилось — пробуем следующий адрес, а когда они кончились,
           // остаётся монограмма: битая картинка на экран не попадает никогда.
-          onError={() => { setLoaded(false); setStep(value => value + 1); }}
+          onError={() => {
+            setLoaded(false);
+            if (mark) { setBrandFailed(true); return; }
+            setStep(value => value + 1);
+          }}
         />
       )}
       {!loaded && <span className="nx-mark-text">{monogram(title)}</span>}
