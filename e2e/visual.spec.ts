@@ -8,7 +8,10 @@ async function prepareVisualPage(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ current: { temperature_2m: 18, weather_code: 2 } }),
+      body: JSON.stringify({
+        current: { temperature_2m: 18, weather_code: 2, relative_humidity_2m: 54, wind_speed_10m: 6 },
+        daily: { temperature_2m_max: [20], temperature_2m_min: [11] },
+      }),
     });
   });
 }
@@ -25,7 +28,7 @@ test.describe('Nexus visual baselines', () => {
     test.skip(testInfo.project.name !== 'desktop', 'Desktop baseline only.');
     await prepareVisualPage(page);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Настройки' }).click();
+    await page.getByRole('button', { name: 'Настройки' }).first().click();
     await expect(page.getByRole('heading', { name: 'Настройки приложения' })).toBeVisible();
     await expect(page).toHaveScreenshot('desktop-settings.png', { ...screenshotOptions, fullPage: true });
   });
@@ -34,7 +37,7 @@ test.describe('Nexus visual baselines', () => {
     test.skip(testInfo.project.name !== 'desktop', 'Desktop baseline only.');
     await prepareVisualPage(page);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Открыть календарь' }).click();
+    await page.locator('[data-calendar-trigger]:visible').first().click();
     await expect(page).toHaveScreenshot('desktop-calendar-popover.png', { ...screenshotOptions, fullPage: true });
   });
 
@@ -49,7 +52,7 @@ test.describe('Nexus visual baselines', () => {
     test.skip(testInfo.project.name !== 'mobile', 'Mobile baseline only.');
     await prepareVisualPage(page);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Настройки' }).click();
+    await page.getByRole('button', { name: 'Настройки' }).first().click();
     await expect(page.getByRole('heading', { name: 'Настройки приложения' })).toBeVisible();
     await expect(page).toHaveScreenshot('mobile-settings.png', screenshotOptions);
   });

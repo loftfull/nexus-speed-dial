@@ -1,19 +1,42 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Nexus shell', () => {
-  test('shows the Speed Dial grid and can open add-site form', async ({ page }) => {
+  test('shows the project grid and can open the add-site form', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Быстрый доступ' })).toBeVisible();
-    // The grid is scoped to the selected project, so assert it against the
-    // current workspace summary rather than a hard-coded seed size.
-    const shown = await page.locator('.site-card').count();
+    // The heading names the selected project, or the selected category.
+    await expect(page.locator('.nx-head h1')).not.toBeEmpty();
+    const shown = await page.locator('.nx-tile').count();
     expect(shown).toBeGreaterThan(0);
-    await expect(page.locator('.workspace-head p')).toContainText(String(shown));
-    await page.getByRole('button', { name: /Добавить сайт/ }).first().click();
+    await expect(page.locator('.nx-head p')).toContainText(String(shown));
+
+    await page.getByRole('button', { name: 'Добавить сайт' }).first().click();
     await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
   });
 
-  test('production navigation hides unfinished sections and tile opens update recent history', async ({ page }) => {
+  test('category tabs scope the grid and switch between all sites and groups', async ({ page }) => {
+    await page.goto('/');
+    const tabs = page.locator('.nx-cats-tabs');
+    await expect(tabs.getByRole('tab', { name: 'Все' })).toHaveAttribute('aria-selected', 'true');
+
+    const all = await page.locator('.nx-tile').count();
+    await tabs.getByRole('tab', { name: 'Соцсети' }).click();
+    await expect(page.locator('.nx-head h1')).toHaveText('Соцсети');
+    const scoped = await page.locator('.nx-tile').count();
+    expect(scoped).toBeGreaterThan(0);
+    expect(scoped).toBeLessThan(all);
+    await expect(page.locator('.nx-group')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Группы категории' }).click();
+    const blocks = page.locator('.nx-group');
+    expect(await blocks.count()).toBeGreaterThan(1);
+    expect(await page.locator('.nx-group .nx-tile').count()).toBe(scoped);
+
+    // The chosen view mode survives a reload.
+    await page.reload();
+    await expect(page.locator('.nx-group').first()).toBeVisible();
+  });
+
+  test('a tile opens in a new tab and lands in the recent section', async ({ page }) => {
     await page.addInitScript(() => {
       Object.defineProperty(window, 'open', {
         configurable: true,
@@ -26,53 +49,72 @@ test.describe('Nexus shell', () => {
     });
     await page.goto('/');
 
+    // Sections that carry no product behaviour are not offered anywhere.
     await expect(page.getByRole('button', { name: 'Загрузки' })).toHaveCount(0);
-    const firstTile = page.locator('.site-card').first();
-    const title = (await firstTile.locator('h3').textContent())?.trim();
-    expect(title).toBeTruthy();
 
-    await firstTile.click();
-    await expect.poll(() => page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen)).toBeTruthy();
+    const first = page.locator('.nx-tile').first();
+    const title = (await first.locator('.nx-tile-name').textContent())?.trim();
+    expect(title).toBeTruthy();
+    await first.getByRole('button', { name: `Открыть «${title}»` }).click();
+
     const opened = await page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen);
     expect(opened?.[1]).toBe('_blank');
     expect(opened?.[2]).toBe('noopener,noreferrer');
 
-    const recentTopNav = page.locator('.ref-tabs').getByRole('button', { name: 'Недавние' });
-    if (await recentTopNav.isVisible()) {
-      await recentTopNav.click();
+    await page.locator('.nx-dock').getByRole('button', { name: 'Недавние' }).click();
+    await expect(page.locator('.nx-tile-name').filter({ hasText: title! }).first()).toBeVisible();
+  });
+
+  test('tile actions hide behind a menu and move a site to the trash', async ({ page }) => {
+    await page.goto('/');
+    const first = page.locator('.nx-tile').first();
+    const title = (await first.locator('.nx-tile-name').textContent())?.trim();
+    const before = await page.locator('.nx-tile').count();
+
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    await first.getByRole('button', { name: /Действия для/ }).click();
+    await first.getByRole('menuitem', { name: 'Удалить' }).click();
+    await expect(page.locator('.nx-tile')).toHaveCount(before - 1);
+
+    await page.locator('.nx-dock').getByRole('button', { name: 'Быстрый доступ' }).click();
+    // The trash lives in the project panel on desktop and in the sections sheet on mobile.
+    const panelTrash = page.locator('.nx-panel').getByRole('button', { name: 'Корзина' });
+    if (await panelTrash.isVisible()) {
+      await panelTrash.click();
     } else {
       await page.getByRole('button', { name: 'Разделы' }).click();
-      await page.locator('.mobile-sections-card').getByRole('button', { name: 'Недавние', exact: true }).click();
+      await page.locator('.mobile-sections-card').getByRole('button', { name: 'Корзина', exact: true }).click();
     }
-    await expect(page.locator('.history-item').filter({ hasText: title! })).toBeVisible();
+    await expect(page.locator('.nx-tile-name').filter({ hasText: title! }).first()).toBeVisible();
   });
 
   test('calendar is an overlay and closes with Escape', async ({ page }) => {
     await page.goto('/');
-    // Desktop opens it from the sidebar clock, mobile from the compact card.
     await page.locator('[data-calendar-trigger]:visible').first().click();
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeHidden();
   });
 
-  test('settings changes persist after returning to the app', async ({ page }, testInfo) => {
+  test('settings changes persist after returning to the app', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Настройки' }).click();
+    await page.getByRole('button', { name: 'Настройки' }).first().click();
     await expect(page.getByRole('heading', { name: 'Настройки приложения' })).toBeVisible();
-    await page.getByRole('button', { name: 'Плитки сайтов' }).click();
-    await page.getByRole('button', { name: 'Neumorphic' }).click();
-    await page.getByRole('button', { name: 'Сохранить изменения' }).click();
+    const settings = page.locator('.settings-page');
+    await settings.getByRole('button', { name: 'Оформление' }).click();
+    await settings.getByRole('button', { name: /Тёмная/ }).first().click();
+    await settings.getByRole('button', { name: 'Сохранить изменения' }).click();
     await page.reload();
-    await expect(page.locator('html')).toHaveAttribute('data-tile-preset', 'neumorphic');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   });
 
   test('search engine setting drives the command-center web search action', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Настройки' }).click();
-    await page.getByRole('button', { name: 'Поиск', exact: true }).click();
-    await page.getByLabel('Поисковая система').selectOption('Яндекс');
-    await page.getByRole('button', { name: 'Сохранить изменения' }).click();
+    await page.getByRole('button', { name: 'Настройки' }).first().click();
+    const settings = page.locator('.settings-page');
+    await settings.getByRole('button', { name: 'Поиск', exact: true }).click();
+    await settings.getByLabel('Поисковая система').selectOption('Яндекс');
+    await settings.getByRole('button', { name: 'Сохранить изменения' }).click();
 
     await page.keyboard.press('Control+K');
     await page.getByPlaceholder('Что вы хотите сделать?').fill('Nexus Speed Dial');
@@ -80,24 +122,24 @@ test.describe('Nexus shell', () => {
   });
 
   test('mobile keeps the clock, the weather and the calendar in one compact card', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'mobile', 'The compact card replaces the sidebar footer below 680px.');
+    test.skip(testInfo.project.name !== 'mobile', 'The compact card replaces the project panel below 900px.');
     await page.goto('/');
-    const card = page.locator('.mobile-timecard');
+    const card = page.locator('.nx-mobile-card');
     await expect(card).toBeVisible();
     await expect(card).toContainText(/\d{1,2}:\d{2}/);
-    await expect(card.locator('.mobile-timecard-weather')).toBeVisible();
-    await card.click();
+    await expect(card.locator('.nx-mobile-weather')).toBeVisible();
+    await card.getByRole('button', { name: 'Открыть календарь' }).click();
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeVisible();
-    await card.click();
-    await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeHidden();
   });
 
-  test('mobile replaces the persistent sidebar with sections sheet', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'mobile', 'Mobile navigation behavior is only valid for the mobile project.');
+  test('mobile replaces the project panel with the sections sheet', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Mobile navigation only applies to the mobile project.');
     await page.goto('/');
-    await expect(page.locator('.sidebar')).toBeHidden();
+    await expect(page.locator('.nx-panel')).toBeHidden();
+    await expect(page.locator('.nx-rail')).toBeHidden();
     await page.getByRole('button', { name: 'Разделы' }).click();
     await expect(page.getByText('Разделы и проекты')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Загрузки' })).toHaveCount(0);
+    await page.locator('.mobile-sections-card').getByRole('button', { name: 'Заметки', exact: true }).click();
+    await expect(page.locator('.nx-head h1')).toHaveText('Заметки');
   });
 });

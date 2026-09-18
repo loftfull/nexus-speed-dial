@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - arena/01a0a900-nexus-speed-dial
+      - arena/01a0a900-nexus-speed-dial-v2
   pull_request:
 
 jobs:
