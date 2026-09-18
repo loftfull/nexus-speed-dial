@@ -1,7 +1,7 @@
 # Nexus Speed Dial v2 — Canonical Architecture Baseline
 
-**Date:** 2026-09-18  
-**Status:** Approved product baseline  
+**Date:** 2026-09-18
+**Status:** Approved product baseline
 **Canonical branch:** `arena/01a0a900-nexus-speed-dial-v2`
 
 ## Purpose
@@ -179,4 +179,3 @@ Their useful behaviors may be reimplemented inside v2 boundaries when required, 
 5. visual coverage for ActionDialog and mobile projects sheet;
 6. progressively migrate remaining legacy component styling into v2 tokens;
 7. maintain a live browser preview of the exact reviewed v2 state.
-
