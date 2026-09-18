@@ -1,2 +1,3 @@
-mode=candidate
+mode=accept
+last-approved-candidate=4f075db
 scope=merged-v2-action-dialogs-and-audit-fixes
