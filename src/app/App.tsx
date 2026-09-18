@@ -197,7 +197,7 @@ export function App() {
       if (event.ctrlKey && key === 'n') { event.preventDefault(); setAddOpen(true); }
       if (event.ctrlKey && key === ',') { event.preventDefault(); setSettingsOpen(true); }
       if (event.ctrlKey && key === 'b') { event.preventDefault(); setSection('favorites'); }
-      if (key === 'escape') { setCalendarOpen(false); setMobileNav(false); setSettingsOpen(false); setForecastOpen(false); }
+      if (key === 'escape') { setCalendarOpen(false); setMobileNav(false); setSettingsOpen(false); setForecastOpen(false); setAddOpen(false); setEditing(null); }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -407,7 +407,7 @@ export function App() {
               return (
                 <div className="nx-tree-node" key={project.id}>
                   <button type="button" className={'nx-link nx-tree-row' + (current && section === 'sites' ? ' on' : '')}
-                    title={project.name} aria-label={panelOpen ? undefined : `Проект «${project.name}»`}
+                    title={project.name} aria-label={`Проект «${project.name}»`}
                     aria-expanded={panelOpen ? expanded : undefined}
                     onClick={() => {
                       selectProject(project.id);
@@ -432,6 +432,7 @@ export function App() {
                         return (
                           <div key={category.id}>
                             <button type="button" className={'nx-link nx-tree-row' + (categoryId === category.id && !groupId ? ' on' : '')}
+                              aria-label={`Категория «${category.name}»`}
                               aria-expanded={catOpen} onClick={() => {
                                 setSection('sites');
                                 setProjectId(project.id);
@@ -448,6 +449,7 @@ export function App() {
                                 {inner.length === 0 && <span className="nx-tree-empty">Групп пока нет</span>}
                                 {inner.map(group => (
                                   <button type="button" key={group.id} className={'nx-link nx-tree-row' + (groupId === group.id ? ' on' : '')}
+                                    aria-label={`Группа «${group.name}»`}
                                     onClick={() => {
                                       setSection('sites');
                                       setProjectId(project.id);
@@ -498,9 +500,8 @@ export function App() {
             )}
           </div>
 
-          <button type="button" className={'nx-link' + (quickOpen ? ' on' : '')} aria-expanded={quickOpen} aria-controls="nx-quick"
-            title={quickOpen ? 'Свернуть панель быстрого доступа' : 'Развернуть панель быстрого доступа'}
-            aria-label={quickOpen ? 'Свернуть панель быстрого доступа' : 'Развернуть панель быстрого доступа'}
+          <button type="button" className={'nx-link' + (quickOpen ? ' on' : '')} aria-pressed={quickOpen} aria-controls="nx-quick"
+            title="Панель быстрого доступа" aria-label="Панель быстрого доступа"
             onClick={() => setQuickOpen(value => !value)}>
             <LayoutGrid size={17} />{panelOpen && <span>Быстрый доступ</span>}
           </button>
@@ -530,8 +531,8 @@ export function App() {
                 </button>
               )}
             </div>
-            <button type="button" className={'nx-icon-btn' + (quickOpen ? ' on' : '')} aria-expanded={quickOpen} aria-controls="nx-quick"
-              aria-label={quickOpen ? 'Свернуть панель быстрого доступа' : 'Развернуть панель быстрого доступа'}
+            <button type="button" className={'nx-icon-btn' + (quickOpen ? ' on' : '')} aria-pressed={quickOpen} aria-controls="nx-quick"
+              aria-label="Панель быстрого доступа" title="Панель быстрого доступа"
               onClick={() => setQuickOpen(value => !value)}><LayoutGrid size={18} /></button>
             <button type="button" className="nx-icon-btn" aria-label="Настройки" onClick={() => setSettingsOpen(true)}><SettingsIcon size={18} /></button>
           </div>
@@ -599,8 +600,7 @@ export function App() {
                 <span className="nx-dock-sep" />
                 <button type="button" className={query ? 'on' : ''} aria-label="Поиск по закладкам" title="Поиск по закладкам или адрес" aria-expanded={searchOpen} onClick={() => setSearchOpen(true)}><Search size={19} /></button>
                 <button type="button" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}><Plus size={19} /></button>
-                <button type="button" aria-label="Настройки" title="Настройки (Ctrl ,)" onClick={() => setSettingsOpen(true)}><SettingsIcon size={19} /></button>
-                <button type="button" aria-label="Свернуть панель быстрого доступа" title="Свернуть панель быстрого доступа" onClick={() => setQuickOpen(false)}><ChevronDown size={19} /></button>
+                <button type="button" className="wide-only" aria-label="Свернуть панель быстрого доступа" title="Свернуть панель быстрого доступа" onClick={() => setQuickOpen(false)}><ChevronDown size={19} /></button>
               </>
             )}
           </div>

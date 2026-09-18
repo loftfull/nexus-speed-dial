@@ -31,6 +31,25 @@ test.describe('Nexus shell', () => {
     expect(display).toBe('none');
   });
 
+  test('the add-site dialog is a centred card and closes with Escape', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.nx-quick').getByRole('button', { name: 'Добавить сайт' }).click();
+    const form = page.locator('.site-form');
+    await expect(form).toBeVisible();
+
+    // It is a card, not a full-width band: its layout lived in a stylesheet that
+    // was deleted once already, and nothing noticed.
+    const viewport = page.viewportSize()!;
+    const box = (await form.boundingBox())!;
+    expect(box.width).toBeLessThanOrEqual(520);
+    expect(box.x).toBeGreaterThanOrEqual(8);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width - 8);
+    expect(await form.evaluate(el => getComputedStyle(el).boxShadow)).not.toBe('none');
+
+    await page.keyboard.press('Escape');
+    await expect(form).toHaveCount(0);
+  });
+
   test('category tabs scope the grid and switch between all sites and groups', async ({ page }) => {
     await page.goto('/');
     const tabs = page.locator('.nx-cats-tabs');
@@ -109,7 +128,7 @@ test.describe('Nexus shell', () => {
 
   test('the compact settings panel applies changes on the page behind it', async ({ page }) => {
     await page.goto('/');
-    await page.locator('.nx-quick').getByRole('button', { name: 'Настройки' }).click();
+    await page.getByRole('button', { name: 'Настройки' }).first().click();
     const settings = page.locator('.nx-settings');
     await expect(settings).toBeVisible();
     // The panel is not modal: the grid stays visible and keeps working next to it.
@@ -138,7 +157,7 @@ test.describe('Nexus shell', () => {
       });
     });
     await page.goto('/');
-    await page.locator('.nx-quick').getByRole('button', { name: 'Настройки' }).click();
+    await page.getByRole('button', { name: 'Настройки' }).first().click();
     const settings = page.locator('.nx-settings');
     await settings.getByRole('button', { name: 'Поиск', exact: true }).click();
     await settings.getByLabel('Поисковая система').selectOption('Яндекс');
@@ -193,9 +212,10 @@ test.describe('Nexus shell', () => {
 
     // The quick-access panel has its own separate toggle: in the side window on
     // desktop, in the compact header below 900px.
-    await page.getByRole('button', { name: 'Развернуть панель быстрого доступа' }).first().click();
+    const quickToggle = page.getByRole('button', { name: 'Панель быстрого доступа' }).first();
+    await quickToggle.click();
     await expect(quick).toHaveClass(/open/);
-    await quick.getByRole('button', { name: 'Свернуть панель быстрого доступа' }).click();
+    await quickToggle.click();
     await expect(quick).not.toHaveClass(/open/);
   });
 

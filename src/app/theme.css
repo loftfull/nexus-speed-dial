@@ -406,3 +406,35 @@
 .nx-settings .browser-tab-copy{min-width:0;word-break:break-word}
 .nx-settings .browser-tabs-list{max-height:180px;overflow-y:auto}
 .nx-settings .browser-import-card .outline{background:var(--nx-sunken);border:0;border-radius:10px;padding:9px 12px}
+
+/* ── окно «Добавить сайт» ──────────────────────────────────────
+   Раскладка этого окна жила в product-overrides.css и пропала вместе
+   с ним, когда настройки переехали в свою панель. */
+.nx-root ~ .overlay,.overlay{background:rgba(20,28,45,.28);backdrop-filter:blur(3px);display:grid;place-items:center;padding:16px}
+.site-form{width:min(460px,100%);max-height:calc(100vh - 32px);overflow-y:auto;border:0;border-radius:var(--nx-r-lg);
+ background:var(--nx-surface);box-shadow:var(--nx-shadow-lg);backdrop-filter:none;color:var(--nx-text);padding:0}
+.site-form header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px 14px;
+ border-bottom:1px solid var(--nx-line)}
+.site-form .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:1.3px;color:var(--nx-muted)}
+.site-form h2{font-size:17px;font-weight:700;margin:4px 0 3px;color:var(--nx-text)}
+.site-form header p{margin:0;font-size:12.5px;color:var(--nx-muted)}
+.site-form .close{width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:10px;
+ background:var(--nx-sunken);color:var(--nx-muted)}
+.site-form .close:hover{color:var(--nx-accent)}
+.site-form>label{display:block;padding:12px 20px 0;font-size:12.5px;color:var(--nx-muted)}
+.site-form>label input,.site-form select{display:block;width:100%;margin-top:6px;padding:10px 11px;border-radius:10px;
+ border:1px solid var(--nx-line);background:var(--nx-sunken);color:var(--nx-text);font:inherit;font-size:13.5px;outline:none}
+.site-form>label input:focus,.site-form select:focus{border-color:var(--nx-accent);box-shadow:0 0 0 3px var(--nx-accent-soft)}
+.site-form .form-error{display:block;margin-top:6px;font-size:12px;color:#c33547}
+:root[data-theme="dark"] .site-form .form-error{color:#ff9b9b}
+.site-form .form-colors{display:flex;flex-wrap:wrap;gap:8px;padding:12px 20px 0}
+.site-form .form-colors button{width:26px;height:26px;border-radius:50%;box-shadow:0 0 0 1px var(--nx-line)}
+.site-form .form-colors button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--nx-surface),0 0 0 4px var(--nx-accent)}
+.site-form .metadata-status{padding:10px 20px 0;margin:0;color:var(--nx-muted)}
+.site-form footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding:14px 20px;
+ border-top:1px solid var(--nx-line)}
+.site-form .reset{font-size:13px;color:var(--nx-muted)}
+.site-form .reset:hover{color:var(--nx-text)}
+.site-form .save{padding:10px 16px;border-radius:10px;background:var(--nx-accent);color:var(--nx-surface);
+ font-size:13.5px;font-weight:600}
+.site-form .save:disabled{opacity:.45;cursor:not-allowed}
