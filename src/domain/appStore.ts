@@ -6,7 +6,11 @@ import { readStorage, writeStorage } from './storage';
 export type TileState = { mode: TileMode; preset: VisualPreset; radius: number; iconSize: number; hover: string; shadow: string; font: string; size?: string; showDescription?: boolean; showDomain?: boolean; showNotifications?: boolean };
 export type AppearanceState = { theme: string; accent: string; wallpaper: string };
 
-export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; remotePreviews?: boolean; siteIcons?: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: string };
+/** Three arrangements the grid falls back to on a narrow screen. */
+export type MobileMode = 'table' | 'rows' | 'icons';
+export const MOBILE_MODES: MobileMode[] = ['table', 'rows', 'icons'];
+
+export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; remotePreviews?: boolean; siteIcons?: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: MobileMode };
 
 export type AppState = {
   sites: SiteRecord[];
@@ -45,6 +49,11 @@ function normalizeSidebarWidth(value: unknown): string {
   return match ? `${match[1]}px` : '292px';
 }
 
+/** Older builds stored a menu label here; anything unknown falls back to the table. */
+export function normalizeMobileMode(value: unknown): MobileMode {
+  return MOBILE_MODES.includes(value as MobileMode) ? value as MobileMode : 'table';
+}
+
 export function createInitialAppState(initialSites: SiteRecord[]): AppState {
   const storedSites = readStorage('nexus-sites', initialSites).map((site, index) => site.id ? site : { ...site, id: `site-${site.domain.replace(/[^a-z0-9]+/gi, '-')}-${index}` });
   const resolveSiteRef = (reference: string) => storedSites.find(site => site.id === reference || site.domain === reference || site.title === reference)?.id || reference;
@@ -57,7 +66,7 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
   });
   const storedSessions = readStorage<BrowserSession[]>('nexus-sessions', []).map(session => ({ ...session, siteIds: session.siteIds.map(resolveSiteRef), noteSiteIds: session.noteSiteIds?.map(resolveSiteRef) }));
   const storedUi = readStorage('nexus-ui', null as UiState | null);
-  const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, remotePreviews: false, projects: true, sidebarWidth: '292px', mobileMode: 'В виде меню' };
+  const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, remotePreviews: false, siteIcons: true, projects: true, sidebarWidth: '292px', mobileMode: 'table' };
   return {
     sites: hierarchy.sites,
     trash: readStorage<SiteRecord[]>('nexus-trash', []),
@@ -65,7 +74,7 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
     groups: hierarchy.groups,
     history: readStorage('nexus-history', []),
     density: readStorage('nexus-density', 20),
-    ui: { ...defaultUi, ...(storedUi ?? {}), sidebarWidth: normalizeSidebarWidth(storedUi?.sidebarWidth) },
+    ui: { ...defaultUi, ...(storedUi ?? {}), sidebarWidth: normalizeSidebarWidth(storedUi?.sidebarWidth), mobileMode: normalizeMobileMode(storedUi?.mobileMode) },
     tile: readStorage('nexus-tile', { mode: 'standard' as TileMode, preset: 'glass' as VisualPreset, radius: 20, iconSize: 40, hover: 'lift', shadow: 'soft', font: 'Manrope', size: 'M', showDescription: false, showDomain: false, showNotifications: true }),
     appearance: readStorage('nexus-appearance', { theme: 'light', accent: '#2f7cf6', wallpaper: 'aurora' }),
     sessions: storedSessions,

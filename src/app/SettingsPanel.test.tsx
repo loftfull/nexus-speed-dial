@@ -104,4 +104,70 @@ describe('SettingsPanel', () => {
     expect(screen.getByText(/запрос отправляется.*Open-Meteo/i)).toBeInTheDocument();
   });
 
+
+  it('показывает все разделы прежней панели настроек', () => {
+    setup();
+    for (const label of ['Общие', 'Оформление', 'Плитки', 'Боковое окно', 'Мобильная версия',
+      'Поиск', 'Погода', 'Приватность', 'Горячие клавиши', 'Данные']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it('включает компактный интерфейс в разделе «Общие»', async () => {
+    const user = userEvent.setup();
+    const props = setup();
+    await user.click(screen.getByRole('button', { name: 'Общие' }));
+    await user.click(screen.getByRole('switch', { name: 'Компактный интерфейс' }));
+    const update = (props.setUi as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: UiState) => UiState;
+    expect(update(ui).compact).toBe(true);
+  });
+
+  it('меняет режим отображения плитки', async () => {
+    const user = userEvent.setup();
+    const props = setup();
+    await user.click(screen.getByRole('button', { name: 'Плитки' }));
+    await user.click(screen.getByRole('button', { name: 'Список' }));
+    const update = (props.setTile as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: TileState) => TileState;
+    expect(update(tile).mode).toBe('list');
+  });
+
+  it('меняет ширину бокового окна', async () => {
+    const user = userEvent.setup();
+    const props = setup();
+    await user.click(screen.getByRole('button', { name: 'Боковое окно' }));
+    await user.selectOptions(screen.getByLabelText('Ширина бокового окна'), '340px');
+    const update = (props.setUi as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: UiState) => UiState;
+    expect(update(ui).sidebarWidth).toBe('340px');
+  });
+
+  it('выбирает вид по умолчанию для мобильной версии', async () => {
+    const user = userEvent.setup();
+    const props = setup();
+    await user.click(screen.getByRole('button', { name: 'Мобильная версия' }));
+    await user.click(screen.getByRole('button', { name: /^Иконки/ }));
+    const update = (props.setUi as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: UiState) => UiState;
+    expect(update(ui).mobileMode).toBe('icons');
+  });
+
+  it('перечисляет реальные горячие клавиши', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: 'Горячие клавиши' }));
+    expect(screen.getByText('Ctrl + N')).toBeInTheDocument();
+    expect(screen.getByText('Добавить сайт')).toBeInTheDocument();
+  });
+
+  it('сбрасывает раздел к значениям по умолчанию', async () => {
+    const user = userEvent.setup();
+    const props = setup({ appearance: { theme: 'dark', accent: '#c9364f', wallpaper: 'mint' } });
+    await user.click(screen.getByRole('button', { name: /Сбросить раздел «Оформление»/ }));
+    expect(props.setAppearance).toHaveBeenCalledWith({ theme: 'light', accent: '#2f6fe4', wallpaper: 'aurora' });
+  });
+
+  it('не предлагает сброс в разделах без настроек', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: 'Данные' }));
+    expect(screen.queryByRole('button', { name: /Сбросить раздел «Данные»/ })).not.toBeInTheDocument();
+  });
 });

@@ -2,25 +2,27 @@ import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   Check, ChevronDown, ChevronRight, ChevronUp, Clock3, CloudSun, Droplets, Home, Layers3, LayoutGrid,
   Briefcase, Cloud, CloudRain, GraduationCap, ShoppingBag, Snowflake, Sun,
-  Moon, MoreHorizontal, Plus, RotateCw, Search, Settings as SettingsIcon, SlidersHorizontal,
-  Star, StickyNote, Tag, Trash2, Wind, X,
+  Grid3X3, MoreHorizontal, Plus, Rows3, RotateCw, Search, Settings as SettingsIcon, SlidersHorizontal,
+  Star, StickyNote, Table2, Tag, Trash2, Wind, X,
 } from 'lucide-react';
 
 import '../styles.css';
 import './theme.css';
 
 import { appReducer, createInitialAppState, persistAppState } from '../domain/appStore';
-import type { AppearanceState } from '../domain/appStore';
+import type { AppearanceState, MobileMode } from '../domain/appStore';
 import { seedSites } from '../domain/seed';
 import { readStorage, writeStorage } from '../domain/storage';
 import { makeCategoryId, makeGroupId } from '../domain/hierarchy';
 import { buildWebSearchUrl } from '../domain/webSearch';
 import { recordSiteOpen, resolveHistoryTarget, resolveSiteUrl } from '../domain/siteOpen';
 import { filterSites } from '../domain/siteUtils';
+import { categoryColor, groupColor, projectColor } from '../domain/nodeColor';
 import { sites as countSites } from '../domain/plural';
 import type { Category, Project, SiteGroup, SiteRecord as Site } from '../domain/types';
 
 import { Tile, monogram } from './Tile';
+import type { TileLayout } from './Tile';
 import { AddSiteModal } from '../components/AddSiteModal';
 import { CalendarPopover } from '../components/CalendarPopover';
 import { MobileSections } from '../components/MobileSections';
@@ -106,6 +108,11 @@ export function App() {
   const [toast, setToast] = useState('');
   const [now, setNow] = useState(() => new Date());
   const [weather, setWeather] = useState<Weather>(WEATHER_EMPTY);
+  // The setting holds the arrangement a narrow screen opens with; the switcher
+  // above the grid changes it for this visit only.
+  const [mobileView, setMobileView] = useState<MobileMode>(ui.mobileMode ?? 'table');
+  const [swapping, setSwapping] = useState(false);
+  const swapTimer = useRef<number | undefined>(undefined);
 
   const activeProjectId = projectId ?? projects[0]?.id ?? null;
   const activeProject = projects.find(item => item.id === activeProjectId) ?? null;
@@ -115,6 +122,8 @@ export function App() {
   );
   const activeCategory = projectCategories.find(item => item.id === categoryId) ?? null;
 
+  useEffect(() => { setMobileView(ui.mobileMode ?? 'table'); }, [ui.mobileMode]);
+  useEffect(() => () => window.clearTimeout(swapTimer.current), []);
   useEffect(() => { if (categoryId && !activeCategory) setCategoryId(null); }, [categoryId, activeCategory]);
   useEffect(() => { persistAppState(state) || setToast('Не удалось сохранить: хранилище браузера переполнено'); }, [state]);
   useEffect(() => { writeStorage('nexus-active-project', activeProjectId); }, [activeProjectId]);
@@ -156,6 +165,7 @@ export function App() {
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
       : appearance.theme;
     document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.wallpaper = appearance.wallpaper || 'aurora';
     document.documentElement.style.setProperty('--accent', appearance.accent);
   }, [appearance]);
 
@@ -220,7 +230,10 @@ export function App() {
   const dateLine = `${capitalise(now.toLocaleDateString('ru-RU', { weekday: 'long' }))}, ${now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`;
   const dateShort = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
 
-  const openUrl = (url: string) => { window.open(url, '_blank', 'noopener,noreferrer'); };
+  const openUrl = (url: string) => {
+    if (ui.newTab === false) { window.open(url, '_self'); return; }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
   const openSite = (site: Site) => {
     const stamp = Date.now();
     setSites(current => recordSiteOpen(current, [], site, stamp, false).sites);
@@ -335,17 +348,38 @@ export function App() {
       .filter(item => item.count > 0);
   }, [groups, projectCategories, categoryId, scoped]);
 
+  /** How many sites sit under each node of the explorer tree. */
+  const treeCounts = useMemo(() => {
+    const byCategory = new Map<string, number>();
+    const byGroup = new Map<string, number>();
+    sites.forEach(site => {
+      if (site.categoryId) byCategory.set(site.categoryId, (byCategory.get(site.categoryId) ?? 0) + 1);
+      if (site.groupId) byGroup.set(site.groupId, (byGroup.get(site.groupId) ?? 0) + 1);
+    });
+    const byProject = new Map<string, number>();
+    categories.forEach(category => {
+      byProject.set(category.projectId, (byProject.get(category.projectId) ?? 0) + (byCategory.get(category.id) ?? 0));
+    });
+    return { byProject, byCategory, byGroup };
+  }, [sites, categories]);
+
   const shown = found.slice(0, limit);
   const useFavicons = ui.siteIcons !== false;
+  // A narrow screen follows its own three arrangements; a wide one follows the tile mode.
+  const MOBILE_LAYOUT: Record<MobileMode, TileLayout> = { table: 'table', rows: 'row', icons: 'icon' };
+  const layout: TileLayout = narrow ? MOBILE_LAYOUT[mobileView] : ((tile.mode ?? 'standard') as TileLayout);
   const gridStyle = { '--nx-tile': tile.size === 'S' ? '140px' : tile.size === 'L' ? '200px' : tile.size === 'XL' ? '230px' : '170px', '--nx-gap': `${state.density}px` } as React.CSSProperties;
+  const gridClass = 'nx-grid layout-' + layout;
 
   const renderTile = (site: Site) => (
     <Tile
       key={site.id}
       site={site}
       dragType={DOCK_DRAG_TYPE}
+      layout={layout}
       useFavicons={useFavicons}
       showDomain={tile.showDomain === true}
+      showDescription={tile.showDescription === true}
       showBadge={tile.showNotifications !== false}
       onOpen={() => openSite(site)}
       onFavorite={() => toggleFavorite(site)}
@@ -370,13 +404,13 @@ export function App() {
               <h2 className="nx-label">{block.name}</h2>
               <span className="nx-group-count">{countSites(block.sites.length)}</span>
             </div>
-            <div className="nx-grid" style={gridStyle}>{block.sites.map(renderTile)}</div>
+            <div className={gridClass} style={gridStyle}>{block.sites.map(renderTile)}</div>
           </section>
         ))}</div>
       : <Empty title="Здесь пока пусто" hint="Добавьте первый сайт в эту категорию" />)
     : (shown.length
       ? <>
-          <div className="nx-grid" style={gridStyle}>{shown.map(renderTile)}</div>
+          <div className={gridClass} style={gridStyle}>{shown.map(renderTile)}</div>
           {found.length > shown.length && (
             <button type="button" className="nx-more" onClick={() => setLimit(value => value + PAGE)}>
               <MoreHorizontal size={16} /> Показать больше
@@ -389,7 +423,7 @@ export function App() {
   if (section === 'trash') {
     body = trash.length ? (
       <>
-        <div className="nx-grid" style={gridStyle}>
+        <div className={gridClass} style={gridStyle}>
           {trash.map(site => (
             <div className="nx-tile" key={site.id}>
               <div className="nx-tile-face">
@@ -413,7 +447,7 @@ export function App() {
   } else if (section === 'recent') {
     const items = history.map(ref => sites.find(site => site.id === ref || site.domain === ref || site.title === ref)).filter(Boolean) as Site[];
     body = items.length
-      ? <div className="nx-grid" style={gridStyle}>{items.map((site, index) => <React.Fragment key={`${site.id}-${index}`}>{renderTile(site)}</React.Fragment>)}</div>
+      ? <div className={gridClass} style={gridStyle}>{items.map((site, index) => <React.Fragment key={`${site.id}-${index}`}>{renderTile(site)}</React.Fragment>)}</div>
       : <Empty title="Пока ничего не открывали" hint="Открытые сайты появятся здесь" />;
   } else if (section === 'notes') {
     body = <NotesWorkspace sites={sites.filter(site => site.note)} onEdit={setEditing} />;
@@ -424,9 +458,41 @@ export function App() {
   const showCategoryBar = section === 'sites';
   const quickVisible = quickOpen && !dockOpen;
   const pinnedSites = pinned.map(id => sites.find(site => site.id === id)).filter(Boolean) as Site[];
+  const showExplorer = ui.projects !== false;
+
+  /** Steps to the next project and lets the panel and the grid fade across. */
+  const cycleProject = () => {
+    if (projects.length < 2) return;
+    const at = projects.findIndex(item => item.id === activeProjectId);
+    const next = projects[(at + 1 + projects.length) % projects.length];
+    selectProject(next.id);
+    setOpenProjects([next.id]);
+    setOpenCategories([]);
+    if (ui.animations === false) return;
+    window.clearTimeout(swapTimer.current);
+    setSwapping(true);
+    swapTimer.current = window.setTimeout(() => setSwapping(false), 340);
+  };
+
+  const rootClass = [
+    'nx-root',
+    panelOpen ? '' : 'panel-collapsed',
+    ui.compact ? 'compact' : '',
+    ui.animations === false ? 'still' : '',
+    'hover-' + (tile.hover ?? 'lift'),
+    swapping ? 'swapping' : '',
+  ].filter(Boolean).join(' ');
+  const rootStyle = {
+    '--nx-panel-open-w': ui.sidebarWidth ?? '292px',
+    '--nx-tile-radius': `${tile.radius ?? 20}px`,
+    '--nx-icon': `${tile.iconSize ?? 40}px`,
+    '--nx-tile-font': (tile.font ?? 'Manrope') === 'Inter'
+      ? "Inter,Manrope,system-ui,sans-serif"
+      : "Manrope,system-ui,sans-serif",
+  } as React.CSSProperties;
 
   return (
-    <div className={'nx-root' + (panelOpen ? '' : ' panel-collapsed')}>
+    <div className={rootClass} style={rootStyle}>
       <aside className={'nx-panel' + (panelOpen ? '' : ' collapsed')}>
         <div className="nx-panel-scroll">
           <button type="button" className="nx-panel-head" aria-expanded={panelOpen}
@@ -437,6 +503,7 @@ export function App() {
             {panelOpen && <span className="nx-panel-brand"><b>Nexus</b><span>Speed Dial</span></span>}
           </button>
 
+          {showExplorer && (
           <div className="nx-section">
             {panelOpen
               ? <span className="nx-label nx-label-row">Проекты<button type="button" aria-label="Добавить проект" title="Добавить проект" onClick={addProject}><Plus size={14} /></button></span>
@@ -444,26 +511,26 @@ export function App() {
 
             {projects.map((project, index) => {
               const Glyph = PROJECT_GLYPHS[index % PROJECT_GLYPHS.length];
-              const current = activeProjectId === project.id;
+              const current = activeProjectId === project.id && section === 'sites';
               const expanded = openProjects.includes(project.id);
               const inside = categories.filter(item => item.projectId === project.id);
+              const tint = projectColor(project);
               return (
                 <div className="nx-tree-node" key={project.id}>
-                  <button type="button" className={'nx-link nx-tree-row' + (current && section === 'sites' ? ' on' : '')}
+                  <button type="button" className={'nx-link nx-tree-row' + (current ? ' on' : '')}
+                    style={{ '--nx-node': tint } as React.CSSProperties}
                     title={project.name} aria-label={`Проект «${project.name}»`}
                     aria-expanded={panelOpen ? expanded : undefined}
                     onClick={() => {
                       selectProject(project.id);
-                      setOpenProjects(open => {
-                        if (!open.includes(project.id)) return [...open, project.id];
-                        // A second press on the project folds the whole branch away.
-                        setOpenCategories(items => items.filter(id => !inside.some(category => category.id === id)));
-                        return open.filter(id => id !== project.id);
-                      });
+                      // Only one branch stays unfolded, so a deep tree never buries the rest.
+                      setOpenProjects(open => (open.includes(project.id) ? [] : [project.id]));
+                      setOpenCategories([]);
                     }}>
                     {panelOpen && <ChevronRight size={14} className={'nx-tree-caret' + (expanded ? ' open' : '')} aria-hidden="true" />}
                     <Glyph size={17} />
                     {panelOpen && <span>{project.name}</span>}
+                    {panelOpen && treeCounts.byProject.get(project.id) ? <i>{treeCounts.byProject.get(project.id)}</i> : null}
                   </button>
 
                   {panelOpen && expanded && (
@@ -472,27 +539,31 @@ export function App() {
                       {inside.map(category => {
                         const catOpen = openCategories.includes(category.id);
                         const inner = groups.filter(group => group.categoryId === category.id);
+                        const catTint = categoryColor(category);
                         return (
                           <div key={category.id}>
                             <button type="button" className={'nx-link nx-tree-row' + (categoryId === category.id && !groupId ? ' on' : '')}
-                              aria-label={`Категория «${category.name}»`}
+                              style={{ '--nx-node': catTint } as React.CSSProperties}
+                              title={category.name} aria-label={`Категория «${category.name}»`}
                               aria-expanded={catOpen} onClick={() => {
                                 setSection('sites');
                                 setProjectId(project.id);
                                 setCategoryId(category.id);
                                 setGroupId(null);
-                                setOpenCategories(open => open.includes(category.id) ? open.filter(id => id !== category.id) : [...open, category.id]);
+                                setOpenCategories(open => (open.includes(category.id) ? [] : [category.id]));
                               }}>
                               <ChevronRight size={13} className={'nx-tree-caret' + (catOpen ? ' open' : '')} aria-hidden="true" />
                               <Tag size={15} />
                               <span>{category.name}</span>
+                              {treeCounts.byCategory.get(category.id) ? <i>{treeCounts.byCategory.get(category.id)}</i> : null}
                             </button>
                             {catOpen && (
                               <div className="nx-tree-children">
                                 {inner.length === 0 && <span className="nx-tree-empty">Групп пока нет</span>}
                                 {inner.map(group => (
                                   <button type="button" key={group.id} className={'nx-link nx-tree-row' + (groupId === group.id ? ' on' : '')}
-                                    aria-label={`Группа «${group.name}»`}
+                                    style={{ '--nx-node': groupColor(group) } as React.CSSProperties}
+                                    title={group.name} aria-label={`Группа «${group.name}»`}
                                     onClick={() => {
                                       setSection('sites');
                                       setProjectId(project.id);
@@ -502,6 +573,7 @@ export function App() {
                                     <span className="nx-tree-spacer" aria-hidden="true" />
                                     <Layers3 size={15} />
                                     <span>{group.name}</span>
+                                    {treeCounts.byGroup.get(group.id) ? <i>{treeCounts.byGroup.get(group.id)}</i> : null}
                                   </button>
                                 ))}
                                 <button type="button" className="nx-link nx-tree-row nx-link-ghost" onClick={() => addGroup(category.id)}>
@@ -523,6 +595,7 @@ export function App() {
               );
             })}
           </div>
+          )}
         </div>
 
         <div className="nx-panel-foot">
@@ -582,6 +655,18 @@ export function App() {
 
           {showCategoryBar && (
             <nav className="nx-cats" aria-label="Категории проекта">
+              {activeProject && (
+                <button type="button" className="nx-project-chip" data-project-switch
+                  style={{ '--nx-node': projectColor(activeProject) } as React.CSSProperties}
+                  title={projects.length > 1 ? 'Следующий проект' : 'Текущий проект'}
+                  disabled={projects.length < 2}
+                  aria-label={`Сменить проект, сейчас «${activeProject.name}»`}
+                  onClick={cycleProject}>
+                  <span className="nx-project-dot" aria-hidden="true" />
+                  <b>{activeProject.name}</b>
+                  <ChevronRight size={15} aria-hidden="true" />
+                </button>
+              )}
               <div className="nx-cats-tabs" role="tablist" aria-label="Категории проекта">
                 <button type="button" role="tab" aria-selected={!categoryId} className={'nx-cat' + (categoryId ? '' : ' on')} onClick={() => { setCategoryId(null); setGroupId(null); }}>Все</button>
                 {projectCategories.map(category => (
@@ -604,6 +689,17 @@ export function App() {
             </nav>
           )}
 
+          {narrow && (
+            <div className="nx-mobile-views" role="group" aria-label="Вид сетки на узком экране">
+              <button type="button" className={mobileView === 'table' ? 'on' : ''} aria-pressed={mobileView === 'table'}
+                aria-label="Таблица в два столбца" title="Таблица в два столбца" onClick={() => setMobileView('table')}><Table2 size={17} /></button>
+              <button type="button" className={mobileView === 'rows' ? 'on' : ''} aria-pressed={mobileView === 'rows'}
+                aria-label="Строки с подробным описанием" title="Строки с подробным описанием" onClick={() => setMobileView('rows')}><Rows3 size={17} /></button>
+              <button type="button" className={mobileView === 'icons' ? 'on' : ''} aria-pressed={mobileView === 'icons'}
+                aria-label="Иконки в четыре столбца" title="Иконки в четыре столбца" onClick={() => setMobileView('icons')}><Grid3X3 size={17} /></button>
+            </div>
+          )}
+
           <div className={'nx-head' + (heading ? '' : ' bare')}>
             <div>
               {heading && <h1>{heading}</h1>}
@@ -622,6 +718,7 @@ export function App() {
                 <Search size={18} />
                 <input ref={searchInput} value={query} onChange={event => setQuery(event.target.value)}
                   placeholder="Закладки или адрес" aria-label="Поиск по закладкам или адрес"
+                  list={ui.searchSuggestions !== false ? 'nx-search-hints' : undefined}
                   onKeyDown={event => {
                     if (event.key === 'Escape') { setQuery(''); setSearchOpen(false); return; }
                     if (event.key !== 'Enter') return;
@@ -632,6 +729,11 @@ export function App() {
                     openUrl(isUrl ? (/^https?:\/\//i.test(value) ? value : `https://${value}`) : buildWebSearchUrl(ui.searchEngine, value));
                   }} />
                 <button type="button" aria-label="Закрыть поиск" onClick={() => { setQuery(''); setSearchOpen(false); }}><X size={17} /></button>
+                {ui.searchSuggestions !== false && (
+                  <datalist id="nx-search-hints">
+                    {sites.slice(0, 40).map(site => <option key={site.id ?? site.domain} value={site.title} />)}
+                  </datalist>
+                )}
               </label>
             ) : (
               <>

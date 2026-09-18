@@ -76,3 +76,34 @@ describe('Tile', () => {
     expect(container.querySelector('.nx-mark')).toHaveTextContent('F');
   });
 });
+
+describe('Tile layouts', () => {
+  it('в табличном виде показывает краткое описание и не показывает адрес', () => {
+    const { container } = render(<Tile site={site} layout="table" {...handlers()} />);
+    expect(screen.getByText('Дизайн')).toBeInTheDocument();
+    expect(container.querySelector('.nx-tile-sub')).toBeNull();
+    expect(container.querySelector('.nx-tile-table')).not.toBeNull();
+  });
+
+  it('в строчном виде показывает и описание, и адрес', () => {
+    const { container } = render(<Tile site={site} layout="row" {...handlers()} />);
+    expect(screen.getByText('Дизайн')).toBeInTheDocument();
+    expect(screen.getByText('figma.com')).toBeInTheDocument();
+    // Иконка стоит рядом с текстом, а не над ним.
+    expect(container.querySelector('.nx-tile-text')).not.toBeNull();
+  });
+
+  it('в виде иконок оставляет только название', () => {
+    const { container } = render(<Tile site={site} layout="icon" {...handlers()} />);
+    expect(screen.getByText('Figma')).toBeInTheDocument();
+    expect(container.querySelector('.nx-tile-desc')).toBeNull();
+    expect(container.querySelector('.nx-tile-sub')).toBeNull();
+  });
+
+  it('в стандартном виде описание появляется только по настройке', () => {
+    const { container, rerender } = render(<Tile site={site} layout="standard" {...handlers()} />);
+    expect(container.querySelector('.nx-tile-desc')).toBeNull();
+    rerender(<Tile site={site} layout="standard" showDescription {...handlers()} />);
+    expect(screen.getByText('Дизайн')).toBeInTheDocument();
+  });
+});

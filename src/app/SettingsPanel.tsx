@@ -1,7 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { Check, ChevronDown, Database, Download, Palette, Search, ShieldCheck, Trash2, Upload, X, Grid2X2, CloudSun } from 'lucide-react';
-import type { AppearanceState, TileState, UiState } from '../domain/appStore';
-import type { BrowserSession, Category, Project, SiteGroup, SiteRecord as Site } from '../domain/types';
+import {
+  Check, ChevronDown, CloudSun, Database, Download, Grid2X2, Keyboard, Palette, PanelLeft,
+  RotateCcw, Search, Settings as SettingsIcon, ShieldCheck, Smartphone, Trash2, Upload, X,
+} from 'lucide-react';
+import type { AppearanceState, MobileMode, TileState, UiState } from '../domain/appStore';
+import type { BrowserSession, Category, Project, SiteGroup, SiteRecord as Site, TileMode } from '../domain/types';
 import { createBackup, parseBackup } from '../domain/backup';
 import { createBookmarkHtml, parseBookmarkHtml, withoutExistingDomains } from '../domain/importUtils';
 import { SEARCH_ENGINES } from '../domain/webSearch';
@@ -9,13 +12,17 @@ import { sites as countSites } from '../domain/plural';
 import { BrowserImportPanel } from '../components/BrowserImportPanel';
 import { ActionDialog } from './ActionDialog';
 
-type SectionId = 'look' | 'tiles' | 'search' | 'weather' | 'privacy' | 'data';
+type SectionId = 'general' | 'look' | 'tiles' | 'panel' | 'mobile' | 'search' | 'weather' | 'privacy' | 'keys' | 'data';
 const SECTIONS: { id: SectionId; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
+  { id: 'general', label: 'Общие', icon: SettingsIcon },
   { id: 'look', label: 'Оформление', icon: Palette },
   { id: 'tiles', label: 'Плитки', icon: Grid2X2 },
+  { id: 'panel', label: 'Боковое окно', icon: PanelLeft },
+  { id: 'mobile', label: 'Мобильная версия', icon: Smartphone },
   { id: 'search', label: 'Поиск', icon: Search },
   { id: 'weather', label: 'Погода', icon: CloudSun },
   { id: 'privacy', label: 'Приватность', icon: ShieldCheck },
+  { id: 'keys', label: 'Горячие клавиши', icon: Keyboard },
   { id: 'data', label: 'Данные', icon: Database },
 ];
 
@@ -23,6 +30,29 @@ const ACCENTS = ['#2f6fe4', '#6d51e0', '#0f9d76', '#e0851f', '#c9364f', '#0f8ab8
 const CITIES = ['Москва', 'Санкт-Петербург', 'Берлин', 'Лондон'];
 const UNITS = ['Цельсий (°C)', 'Фаренгейт (°F)'];
 const TILE_SIZES: [string, string][] = [['S', 'Плотно'], ['M', 'Обычно'], ['L', 'Крупно'], ['XL', 'Очень крупно']];
+/** Only the modes the grid actually renders are offered here. */
+const TILE_MODES: [TileMode, string][] = [['standard', 'Стандарт'], ['icon', 'Иконки'], ['list', 'Список'], ['preview', 'Превью']];
+const HOVERS: [string, string][] = [['lift', 'Подъём'], ['float', 'Парение'], ['none', 'Нет']];
+const FONTS = ['Manrope', 'Inter'];
+const WALLPAPERS: [string, string][] = [['aurora', 'Аврора'], ['warm', 'Тёплые'], ['mint', 'Мята'], ['plain', 'Однотонные']];
+const PANEL_WIDTHS = ['240px', '292px', '340px'];
+const MOBILE_VIEWS: [MobileMode, string, string][] = [
+  ['table', 'Таблица', 'Два столбца, под названием — краткое описание'],
+  ['rows', 'Строки', 'Одна строка на сайт с подробным описанием'],
+  ['icons', 'Иконки', 'Четыре столбца, только иконка и название'],
+];
+const SHORTCUTS: [string, string][] = [
+  ['Ctrl + N', 'Добавить сайт'],
+  ['Ctrl + B', 'Перейти в избранное'],
+  ['Ctrl + ,', 'Открыть настройки'],
+  ['Esc', 'Закрыть окно, календарь, прогноз или меню'],
+];
+
+export const DEFAULT_TILE: TileState = {
+  mode: 'standard', preset: 'glass', radius: 20, iconSize: 40, hover: 'lift', shadow: 'soft',
+  font: 'Manrope', size: 'M', showDescription: false, showDomain: false, showNotifications: true,
+};
+export const DEFAULT_APPEARANCE: AppearanceState = { theme: 'light', accent: '#2f6fe4', wallpaper: 'aurora' };
 
 export type SettingsProps = {
   onClose: () => void;
@@ -44,6 +74,21 @@ export function SettingsPanel(props: SettingsProps) {
   const patchUi = (patch: Partial<UiState>) => setUi(current => ({ ...current, ...patch }));
   const patchTile = (patch: Partial<TileState>) => setTile(current => ({ ...current, ...patch }));
 
+  /** Puts one fold back to the values a fresh install starts with. */
+  const resetSection = (section: SectionId) => {
+    switch (section) {
+      case 'general': patchUi({ compact: false, animations: true, newTab: true }); break;
+      case 'look': setAppearance({ ...DEFAULT_APPEARANCE }); break;
+      case 'tiles': setTile({ ...DEFAULT_TILE }); setDensity(20); patchUi({ siteIcons: true }); break;
+      case 'panel': patchUi({ sidebarWidth: '292px', projects: true, weather: true }); break;
+      case 'mobile': patchUi({ mobileMode: 'table' }); break;
+      case 'search': patchUi({ searchEngine: 'Google', searchLocal: true, searchSuggestions: true }); break;
+      case 'weather': patchUi({ weather: true, weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true }); break;
+      case 'privacy': patchUi({ saveHistory: true, siteIcons: true, remotePreviews: false }); break;
+      default: break;
+    }
+  };
+
   return (
     <section className="nx-settings" role="dialog" aria-labelledby="nx-settings-title"
       onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); onClose(); } }}>
@@ -58,6 +103,7 @@ export function SettingsPanel(props: SettingsProps) {
       <div className="nx-settings-body">
         {SECTIONS.map(item => {
           const expanded = open === item.id;
+          const resettable = item.id !== 'data' && item.id !== 'keys';
           return (
             <section className={'nx-fold' + (expanded ? ' open' : '')} key={item.id}>
               <h3>
@@ -68,16 +114,40 @@ export function SettingsPanel(props: SettingsProps) {
                   <ChevronDown size={16} className="nx-fold-caret" aria-hidden="true" />
                 </button>
               </h3>
-              {expanded && <div className="nx-fold-body">{renderSection(item.id)}</div>}
+              {expanded && (
+                <div className="nx-fold-body">
+                  {renderSection(item.id)}
+                  {resettable && (
+                    <button type="button" className="nx-fold-reset" onClick={() => resetSection(item.id)}>
+                      <RotateCcw size={13} /> Сбросить раздел «{item.label}»
+                    </button>
+                  )}
+                </div>
+              )}
             </section>
           );
         })}
+        <p className="nx-settings-version">Nexus Speed Dial · версия 1.0.0 · лицензия MIT</p>
       </div>
     </section>
   );
 
   function renderSection(section: SectionId) {
     return <>
+        {section === 'general' && (
+          <Card title="Поведение приложения">
+            <Row title="Компактный интерфейс" desc="Меньше отступов в панелях и на главной">
+              <Toggle value={ui.compact === true} label="Компактный интерфейс" onChange={value => patchUi({ compact: value })} />
+            </Row>
+            <Row title="Плавные анимации" desc="Переходы панелей, смена проекта, наведение на плитку">
+              <Toggle value={ui.animations !== false} label="Плавные анимации" onChange={value => patchUi({ animations: value })} />
+            </Row>
+            <Row title="Открывать в новой вкладке" desc="Иначе сайт откроется в текущей вкладке">
+              <Toggle value={ui.newTab !== false} label="Открывать в новой вкладке" onChange={value => patchUi({ newTab: value })} />
+            </Row>
+          </Card>
+        )}
+
         {section === 'look' && (
           <>
             <Card title="Тема">
@@ -99,11 +169,30 @@ export function SettingsPanel(props: SettingsProps) {
                 ))}
               </div>
             </Card>
+            <Card title="Фон рабочего пространства" hint="Подложка главной страницы за плитками.">
+              <div className="nx-choices">
+                {WALLPAPERS.map(([value, label]) => (
+                  <button key={value} type="button" className={(appearance.wallpaper ?? 'aurora') === value ? 'on' : ''}
+                    aria-pressed={(appearance.wallpaper ?? 'aurora') === value}
+                    onClick={() => setAppearance({ ...appearance, wallpaper: value })}>
+                    <i className={'nx-wall-dot wall-' + value} aria-hidden="true" />{label}
+                  </button>
+                ))}
+              </div>
+            </Card>
           </>
         )}
 
         {section === 'tiles' && (
           <>
+            <Card title="Режим отображения" hint="Как выглядит одна плитка в сетке на широком экране.">
+              <div className="nx-choices">
+                {TILE_MODES.map(([value, label]) => (
+                  <button key={value} type="button" className={(tile.mode ?? 'standard') === value ? 'on' : ''}
+                    aria-pressed={(tile.mode ?? 'standard') === value} onClick={() => patchTile({ mode: value })}>{label}</button>
+                ))}
+              </div>
+            </Card>
             <Card title="Размер плитки">
               <div className="nx-choices">
                 {TILE_SIZES.map(([value, label]) => (
@@ -112,14 +201,21 @@ export function SettingsPanel(props: SettingsProps) {
                 ))}
               </div>
             </Card>
-            <Card title="Расстояние между плитками">
-              <label className="nx-range">
-                <input type="range" min={8} max={32} step={2} value={density} aria-label="Расстояние между плитками"
-                  onChange={event => setDensity(Number(event.target.value))} />
-                <output>{density}px</output>
-              </label>
+            <Card title="Сетка и карточка">
+              <Range label="Расстояние между плитками" min={8} max={32} step={2} value={density} onChange={setDensity} />
+              <Range label="Скругление карточки" min={8} max={32} step={1} value={tile.radius ?? 20} onChange={value => patchTile({ radius: value })} />
+              <Range label="Размер иконки" min={24} max={56} step={2} value={tile.iconSize ?? 40} onChange={value => patchTile({ iconSize: value })} />
+            </Card>
+            <Card title="Наведение и шрифт">
+              <Choice label="Эффект наведения" options={HOVERS} value={tile.hover ?? 'lift'}
+                onChange={value => patchTile({ hover: value })} />
+              <Choice label="Шрифт плиток" options={FONTS.map(font => [font, font] as [string, string])}
+                value={tile.font ?? 'Manrope'} onChange={font => patchTile({ font })} />
             </Card>
             <Card title="Что показывать на плитке">
+              <Row title="Описание сайта" desc="Короткая подпись под названием">
+                <Toggle value={tile.showDescription === true} label="Описание сайта" onChange={value => patchTile({ showDescription: value })} />
+              </Row>
               <Row title="Адрес сайта" desc="Домен под названием">
                 <Toggle value={tile.showDomain === true} label="Адрес сайта" onChange={value => patchTile({ showDomain: value })} />
               </Row>
@@ -133,6 +229,37 @@ export function SettingsPanel(props: SettingsProps) {
           </>
         )}
 
+        {section === 'panel' && (
+          <Card title="Боковое окно" hint="Ширина применяется к развёрнутому окну; свёрнутое всегда показывает только иконки.">
+            <Row title="Ширина окна" desc="Развёрнутое состояние проводника">
+              <select aria-label="Ширина бокового окна" value={ui.sidebarWidth ?? '292px'}
+                onChange={event => patchUi({ sidebarWidth: event.target.value })}>
+                {PANEL_WIDTHS.map(width => <option key={width} value={width}>{width.replace('px', ' px')}</option>)}
+              </select>
+            </Row>
+            <Row title="Проводник проектов" desc="Дерево «проект → категория → группа»">
+              <Toggle value={ui.projects !== false} label="Проводник проектов" onChange={value => patchUi({ projects: value })} />
+            </Row>
+            <Row title="Погода в нижней строке" desc="Температура рядом с часами">
+              <Toggle value={ui.weather} label="Погода в боковом окне" onChange={value => patchUi({ weather: value })} />
+            </Row>
+          </Card>
+        )}
+
+        {section === 'mobile' && (
+          <Card title="Вид по умолчанию" hint="С этого вида открывается главная страница на узком экране; переключатель остаётся над сеткой.">
+            <div className="nx-views">
+              {MOBILE_VIEWS.map(([value, label, hint]) => (
+                <button key={value} type="button" className={(ui.mobileMode ?? 'table') === value ? 'on' : ''}
+                  aria-pressed={(ui.mobileMode ?? 'table') === value} onClick={() => patchUi({ mobileMode: value })}>
+                  <b>{label}</b><small>{hint}</small>
+                  {(ui.mobileMode ?? 'table') === value && <Check size={14} />}
+                </button>
+              ))}
+            </div>
+          </Card>
+        )}
+
         {section === 'search' && (
           <Card title="Поиск" hint="Омнибокс открывает адрес или ищет запрос в выбранной системе.">
             <Row title="Поисковая система" desc="Куда уходит запрос из омнибокса">
@@ -142,6 +269,9 @@ export function SettingsPanel(props: SettingsProps) {
             </Row>
             <Row title="Поиск по закладкам" desc="Поле в панели быстрого доступа фильтрует плитки">
               <Toggle value={ui.searchLocal !== false} label="Поиск по закладкам" onChange={value => patchUi({ searchLocal: value })} />
+            </Row>
+            <Row title="Подсказки из закладок" desc="Список названий сохранённых сайтов под полем ввода">
+              <Toggle value={ui.searchSuggestions !== false} label="Подсказки из закладок" onChange={value => patchUi({ searchSuggestions: value })} />
             </Row>
           </Card>
         )}
@@ -168,7 +298,7 @@ export function SettingsPanel(props: SettingsProps) {
         )}
 
         {section === 'privacy' && (
-          <Card title="Приватность" hint="Плитки, проекты и категории всегда остаются в этом браузере.">
+          <Card title="Приватность" hint="Плитки, проекты и категории всегда остаются в этом браузере: приложение не имеет сервера и никуда их не отправляет.">
             <Row title="История открытий" desc="Наполняет раздел «Недавние»">
               <Toggle value={ui.saveHistory !== false} label="История открытий" onChange={value => patchUi({ saveHistory: value })} />
             </Row>
@@ -178,6 +308,16 @@ export function SettingsPanel(props: SettingsProps) {
             <Row title="Внешние превью" desc="Скриншот страницы через сторонний сервис при добавлении сайта">
               <Toggle value={ui.remotePreviews === true} label="Внешние превью" onChange={value => patchUi({ remotePreviews: value })} />
             </Row>
+          </Card>
+        )}
+
+        {section === 'keys' && (
+          <Card title="Горячие клавиши" hint="Сочетания работают на главной странице. Браузер может перехватить часть из них раньше приложения.">
+            <ul className="nx-keys">
+              {SHORTCUTS.map(([keys, what]) => (
+                <li key={keys}><kbd>{keys}</kbd><span>{what}</span></li>
+              ))}
+            </ul>
           </Card>
         )}
 
@@ -202,6 +342,31 @@ function Row({ title, desc, children }: { title: string; desc: string; children:
       <span><b>{title}</b><small>{desc}</small></span>
       {children}
     </div>
+  );
+}
+
+function Choice({ label, options, value, onChange }: { label: string; options: [string, string][]; value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="nx-choice-block">
+      <span className="nx-range-label">{label}</span>
+      <div className="nx-choices">
+        {options.map(([id, text]) => (
+          <button key={id} type="button" className={value === id ? 'on' : ''} aria-pressed={value === id}
+            onClick={() => onChange(id)}>{text}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Range({ label, min, max, step, value, onChange }: { label: string; min: number; max: number; step: number; value: number; onChange: (value: number) => void }) {
+  return (
+    <label className="nx-range">
+      <span className="nx-range-label">{label}</span>
+      <input type="range" min={min} max={max} step={step} value={value} aria-label={label}
+        onChange={event => onChange(Number(event.target.value))} />
+      <output>{value}px</output>
+    </label>
   );
 }
 

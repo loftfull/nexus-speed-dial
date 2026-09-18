@@ -318,13 +318,17 @@ test.describe('Nexus shell', () => {
     await expect(tree.locator('.nx-tree-children')).toHaveCount(0);
   });
 
-  test('the page does not repeat the project name that the side panel already shows', async ({ page }) => {
+  test('the project name appears once on the page, in the switcher and not as a heading', async ({ page }) => {
     await page.goto('/');
-    const project = (await page.locator('.nx-panel .nx-link.on span').first().textContent())!.trim();
+    const chip = page.locator('[data-project-switch]');
+    const project = (await chip.locator('b').textContent())!.trim();
     expect(project).toBeTruthy();
+    // The switcher is the only place the main area names the project: no heading,
+    // no repeat in the subtitle.
     await expect(page.locator('.nx-head h1')).toHaveCount(0);
     await expect(page.locator('.nx-head p')).toContainText('Все сайты');
-    await expect(page.locator('.nx-main')).not.toContainText(project);
+    await expect(page.locator('.nx-head')).not.toContainText(project);
+    expect(await page.locator('.nx-main').getByText(project, { exact: true }).count()).toBe(1);
   });
 
   test('mobile keeps the clock, the weather and the calendar in one compact card', async ({ page }, testInfo) => {
@@ -413,4 +417,173 @@ test.describe('Nexus shell', () => {
     expect(await page.evaluate(() => (window as typeof window & { __nexusNativeConfirm?: boolean }).__nexusNativeConfirm)).toBeFalsy();
   });
 
+
+  // ── настройки ──────────────────────────────────────────────────────────
+  const openSettings = async (page: import('@playwright/test').Page, fold: string) => {
+    await page.getByRole('button', { name: 'Настройки' }).last().click();
+    const head = page.locator('.nx-fold-head', { hasText: new RegExp(`^${fold}$`) });
+    // One fold is open from the start, so only click the ones that are still shut.
+    if (await head.getAttribute('aria-expanded') !== 'true') await head.click();
+    await expect(head).toHaveAttribute('aria-expanded', 'true');
+  };
+
+  test('the accordion carries every settings section again', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Настройки' }).last().click();
+    const heads = page.locator('.nx-settings .nx-fold-head');
+    await expect(heads).toHaveCount(10);
+    for (const label of ['Общие', 'Оформление', 'Плитки', 'Боковое окно', 'Мобильная версия',
+      'Поиск', 'Погода', 'Приватность', 'Горячие клавиши', 'Данные']) {
+      await expect(heads.filter({ hasText: new RegExp(`^${label}$`) })).toHaveCount(1);
+    }
+  });
+
+  test('the compact switch really tightens the page behind the settings', async ({ page }) => {
+    await page.goto('/');
+    const scroll = page.locator('.nx-main-scroll');
+    const before = await scroll.evaluate(el => parseFloat(getComputedStyle(el).paddingTop));
+    await openSettings(page, 'Общие');
+    await page.getByRole('switch', { name: 'Компактный интерфейс' }).click();
+    await expect(page.locator('.nx-root')).toHaveClass(/compact/);
+    await expect.poll(() => scroll.evaluate(el => parseFloat(getComputedStyle(el).paddingTop))).toBeLessThan(before);
+  });
+
+  test('the side window width follows its setting', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'The side window is hidden below 900px.');
+    await page.goto('/');
+    const panel = page.locator('.nx-panel');
+    const before = (await panel.boundingBox())!.width;
+    await openSettings(page, 'Боковое окно');
+    await page.getByLabel('Ширина бокового окна').selectOption('340px');
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeGreaterThan(before);
+  });
+
+  test('the wallpaper choice repaints the workspace', async ({ page }) => {
+    await page.goto('/');
+    const root = page.locator('.nx-root');
+    const before = await root.evaluate(el => getComputedStyle(el).backgroundImage);
+    await openSettings(page, 'Оформление');
+    await page.getByRole('button', { name: 'Мята' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-wallpaper', 'mint');
+    await expect.poll(() => root.evaluate(el => getComputedStyle(el).backgroundImage)).not.toBe(before);
+  });
+
+  test('the tile mode setting rebuilds the grid', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'A narrow screen follows its own three arrangements.');
+    await page.goto('/');
+    await openSettings(page, 'Плитки');
+    await page.getByRole('button', { name: 'Список', exact: true }).click();
+    await expect(page.locator('.nx-grid')).toHaveClass(/layout-list/);
+    // A list row puts the icon beside the text and spells the address out.
+    const tile = page.locator('.nx-tile').first();
+    await expect(tile.locator('.nx-tile-sub')).toBeVisible();
+    await expect(tile.locator('.nx-tile-face')).toHaveCSS('flex-direction', 'row');
+  });
+
+  test('resetting a section puts its controls back', async ({ page }) => {
+    await page.goto('/');
+    await openSettings(page, 'Общие');
+    const toggle = page.getByRole('switch', { name: 'Компактный интерфейс' });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await page.getByRole('button', { name: /Сбросить раздел «Общие»/ }).click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await expect(page.locator('.nx-root')).not.toHaveClass(/compact/);
+  });
+
+  // ── проводник ──────────────────────────────────────────────────────────
+  test('the selected project and category get a coloured icon, not just a highlight', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'The explorer lives in the side window.');
+    await page.goto('/');
+    const project = page.locator('.nx-panel .nx-tree-row', { hasText: 'Работа' }).first();
+    await project.click();
+
+    const tint = await project.evaluate(el => getComputedStyle(el).getPropertyValue('--nx-node').trim());
+    expect(tint).toMatch(/^#[0-9a-f]{6}$/i);
+    const iconColour = await project.locator('svg').nth(1).evaluate(el => getComputedStyle(el).color);
+    const muted = await page.locator('.nx-panel .nx-tree-row:not(.on) svg').first().evaluate(el => getComputedStyle(el).color);
+    expect(iconColour).not.toBe(muted);
+
+    const category = page.locator('.nx-panel .nx-tree-row', { hasText: 'Инструменты' }).first();
+    await category.click();
+    await expect(category).toHaveClass(/ on/);
+    const categoryIcon = await category.locator('svg').nth(1).evaluate(el => getComputedStyle(el).color);
+    expect(categoryIcon).not.toBe(muted);
+  });
+
+  test('the explorer keeps a single branch open', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'The explorer lives in the side window.');
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Проект «Дом»' }).click();
+    await expect(page.getByRole('button', { name: 'Категория «Соцсети»' })).toBeVisible();
+    await page.getByRole('button', { name: 'Проект «Работа»' }).click();
+    // Opening another project folds the first one away instead of stacking branches.
+    await expect(page.getByRole('button', { name: 'Категория «Соцсети»' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Категория «Инструменты»' })).toBeVisible();
+  });
+
+  // ── кнопка проекта ─────────────────────────────────────────────────────
+  test('the project button before «Все» steps through the projects', async ({ page }, testInfo) => {
+    await page.goto('/');
+    const chip = page.locator('[data-project-switch]');
+    const tabs = page.locator('.nx-cats-tabs');
+    // It stands before the first tab.
+    const chipBox = (await chip.boundingBox())!;
+    const allTab = (await tabs.getByRole('tab', { name: 'Все' }).boundingBox())!;
+    // Wide: left of the tab. Narrow: the tabs wrap to their own line, so above it.
+    if (Math.abs(chipBox.y - allTab.y) < 6) expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(allTab.x + 1);
+    else expect(chipBox.y).toBeLessThan(allTab.y);
+
+    const first = (await chip.locator('b').textContent())!.trim();
+    const firstTabs = (await tabs.textContent())!;
+    await chip.click();
+    await expect.poll(async () => (await chip.locator('b').textContent())!.trim()).not.toBe(first);
+    const second = (await chip.locator('b').textContent())!.trim();
+    // Everything tied to the project follows: the tabs above the grid and, on a
+    // wide screen, the branch the side window has open.
+    expect((await tabs.textContent())!).not.toBe(firstTabs);
+    if (testInfo.project.name !== 'mobile') {
+      await expect(page.locator('.nx-panel .nx-tree-row.on').first()).toContainText(second);
+    }
+  });
+
+  // ── мобильные раскладки ────────────────────────────────────────────────
+  const columns = (page: import('@playwright/test').Page) =>
+    page.locator('.nx-grid').first().evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+
+  test('mobile opens as a two-column table and switches to rows and icons', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'These three arrangements belong to the narrow screen.');
+    await page.goto('/');
+    await expect(page.locator('.nx-grid')).toHaveClass(/layout-table/);
+    expect(await columns(page)).toBe(2);
+    // The table keeps a short description under the name.
+    await expect(page.locator('.nx-tile').first().locator('.nx-tile-desc')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Строки с подробным описанием' }).click();
+    await expect(page.locator('.nx-grid')).toHaveClass(/layout-row/);
+    expect(await columns(page)).toBe(1);
+    const row = page.locator('.nx-tile').first();
+    await expect(row.locator('.nx-tile-desc')).toBeVisible();
+    await expect(row.locator('.nx-tile-sub')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Иконки в четыре столбца' }).click();
+    await expect(page.locator('.nx-grid')).toHaveClass(/layout-icon/);
+    expect(await columns(page)).toBe(4);
+    const icon = page.locator('.nx-tile').first();
+    await expect(icon.locator('.nx-tile-name')).toBeVisible();
+    await expect(icon.locator('.nx-tile-desc')).toHaveCount(0);
+  });
+
+  test('the mobile default view comes from the settings', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'The default only applies to the narrow screen.');
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Настройки' }).last().click();
+    await page.locator('.nx-fold-head', { hasText: /^Мобильная версия$/ }).click();
+    await page.locator('.nx-views').getByRole('button', { name: /^Иконки/ }).click();
+    await page.getByRole('button', { name: 'Закрыть настройки' }).click();
+    await expect(page.locator('.nx-grid')).toHaveClass(/layout-icon/);
+
+    await page.reload();
+    await expect(page.locator('.nx-grid')).toHaveClass(/layout-icon/);
+  });
 });

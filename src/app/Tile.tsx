@@ -10,11 +10,19 @@ export function monogram(title: string): string {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
+/** How one site is drawn. `table`/`row`/`icon` back the three mobile arrangements. */
+export type TileLayout = 'standard' | 'icon' | 'list' | 'preview' | 'table' | 'row';
+
+/** Layouts that put the icon beside the text instead of above it. */
+const HORIZONTAL: TileLayout[] = ['list', 'row'];
+
 export type TileProps = {
   site: SiteRecord;
   /** Media type used to hand the site over to a drop target such as the dock. */
   dragType?: string;
+  layout?: TileLayout;
   showDomain?: boolean;
+  showDescription?: boolean;
   showBadge?: boolean;
   useFavicons?: boolean;
   onOpen: () => void;
@@ -23,7 +31,10 @@ export type TileProps = {
   onDelete: () => void;
 };
 
-export function Tile({ site, dragType, showDomain = false, showBadge = true, useFavicons = true, onOpen, onFavorite, onEdit, onDelete }: TileProps) {
+export function Tile({
+  site, dragType, layout = 'standard', showDomain = false, showDescription = false,
+  showBadge = true, useFavicons = true, onOpen, onFavorite, onEdit, onDelete,
+}: TileProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   // The monogram stays on screen until the site's own icon has actually loaded:
   // a pending or broken <img> draws a placeholder in WebKit otherwise.
@@ -44,9 +55,15 @@ export function Tile({ site, dragType, showDomain = false, showBadge = true, use
 
   const close = () => { setMenuOpen(false); toggle.current?.focus(); };
 
+  // `row` spells the description out in full; `table` and `preview` keep it to a hint.
+  const detailed = layout === 'row' || layout === 'list';
+  const wantsDescription = layout === 'table' || layout === 'preview' || detailed || showDescription;
+  const description = layout === 'icon' ? '' : (wantsDescription ? site.desc?.trim() ?? '' : '');
+  const domain = layout === 'icon' ? '' : (detailed || showDomain ? site.domain : '');
+
   return (
     <div
-      className={'nx-tile' + (menuOpen ? ' menu-open' : '')}
+      className={'nx-tile nx-tile-' + layout + (menuOpen ? ' menu-open' : '')}
       ref={holder}
       draggable={Boolean(dragType && site.id)}
       onDragStart={event => {
@@ -62,8 +79,19 @@ export function Tile({ site, dragType, showDomain = false, showBadge = true, use
             onLoad={() => setIconLoaded(true)} onError={() => setIconFailed(true)} />}
           {!iconLoaded && monogram(site.title)}
         </span>
-        <span className="nx-tile-name">{site.title}</span>
-        {showDomain && <span className="nx-tile-sub">{site.domain}</span>}
+        {HORIZONTAL.includes(layout) ? (
+          <span className="nx-tile-text">
+            <span className="nx-tile-name">{site.title}</span>
+            {description && <span className="nx-tile-desc">{description}</span>}
+            {domain && <span className="nx-tile-sub">{domain}</span>}
+          </span>
+        ) : (
+          <>
+            <span className="nx-tile-name">{site.title}</span>
+            {description && <span className="nx-tile-desc">{description}</span>}
+            {domain && <span className="nx-tile-sub">{domain}</span>}
+          </>
+        )}
       </button>
       {site.favorite && !site.badge && <Star className="nx-tile-star" size={14} fill="currentColor" aria-label="В избранном" />}
       {showBadge && site.badge && <span className="nx-tile-badge" aria-label={`Уведомлений: ${site.badge}`}>{site.badge}</span>}

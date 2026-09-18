@@ -44,7 +44,7 @@
 }
 
 .nx-root{
- --nx-panel-w:272px;
+ --nx-panel-w:var(--nx-panel-open-w,272px);
  display:grid;grid-template-columns:var(--nx-panel-w) minmax(0,1fr);
  height:100vh;background:var(--nx-canvas);color:var(--nx-text);transition:grid-template-columns .22s ease;
  font:400 14px/1.45 Manrope,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -168,13 +168,13 @@
 .nx-group-count{font-size:12px;color:var(--nx-muted);font-weight:500}
 
 .nx-tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;
- background:var(--nx-surface);border-radius:var(--nx-r-lg);box-shadow:var(--nx-shadow-sm);padding:24px 14px 20px;
- min-height:148px;text-align:center;transition:box-shadow .18s,transform .18s}
+ background:var(--nx-surface);border-radius:var(--nx-tile-radius,var(--nx-r-lg));box-shadow:var(--nx-shadow-sm);padding:24px 14px 20px;
+ min-height:148px;text-align:center;font-family:var(--nx-tile-font,inherit);transition:box-shadow .18s,transform .18s}
 .nx-tile:hover{box-shadow:var(--nx-shadow);transform:translateY(-2px)}
 .nx-tile-face{width:100%;display:flex;flex-direction:column;align-items:center;gap:13px}
-.nx-mark{width:54px;height:54px;flex:none;border-radius:16px;display:grid;place-items:center;overflow:hidden;
- font-size:21px;font-weight:700;color:#fff;letter-spacing:-.5px}
-.nx-mark img{width:30px;height:30px;object-fit:contain;display:block}
+.nx-mark{width:calc(var(--nx-icon,40px) + 14px);height:calc(var(--nx-icon,40px) + 14px);flex:none;border-radius:16px;
+ display:grid;place-items:center;overflow:hidden;font-size:21px;font-weight:700;color:#fff;letter-spacing:-.5px}
+.nx-mark img{width:calc(var(--nx-icon,40px) - 10px);height:calc(var(--nx-icon,40px) - 10px);object-fit:contain;display:block}
 .nx-mark img[hidden],.nx-dock-mark img[hidden]{display:none}
 .nx-mark.plain{background:var(--nx-sunken)}
 .nx-tile-name{font-size:13.5px;font-weight:600;color:var(--nx-text);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -324,7 +324,7 @@
 .nx-settings-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--nx-line)}
 .nx-settings-head h2{font-size:16px;font-weight:700;margin-top:3px}
 .nx-settings-body{flex:1;min-height:0;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
-.nx-fold{border-radius:var(--nx-r-md);background:var(--nx-sunken);overflow:hidden}
+.nx-fold{flex:none;border-radius:var(--nx-r-md);background:var(--nx-sunken);overflow:hidden}
 .nx-fold h3{margin:0}
 .nx-fold-head{display:flex;align-items:center;gap:10px;width:100%;padding:12px 13px;font-size:13.5px;font-weight:600;color:var(--nx-text)}
 .nx-fold-head>span{flex:1;text-align:left}
@@ -486,3 +486,138 @@
 @media(prefers-reduced-motion:reduce){
  .nx-action-dialog-actions button{transition:none!important}
 }
+
+/* ── подложка рабочего пространства ───────────────────────────────
+   Обои задаются на <html>, поэтому их видно и за модальными окнами. */
+:root[data-wallpaper="aurora"] .nx-root{background:radial-gradient(circle at 72% -8%,#dcecff,#eef2f6 52%,#e9eef4)}
+:root[data-wallpaper="warm"] .nx-root{background:radial-gradient(circle at 24% -6%,#fff1dd,#f6f3ee 48%,#eceef1)}
+:root[data-wallpaper="mint"] .nx-root{background:radial-gradient(circle at 80% 4%,#ddf6ee,#f0f6f4 45%,#e9eef2)}
+:root[data-wallpaper="plain"] .nx-root{background:var(--nx-canvas)}
+:root[data-theme="dark"][data-wallpaper="aurora"] .nx-root{background:radial-gradient(circle at 72% -8%,#152338,#0e1217 55%,#0e1217)}
+:root[data-theme="dark"][data-wallpaper="warm"] .nx-root{background:radial-gradient(circle at 24% -6%,#2a1f14,#0e1217 52%,#0e1217)}
+:root[data-theme="dark"][data-wallpaper="mint"] .nx-root{background:radial-gradient(circle at 80% 4%,#0f2a24,#0e1217 50%,#0e1217)}
+:root[data-theme="dark"][data-wallpaper="plain"] .nx-root{background:var(--nx-canvas)}
+.nx-wall-dot{width:13px;height:13px;border-radius:4px;flex:none;box-shadow:inset 0 0 0 1px rgba(20,28,45,.12)}
+.nx-wall-dot.wall-aurora{background:linear-gradient(135deg,#dcecff,#eef2f6)}
+.nx-wall-dot.wall-warm{background:linear-gradient(135deg,#fff1dd,#f6f3ee)}
+.nx-wall-dot.wall-mint{background:linear-gradient(135deg,#ddf6ee,#f0f6f4)}
+.nx-wall-dot.wall-plain{background:#eceef1}
+
+/* ── компактный режим и отключённые анимации ──────────────────── */
+.nx-root.compact{font-size:13.5px}
+.nx-root.compact .nx-panel{padding:14px 13px}
+.nx-root.compact .nx-main-scroll{padding:14px 18px 122px;gap:12px}
+.nx-root.compact .nx-link{padding:6px 9px}
+.nx-root.compact .nx-tile{min-height:120px;padding:16px 10px 14px;gap:9px}
+.nx-root.compact .nx-cat{padding:7px 11px 10px}
+.nx-root.compact .nx-head h1{font-size:20px}
+.nx-root.still *,.nx-root.still *:before,.nx-root.still *:after{transition:none!important;animation:none!important}
+
+/* ── эффект наведения на плитку ───────────────────────────────── */
+.nx-root.hover-none .nx-tile:hover{transform:none;box-shadow:var(--nx-shadow-sm)}
+.nx-root.hover-float .nx-tile:hover{transform:translateY(-5px) scale(1.012);box-shadow:var(--nx-shadow-lg)}
+
+/* ── цветная иконка выбранного узла проводника ────────────────── */
+.nx-tree-row.on{background:color-mix(in srgb,var(--nx-node,var(--nx-accent)) 13%,transparent);color:var(--nx-text)}
+.nx-tree-row.on>svg:not(.nx-tree-caret){color:var(--nx-node,var(--nx-accent))}
+.nx-tree-row.on .nx-tree-caret{color:var(--nx-node,var(--nx-accent))}
+.nx-tree-row.on i{background:color-mix(in srgb,var(--nx-node,var(--nx-accent)) 20%,transparent);color:var(--nx-node,var(--nx-accent))}
+.nx-panel.collapsed .nx-tree-row.on{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--nx-node,var(--nx-accent)) 45%,transparent)}
+
+/* ── кнопка проекта в верхней панели ──────────────────────────── */
+.nx-project-chip{flex:none;display:flex;align-items:center;gap:8px;margin-bottom:5px;padding:7px 10px 7px 11px;
+ border-radius:12px;background:var(--nx-surface);box-shadow:var(--nx-shadow-sm);color:var(--nx-text);
+ max-width:220px;transition:box-shadow .16s,transform .16s,background .16s}
+.nx-project-chip b{font-size:13.5px;font-weight:700;letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-project-chip svg{color:var(--nx-muted);flex:none;transition:transform .16s}
+.nx-project-chip:hover{box-shadow:var(--nx-shadow)}
+.nx-project-chip:hover svg{transform:translateX(2px);color:var(--nx-node,var(--nx-accent))}
+.nx-project-chip:disabled{cursor:default;box-shadow:var(--nx-shadow-sm)}
+.nx-project-chip:disabled svg{display:none}
+.nx-project-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--nx-node,var(--nx-accent));
+ box-shadow:0 0 0 3px color-mix(in srgb,var(--nx-node,var(--nx-accent)) 18%,transparent)}
+.nx-cats-tabs{flex:1}
+
+/* Смена проекта: боковое дерево и сетка проявляются заново. */
+@keyframes nx-swap{from{opacity:.15;transform:translateY(7px)}to{opacity:1;transform:none}}
+.nx-root.swapping .nx-panel-scroll,.nx-root.swapping .nx-grid,.nx-root.swapping .nx-groups,
+.nx-root.swapping .nx-cats-tabs{animation:nx-swap .32s cubic-bezier(.2,.85,.25,1)}
+
+/* ── раскладки сетки ──────────────────────────────────────────── */
+.nx-tile-desc{font-size:12px;line-height:1.35;color:var(--nx-muted);max-width:100%;
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;overflow:hidden}
+.nx-tile-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;text-align:left}
+.nx-tile-text .nx-tile-name{max-width:100%}
+.nx-tile-text .nx-tile-sub{margin-top:0}
+
+.nx-grid.layout-icon{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+.nx-tile-icon{min-height:104px;padding:16px 8px 14px;gap:9px}
+.nx-tile-icon .nx-tile-name{font-size:12.5px}
+
+.nx-grid.layout-list,.nx-grid.layout-row{grid-template-columns:minmax(0,1fr)}
+.nx-tile-list,.nx-tile-row{min-height:0;padding:12px 44px 12px 14px;text-align:left;align-items:stretch}
+.nx-tile-list .nx-tile-face,.nx-tile-row .nx-tile-face{flex-direction:row;align-items:center;gap:13px}
+.nx-tile-list .nx-tile-desc,.nx-tile-row .nx-tile-desc{-webkit-line-clamp:2;line-clamp:2}
+.nx-tile-list .nx-tile-more,.nx-tile-row .nx-tile-more{top:50%;transform:translateY(-50%)}
+.nx-tile-list .nx-tile-star,.nx-tile-row .nx-tile-star,
+.nx-tile-list .nx-tile-badge,.nx-tile-row .nx-tile-badge{top:8px;left:auto;right:44px}
+
+.nx-grid.layout-preview{grid-template-columns:repeat(auto-fill,minmax(232px,1fr))}
+.nx-tile-preview{min-height:176px}
+.nx-tile-preview .nx-tile-desc{-webkit-line-clamp:2;line-clamp:2}
+
+.nx-grid.layout-table .nx-tile-desc{-webkit-line-clamp:1;line-clamp:1}
+
+/* ── переключатель вида на узком экране ───────────────────────── */
+.nx-mobile-views{display:none}
+@media (max-width:900px){
+ .nx-mobile-views{display:flex;gap:4px;align-self:flex-start;flex:none;padding:4px;border-radius:13px;
+  background:var(--nx-surface);box-shadow:var(--nx-shadow-sm)}
+ .nx-mobile-views button{width:40px;height:34px;display:grid;place-items:center;border-radius:10px;color:var(--nx-muted);
+  transition:background .15s,color .15s}
+ .nx-mobile-views button.on{background:var(--nx-accent-soft);color:var(--nx-accent)}
+ /* Узкая полоса не вмещает кнопку проекта, вкладки и режимы в один ряд,
+    поэтому вкладки переносятся на свою строку во всю ширину. */
+ .nx-cats{flex-wrap:wrap;row-gap:2px}
+ .nx-cats-tabs{order:2;flex:1 0 100%}
+ .nx-cats-side{order:1;margin-left:auto}
+ .nx-project-chip{order:0;align-self:center;margin-bottom:0;max-width:150px;padding:6px 8px 6px 9px}
+ .nx-project-chip b{font-size:12.5px}
+ .nx-grid.layout-table{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .nx-grid.layout-icon{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+ .nx-grid.layout-row{grid-template-columns:minmax(0,1fr)}
+ .nx-tile-table{min-height:0;padding:14px 10px 12px}
+ .nx-tile-icon{min-height:0;padding:12px 4px 10px;gap:7px}
+ .nx-tile-icon .nx-mark{width:calc(var(--nx-icon,40px) + 2px);height:calc(var(--nx-icon,40px) + 2px);border-radius:13px;font-size:16px}
+ .nx-tile-icon .nx-mark img{width:calc(var(--nx-icon,40px) - 18px);height:calc(var(--nx-icon,40px) - 18px)}
+ .nx-tile-icon .nx-tile-name{font-size:11px;font-weight:500}
+ .nx-tile-icon .nx-tile-more{display:none}
+ .nx-tile-row{padding:11px 40px 11px 12px}
+ .nx-tile-row .nx-mark{width:40px;height:40px;border-radius:13px;font-size:15px}
+ .nx-tile-row .nx-mark img{width:22px;height:22px}
+ /* Узкая раскладка уже плотная, поэтому компактный режим ужимает её ещё раз. */
+ .nx-root.compact .nx-main-scroll{padding:8px 12px 104px;gap:9px}
+ .nx-root.compact .nx-tile{min-height:0;padding:12px 8px 10px}
+}
+
+/* ── дополнения окна настроек ─────────────────────────────────── */
+.nx-fold-reset{align-self:flex-start;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:9px;
+ font-size:12px;color:var(--nx-muted)}
+.nx-fold-reset:hover{background:var(--nx-surface);color:var(--nx-accent)}
+.nx-settings-version{flex:none;padding:6px 4px 2px;font-size:11px;color:var(--nx-muted);text-align:center}
+.nx-choices.tight button{padding:6px 9px;font-size:12px}
+.nx-range{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.nx-range-label{flex:1 0 100%;font-size:12.5px;color:var(--nx-muted)}
+.nx-views{display:flex;flex-direction:column;gap:6px}
+.nx-views button{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 8px;
+ padding:9px 11px;border-radius:11px;background:var(--nx-surface);text-align:left;color:var(--nx-text)}
+.nx-views button b{font-size:13px;font-weight:600}
+.nx-views button small{grid-column:1;font-size:11.5px;color:var(--nx-muted);line-height:1.35}
+.nx-views button svg{grid-row:1/3;color:var(--nx-accent)}
+.nx-views button.on{background:var(--nx-accent-soft);color:var(--nx-accent)}
+.nx-views button.on small{color:var(--nx-accent);opacity:.8}
+.nx-keys{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.nx-keys li{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--nx-muted)}
+.nx-keys kbd{flex:none;min-width:74px;padding:4px 8px;border-radius:7px;background:var(--nx-surface);
+ border:1px solid var(--nx-line);font:inherit;font-size:11.5px;font-weight:600;color:var(--nx-text);text-align:center}
+.nx-choice-block{display:flex;flex-direction:column;gap:7px}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appReducer, createInitialAppState } from './appStore';
+import { appReducer, createInitialAppState, normalizeMobileMode } from './appStore';
 
 describe('app store reducer', () => {
   const initial = createInitialAppState([{ title: 'Figma', desc: '', domain: 'figma.com', color: '#f00', icon: 'F', category: 'Проект' }]);
@@ -51,5 +51,17 @@ describe('app store reducer', () => {
     expect(migrated.projects[0].siteIds).toEqual(['site-figma-com-0']);
     expect(migrated.sessions[0].siteIds).toEqual(['site-figma-com-0']);
     ['nexus-sites', 'nexus-projects', 'nexus-sessions'].forEach(key => localStorage.removeItem(key));
+  });
+
+  it('keeps a known mobile arrangement and rejects anything else', () => {
+    expect(normalizeMobileMode('rows')).toBe('rows');
+    expect(normalizeMobileMode('icons')).toBe('icons');
+    // Older builds stored a menu label in this key.
+    expect(normalizeMobileMode('В виде меню')).toBe('table');
+    expect(normalizeMobileMode(undefined)).toBe('table');
+  });
+
+  it('starts with the table arrangement on a narrow screen', () => {
+    expect(initial.ui.mobileMode).toBe('table');
   });
 });
