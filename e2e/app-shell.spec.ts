@@ -96,29 +96,103 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeHidden();
   });
 
-  test('settings changes persist after returning to the app', async ({ page }) => {
+  test('the compact settings panel applies changes on the page behind it', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Настройки' }).first().click();
-    await expect(page.getByRole('heading', { name: 'Настройки приложения' })).toBeVisible();
-    const settings = page.locator('.settings-page');
-    await settings.getByRole('button', { name: 'Оформление' }).click();
-    await settings.getByRole('button', { name: /Тёмная/ }).first().click();
-    await settings.getByRole('button', { name: 'Сохранить изменения' }).click();
+    await page.locator('.nx-dock').getByRole('button', { name: 'Настройки' }).click();
+    const settings = page.locator('.nx-settings');
+    await expect(settings).toBeVisible();
+    // The panel is not modal: the grid stays visible and keeps working next to it.
+    await expect(page.locator('.nx-tile').first()).toBeVisible();
+
+    await settings.getByRole('button', { name: /Тёмная/ }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    await settings.getByRole('button', { name: 'Плитки' }).click();
+    await settings.getByRole('switch', { name: 'Адрес сайта' }).click();
+    await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
+
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
   });
 
-  test('search engine setting drives the command-center web search action', async ({ page }) => {
+  test('search engine setting drives what the omnibox opens', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'open', {
+        configurable: true, writable: true,
+        value: (...args: unknown[]) => {
+          (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen = args;
+          return null;
+        },
+      });
+    });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Настройки' }).first().click();
-    const settings = page.locator('.settings-page');
+    await page.locator('.nx-dock').getByRole('button', { name: 'Настройки' }).click();
+    const settings = page.locator('.nx-settings');
     await settings.getByRole('button', { name: 'Поиск', exact: true }).click();
     await settings.getByLabel('Поисковая система').selectOption('Яндекс');
-    await settings.getByRole('button', { name: 'Сохранить изменения' }).click();
+    await settings.getByRole('button', { name: 'Закрыть настройки' }).click();
 
-    await page.keyboard.press('Control+K');
-    await page.getByPlaceholder('Что вы хотите сделать?').fill('Nexus Speed Dial');
-    await expect(page.getByRole('button', { name: /Искать в Яндекс/ })).toBeVisible();
+    await page.getByLabel('Запрос или адрес').fill('Nexus Speed Dial');
+    await page.getByLabel('Запрос или адрес').press('Enter');
+    const opened = await page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen);
+    expect(String(opened?.[0])).toContain('yandex');
+  });
+
+  test('the bookmark search unfolds out of the quick-access dock', async ({ page }) => {
+    await page.goto('/');
+    // No standing search field anywhere on the page.
+    await expect(page.getByLabel('Поиск по закладкам')).toHaveCount(1);
+    const dock = page.locator('.nx-dock');
+    await expect(dock.locator('input')).toHaveCount(0);
+
+    const total = await page.locator('.nx-tile').count();
+    await dock.getByRole('button', { name: 'Поиск по закладкам' }).click();
+    const field = dock.getByLabel('Поиск по закладкам');
+    await expect(field).toBeFocused();
+    await field.fill('Telegram');
+    await expect(page.locator('.nx-tile')).toHaveCount(1);
+
+    await field.press('Escape');
+    await expect(dock.locator('input')).toHaveCount(0);
+    await expect(page.locator('.nx-tile')).toHaveCount(total);
+  });
+
+  test('the dock unfolds from the side panel and both panels collapse to icons', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'The side panel is replaced by the sections sheet below 900px.');
+    await page.goto('/');
+    const dock = page.locator('.nx-dock');
+    await expect(dock).toHaveClass(/open/);
+
+    // The launcher sits opposite the dock, at the same height.
+    const launcher = page.getByRole('button', { name: 'Свернуть панель быстрого доступа' });
+    const launcherBox = await launcher.boundingBox();
+    const dockBox = await dock.boundingBox();
+    expect(Math.abs((launcherBox!.y + launcherBox!.height / 2) - (dockBox!.y + dockBox!.height / 2))).toBeLessThan(6);
+
+    await launcher.click();
+    await expect(dock).not.toHaveClass(/open/);
+    await page.getByRole('button', { name: 'Развернуть панель быстрого доступа' }).click();
+    await expect(dock).toHaveClass(/open/);
+
+    // The side panel collapses to icons and remembers the choice.
+    const panel = page.locator('.nx-panel');
+    const wide = (await panel.boundingBox())!.width;
+    await page.getByRole('button', { name: 'Свернуть боковое окно' }).click();
+    await expect(page.locator('.nx-root')).toHaveClass(/panel-collapsed/);
+    await expect.poll(async () => (await panel.boundingBox())!.width).toBeLessThan(wide);
+    await page.reload();
+    await expect(page.locator('.nx-root')).toHaveClass(/panel-collapsed/);
+  });
+
+  test('the clock, the weather and the calendar sit at the bottom of the side panel', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'The compact card replaces the side panel below 900px.');
+    await page.goto('/');
+    const foot = page.locator('.nx-panel-foot');
+    await expect(foot.locator('.nx-clock')).toContainText(/\d{1,2}:\d{2}/);
+    await expect(foot.locator('.nx-weather')).toBeVisible();
+    await foot.locator('[data-calendar-trigger]').click();
+    await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeVisible();
   });
 
   test('mobile keeps the clock, the weather and the calendar in one compact card', async ({ page }, testInfo) => {

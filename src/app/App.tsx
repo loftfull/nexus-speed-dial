@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useReducer, useState } from 'react';
+import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
-  BookOpen, CalendarDays, ChevronDown, ChevronUp, Clock3, CloudSun, Droplets, Folder, Globe, Home, Layers3, LayoutGrid,
+  CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock3, CloudSun, Droplets, Home, Layers3, LayoutGrid,
+  Briefcase, GraduationCap, PanelLeftClose, PanelLeftOpen, ShoppingBag,
   Moon, MoreHorizontal, Plus, RotateCw, Search, Settings as SettingsIcon, SlidersHorizontal,
   Star, StickyNote, Sun, Tag, Trash2, Wind, X,
 } from 'lucide-react';
@@ -15,7 +16,6 @@ import { getStorageUsage, readStorage, writeStorage } from '../domain/storage';
 import { makeCategoryId, makeGroupId } from '../domain/hierarchy';
 import { buildWebSearchUrl } from '../domain/webSearch';
 import { recordSiteOpen, resolveHistoryTarget, resolveSiteUrl } from '../domain/siteOpen';
-import { createSessionRestorePlan } from '../domain/sessionActions';
 import { filterSites } from '../domain/siteUtils';
 import { sites as countSites } from '../domain/plural';
 import type { Category, Project, SiteGroup, SiteRecord as Site } from '../domain/types';
@@ -23,28 +23,21 @@ import type { Category, Project, SiteGroup, SiteRecord as Site } from '../domain
 import { Tile } from './Tile';
 import { AddSiteModal } from '../components/AddSiteModal';
 import { CalendarPopover } from '../components/CalendarPopover';
-import { CommandPalette } from '../components/CommandPalette';
 import { MobileSections } from '../components/MobileSections';
-import { Settings } from '../components/SettingsPanel';
+import { SettingsPanel } from './SettingsPanel';
 import { NotesWorkspace } from '../components/NotesWorkspace';
-import { LibraryWorkspace } from '../components/LibraryWorkspace';
-import { TagsWorkspace } from '../components/TagsWorkspace';
-import { ProjectsWorkspace } from '../components/ProjectsWorkspace';
 
-type SectionId = 'sites' | 'favorites' | 'trash' | 'recent' | 'notes' | 'library' | 'tags' | 'projects';
+type SectionId = 'sites' | 'favorites' | 'trash' | 'recent' | 'notes';
 
 const SECTIONS: { id: SectionId; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
   { id: 'sites', label: 'Быстрый доступ', icon: Home },
-  { id: 'projects', label: 'Проекты', icon: Folder },
-  { id: 'library', label: 'Библиотека', icon: BookOpen },
+  { id: 'favorites', label: 'Избранное', icon: Star },
   { id: 'recent', label: 'Недавние', icon: Clock3 },
   { id: 'notes', label: 'Заметки', icon: StickyNote },
-  { id: 'tags', label: 'Теги', icon: Tag },
-  { id: 'favorites', label: 'Избранное', icon: Star },
   { id: 'trash', label: 'Корзина', icon: Trash2 },
 ];
 const SECTION_TITLE = Object.fromEntries(SECTIONS.map(s => [s.id, s.label])) as Record<SectionId, string>;
-const PROJECT_GLYPHS = [Home, Folder, BookOpen, Star, Layers3, Tag];
+const PROJECT_GLYPHS = [Home, Briefcase, GraduationCap, Star, Layers3, ShoppingBag];
 const PAGE = 24;
 
 const WEATHER_PLACES: Record<string, [number, number]> = {
@@ -84,10 +77,13 @@ export function App() {
   const [limit, setLimit] = useState(PAGE);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<Site | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(() => readStorage('nexus-panel-open', true));
+  const [dockOpen, setDockOpen] = useState(() => readStorage('nexus-dock-open', true));
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInput = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState('');
   const [now, setNow] = useState(() => new Date());
   const [weather, setWeather] = useState<Weather>(WEATHER_EMPTY);
@@ -106,6 +102,18 @@ export function App() {
   useEffect(() => { writeStorage('nexus-active-project', activeProjectId); }, [activeProjectId]);
   useEffect(() => { writeStorage('nexus-active-category', categoryId); }, [categoryId]);
   useEffect(() => { writeStorage('nexus-view-mode', view); }, [view]);
+  useEffect(() => { writeStorage('nexus-panel-open', panelOpen); }, [panelOpen]);
+  useEffect(() => { writeStorage('nexus-dock-open', dockOpen); }, [dockOpen]);
+  useEffect(() => { if (searchOpen) searchInput.current?.focus(); }, [searchOpen]);
+  useEffect(() => { if (!dockOpen) setSearchOpen(false); }, [dockOpen]);
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)');
+    const update = () => setNarrow(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
   useEffect(() => { setLimit(PAGE); }, [section, activeProjectId, categoryId, query, view]);
 
   useEffect(() => {
@@ -156,11 +164,10 @@ export function App() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (event.ctrlKey && key === 'k') { event.preventDefault(); setPaletteOpen(true); }
       if (event.ctrlKey && key === 'n') { event.preventDefault(); setAddOpen(true); }
       if (event.ctrlKey && key === ',') { event.preventDefault(); setSettingsOpen(true); }
       if (event.ctrlKey && key === 'b') { event.preventDefault(); setSection('favorites'); }
-      if (key === 'escape') { setCalendarOpen(false); setMobileNav(false); }
+      if (key === 'escape') { setCalendarOpen(false); setMobileNav(false); setSettingsOpen(false); }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -255,7 +262,7 @@ export function App() {
 
   const shown = found.slice(0, limit);
   const useFavicons = ui.siteIcons !== false;
-  const gridStyle = { '--nx-tile': tile.size === 'S' ? '140px' : tile.size === 'L' ? '200px' : tile.size === 'XL' ? '230px' : '170px' } as React.CSSProperties;
+  const gridStyle = { '--nx-tile': tile.size === 'S' ? '140px' : tile.size === 'L' ? '200px' : tile.size === 'XL' ? '230px' : '170px', '--nx-gap': `${state.density}px` } as React.CSSProperties;
 
   const renderTile = (site: Site) => (
     <Tile
@@ -336,24 +343,15 @@ export function App() {
       : <Empty title="Пока ничего не открывали" hint="Открытые сайты появятся здесь" />;
   } else if (section === 'notes') {
     body = <NotesWorkspace sites={sites.filter(site => site.note)} onEdit={setEditing} />;
-  } else if (section === 'tags') {
-    body = <TagsWorkspace sites={sites} onChange={setSites} onOpenTag={() => setSection('library')} />;
-  } else if (section === 'projects') {
-    body = <ProjectsWorkspace projects={projects} sites={sites} sessions={sessions} onChange={setProjects} onChangeSessions={setSessions}
-      onRestoreSession={session => createSessionRestorePlan(session, sites).forEach(item => openSite(item.site))}
-      onSelect={project => selectProject(project.id)} />;
-  } else if (section === 'library') {
-    body = <LibraryWorkspace sites={sites} projects={projects} onChangeProjects={setProjects} onChange={setSites}
-      onOpen={openSite} onToggleFavorite={id => { const site = sites.find(item => item.id === id); if (site) toggleFavorite(site); }} />;
   } else {
     body = grid;
   }
 
   const showCategoryBar = section === 'sites';
-  const showFinder = section === 'sites' || section === 'favorites';
+  const dockVisible = dockOpen || narrow;
 
   return (
-    <div className="nx-root">
+    <div className={'nx-root' + (panelOpen ? '' : ' panel-collapsed')}>
       <nav className="nx-rail" aria-label="Проекты">
         <span className="nx-brand" aria-hidden="true">N</span>
         {projects.map((project, index) => {
@@ -372,80 +370,100 @@ export function App() {
         <button type="button" className="nx-rail-btn" aria-label="Настройки" title="Настройки" onClick={() => setSettingsOpen(true)}><SettingsIcon size={19} /></button>
       </nav>
 
-      <aside className="nx-panel">
-        <div className="nx-panel-brand"><b>Nexus</b><span>Speed Dial</span></div>
-        <button type="button" data-calendar-trigger className={'nx-clock' + (calendarOpen ? ' open' : '')}
-          aria-expanded={calendarOpen} aria-label="Открыть календарь" onClick={() => setCalendarOpen(value => !value)}>
-          <b>{time}</b>
-          {!calendarOpen && <small>{dateLine}</small>}
-        </button>
-
-        {ui.weather && (
-          <div className="nx-weather">
-            <div className="nx-weather-top">
-              <CloudSun size={38} aria-hidden="true" />
-              <span className="nx-weather-now"><b>{weather.temp}</b><span>{weather.label}</span></span>
-            </div>
-            {weather.ready && (weather.hi || weather.humidity) && (
-              <div className="nx-weather-stats">
-                {weather.hi && <span title="Максимум за сутки"><ChevronUp size={13} /> {weather.hi}</span>}
-                {weather.lo && <span title="Минимум за сутки"><ChevronDown size={13} /> {weather.lo}</span>}
-                {weather.humidity && <span title="Влажность"><Droplets size={13} /> {weather.humidity}</span>}
-                {weather.wind && <span title="Ветер"><Wind size={13} /> {weather.wind}</span>}
-              </div>
-            )}
-          </div>
-        )}
+      <aside className={'nx-panel' + (panelOpen ? '' : ' collapsed')}>
+        <div className="nx-panel-scroll">
+        <div className="nx-panel-head">
+          {panelOpen && <div className="nx-panel-brand"><b>Nexus</b><span>Speed Dial</span></div>}
+          <button type="button" className="nx-icon-btn nx-panel-toggle" aria-expanded={panelOpen}
+            aria-label={panelOpen ? 'Свернуть боковое окно' : 'Развернуть боковое окно'}
+            title={panelOpen ? 'Свернуть боковое окно' : 'Развернуть боковое окно'}
+            onClick={() => setPanelOpen(value => !value)}>
+            {panelOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+          </button>
+        </div>
 
         {activeProject && (
           <div className="nx-section">
-            <span className="nx-label">Проект</span>
-            <div className="nx-project-name"><Layers3 size={17} aria-hidden="true" /><b>{activeProject.name}</b><em>{countSites(scoped.length)}</em></div>
+            {panelOpen && <span className="nx-label">Проект</span>}
+            <div className="nx-project-name" title={activeProject.name}>
+              <Layers3 size={17} aria-hidden="true" />
+              {panelOpen && <><b>{activeProject.name}</b><em>{countSites(scoped.length)}</em></>}
+            </div>
           </div>
         )}
 
         {section === 'sites' && panelGroups.length > 0 && (
           <div className="nx-section">
-            <span className="nx-label">Группы</span>
+            {panelOpen && <span className="nx-label">Группы</span>}
             {panelGroups.map(({ group, count }) => (
-              <button key={group.id} type="button" className="nx-link" onClick={() => {
+              <button key={group.id} type="button" className="nx-link" title={group.name} onClick={() => {
                 setCategoryId(group.categoryId);
                 setView('groups');
-                document.getElementById(`group-${group.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                window.setTimeout(() => document.getElementById(`group-${group.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
               }}>
                 <Layers3 size={17} />
-                <span>{group.name}</span>
-                <i>{count}</i>
+                {panelOpen && <><span>{group.name}</span><i>{count}</i></>}
               </button>
             ))}
           </div>
         )}
 
         <div className="nx-section">
-          <span className="nx-label">Разделы</span>
-          {SECTIONS.filter(item => item.id !== 'sites').map(item => (
-            <button key={item.id} type="button" className={'nx-link' + (section === item.id ? ' on' : '')} onClick={() => setSection(item.id)}>
+          {panelOpen && <span className="nx-label">Разделы</span>}
+          {SECTIONS.map(item => (
+            <button key={item.id} type="button" title={item.label} aria-label={panelOpen ? undefined : item.label}
+              className={'nx-link' + (section === item.id ? ' on' : '')} onClick={() => setSection(item.id)}>
               <item.icon size={17} />
-              <span>{item.label}</span>
-              {item.id === 'trash' && trash.length > 0 && <i>{trash.length}</i>}
+              {panelOpen && <><span>{item.label}</span>{item.id === 'trash' && trash.length > 0 && <i>{trash.length}</i>}</>}
             </button>
           ))}
         </div>
 
+        </div>
+
         <div className="nx-panel-foot">
-          <div className="nx-storage">
-            <div className="nx-storage-top"><span>Хранилище</span><b>{storage.percent}%</b></div>
-            <div className="nx-storage-bar"><i style={{ width: `${storage.percent}%` }} /></div>
-            <small>Использовано {storage.label}</small>
-          </div>
-          <div className="nx-panel-actions">
-            <button type="button" className="nx-icon-btn" aria-label={appearance.theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-              title={appearance.theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-              onClick={() => setAppearance({ ...appearance, theme: appearance.theme === 'dark' ? 'light' : 'dark' })}>
-              {appearance.theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          {panelOpen && (
+            <div className="nx-storage">
+              <div className="nx-storage-top"><span>Хранилище</span><b>{storage.percent}%</b></div>
+              <div className="nx-storage-bar"><i style={{ width: `${storage.percent}%` }} /></div>
+              <small>Использовано {storage.label}</small>
+            </div>
+          )}
+          <button type="button" data-calendar-trigger className={'nx-clock' + (calendarOpen ? ' open' : '')}
+            aria-expanded={calendarOpen} aria-label="Открыть календарь" title="Открыть календарь"
+            onClick={() => setCalendarOpen(value => !value)}>
+            {panelOpen ? <><b>{time}</b><small>{dateLine}</small></> : <CalendarDays size={19} />}
+          </button>
+
+          {ui.weather && panelOpen && (
+            <div className="nx-weather">
+              <div className="nx-weather-top">
+                <CloudSun size={34} aria-hidden="true" />
+                <span className="nx-weather-now"><b>{weather.temp}</b><span>{weather.label}</span></span>
+              </div>
+              {weather.ready && (weather.hi || weather.humidity) && (
+                <div className="nx-weather-stats">
+                  {weather.hi && <span title="Максимум за сутки"><ChevronUp size={13} /> {weather.hi}</span>}
+                  {weather.lo && <span title="Минимум за сутки"><ChevronDown size={13} /> {weather.lo}</span>}
+                  {weather.humidity && <span title="Влажность"><Droplets size={13} /> {weather.humidity}</span>}
+                  {weather.wind && <span title="Ветер"><Wind size={13} /> {weather.wind}</span>}
+                </div>
+              )}
+            </div>
+          )}
+          {ui.weather && !panelOpen && (
+            <span className="nx-weather-mini" title={`${weather.temp} · ${weather.label}`}><CloudSun size={19} aria-hidden="true" /><b>{weather.temp}</b></span>
+          )}
+
+          <div className="nx-dock-launch">
+            <button type="button" className={'nx-icon-btn nx-dock-toggle' + (dockOpen ? ' on' : '')}
+              aria-expanded={dockOpen} aria-controls="nx-dock"
+              aria-label={dockOpen ? 'Свернуть панель быстрого доступа' : 'Развернуть панель быстрого доступа'}
+              title={dockOpen ? 'Свернуть панель быстрого доступа' : 'Развернуть панель быстрого доступа'}
+              onClick={() => setDockOpen(value => !value)}>
+              {dockOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
             </button>
-            <button type="button" className="nx-icon-btn" aria-label="Поиск и команды" title="Поиск и команды (Ctrl K)" onClick={() => setPaletteOpen(true)}><Globe size={18} /></button>
-            <button type="button" className="nx-icon-btn" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}><Plus size={18} /></button>
+            {panelOpen && <span className="nx-dock-launch-label">Быстрый доступ</span>}
           </div>
         </div>
       </aside>
@@ -505,28 +523,34 @@ export function App() {
               <h1>{heading}</h1>
               <p>{subheading}</p>
             </div>
-            {showFinder && (
-              <label className="nx-find">
-                <Search size={17} />
-                <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Поиск по закладкам" aria-label="Поиск по закладкам" />
-                {query && <button type="button" aria-label="Очистить поиск" onClick={() => setQuery('')}><X size={15} /></button>}
-              </label>
-            )}
           </div>
 
           {body}
         </div>
 
-        <div className="nx-dock-wrap">
-          <div className="nx-dock" role="toolbar" aria-label="Панель быстрых действий">
-            {SECTIONS.slice(0, 6).map(item => (
-              <button key={item.id} type="button" className={(section === item.id ? 'on' : '') + (item.id === 'projects' || item.id === 'tags' ? ' wide-only' : '')} aria-label={item.label} title={item.label} onClick={() => setSection(item.id)}>
-                <item.icon size={19} />
-              </button>
-            ))}
-            <span className="nx-dock-sep" />
-            <button type="button" aria-label="Поиск и команды" title="Поиск и команды (Ctrl K)" onClick={() => setPaletteOpen(true)}><Globe size={19} /></button>
-            <button type="button" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}><Plus size={19} /></button>
+        <div className="nx-dock-wrap" aria-hidden={!dockVisible}>
+          <div className={'nx-dock' + (dockVisible ? ' open' : '') + (searchOpen ? ' searching' : '')} id="nx-dock" role="toolbar" aria-label="Панель быстрого доступа">
+            {searchOpen ? (
+              <label className="nx-dock-search">
+                <Search size={18} />
+                <input ref={searchInput} value={query} onChange={event => setQuery(event.target.value)}
+                  placeholder="Поиск по закладкам" aria-label="Поиск по закладкам"
+                  onKeyDown={event => { if (event.key === 'Escape') { setQuery(''); setSearchOpen(false); } }} />
+                <button type="button" aria-label="Закрыть поиск" onClick={() => { setQuery(''); setSearchOpen(false); }}><X size={17} /></button>
+              </label>
+            ) : (
+              <>
+                {SECTIONS.map(item => (
+                  <button key={item.id} type="button" className={section === item.id ? 'on' : ''} aria-label={item.label} title={item.label} onClick={() => setSection(item.id)}>
+                    <item.icon size={19} />
+                  </button>
+                ))}
+                <span className="nx-dock-sep" />
+                <button type="button" className={query ? 'on' : ''} aria-label="Поиск по закладкам" title="Поиск по закладкам" aria-expanded={searchOpen} onClick={() => setSearchOpen(true)}><Search size={19} /></button>
+                <button type="button" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}><Plus size={19} /></button>
+                <button type="button" aria-label="Настройки" title="Настройки (Ctrl ,)" onClick={() => setSettingsOpen(true)}><SettingsIcon size={19} /></button>
+              </>
+            )}
           </div>
         </div>
       </main>
@@ -541,18 +565,6 @@ export function App() {
             if (match) setSection(match.id);
           }}
           items={SECTIONS.map(item => [item.label, item.icon] as const)} />
-      )}
-      {paletteOpen && (
-        <CommandPalette sites={sites} categories={categories} history={history} sessions={sessions} searchEngine={ui.searchEngine}
-          onOpenSite={site => { setPaletteOpen(false); openSite(site); }}
-          onOpenHistoryItem={item => { setPaletteOpen(false); openHistoryItem(item); }}
-          onOpenSession={session => { setPaletteOpen(false); createSessionRestorePlan(session, sites).forEach(item => openSite(item.site)); }}
-          onCategory={id => { setPaletteOpen(false); setSection('sites'); setCategoryId(id); }}
-          onClose={() => setPaletteOpen(false)}
-          onAddSite={() => { setPaletteOpen(false); setAddOpen(true); }}
-          onSettings={() => { setPaletteOpen(false); setSettingsOpen(true); }}
-          onFavorites={() => { setPaletteOpen(false); setSection('favorites'); }}
-          onNotes={() => { setPaletteOpen(false); setSection('notes'); }} />
       )}
       {(addOpen || editing) && (
         <AddSiteModal
@@ -569,7 +581,7 @@ export function App() {
           }} />
       )}
       {settingsOpen && (
-        <Settings onClose={() => setSettingsOpen(false)} density={state.density} setDensity={setDensity}
+        <SettingsPanel onClose={() => setSettingsOpen(false)} density={state.density} setDensity={setDensity}
           sites={sites} setSites={setSites} categories={categories} setCategories={setCategories}
           groups={groups} setGroups={setGroups} ui={ui} setUi={setUi} tile={tile} setTile={setTile}
           appearance={appearance} setAppearance={setAppearance} projects={projects} setProjects={setProjects}

@@ -1,6 +1,6 @@
 export type SearchEngine = 'Google' | 'Яндекс' | 'DuckDuckGo' | 'Bing';
 
-const SEARCH_ENGINES: SearchEngine[] = ['Google', 'Яндекс', 'DuckDuckGo', 'Bing'];
+export const SEARCH_ENGINES: SearchEngine[] = ['Google', 'Яндекс', 'DuckDuckGo', 'Bing'];
 
 export function normalizeSearchEngine(value: unknown): SearchEngine {
   return SEARCH_ENGINES.includes(value as SearchEngine) ? value as SearchEngine : 'Google';

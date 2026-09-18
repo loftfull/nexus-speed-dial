@@ -47,11 +47,12 @@
 
 .nx-root{
  display:grid;grid-template-columns:76px 272px minmax(0,1fr);
- height:100vh;background:var(--nx-canvas);color:var(--nx-text);
+ height:100vh;background:var(--nx-canvas);color:var(--nx-text);transition:grid-template-columns .22s ease;
  font:400 14px/1.45 Manrope,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
  -webkit-font-smoothing:antialiased;overflow:hidden;
 }
 .nx-root :focus-visible{outline:2px solid var(--nx-accent);outline-offset:2px;border-radius:6px}
+.nx-root.panel-collapsed{grid-template-columns:76px 76px minmax(0,1fr)}
 .nx-label{font-size:11px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--nx-muted)}
 
 /* ── рельс проектов ───────────────────────────────────────────── */
@@ -70,8 +71,20 @@
 .nx-rail-spacer{flex:1 1 auto;min-height:10px}
 
 /* ── панель проекта ───────────────────────────────────────────── */
-.nx-panel{grid-column:2;background:var(--nx-surface);display:flex;flex-direction:column;gap:18px;
- padding:22px 20px 18px;overflow-y:auto;scrollbar-width:thin;border-right:1px solid var(--nx-line)}
+.nx-panel{grid-column:2;background:var(--nx-surface);display:flex;flex-direction:column;
+ padding:22px 20px;overflow:hidden;border-right:1px solid var(--nx-line);transition:padding .2s}
+.nx-panel-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;
+ display:flex;flex-direction:column;gap:18px}
+.nx-panel.collapsed{padding:22px 15px}
+.nx-panel.collapsed .nx-panel-scroll{gap:14px;align-items:center}
+.nx-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.nx-panel.collapsed .nx-panel-head{justify-content:center}
+.nx-panel.collapsed .nx-section{width:100%;align-items:center}
+.nx-panel.collapsed .nx-link,.nx-panel.collapsed .nx-project-name{justify-content:center;padding:10px 0;width:46px}
+.nx-panel.collapsed .nx-panel-foot{width:100%;align-items:center;gap:10px}
+.nx-panel.collapsed .nx-clock{display:grid;place-items:center;width:46px;height:46px;background:var(--nx-sunken);color:var(--nx-muted)}
+.nx-weather-mini{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--nx-muted);font-size:11.5px}
+.nx-weather-mini b{color:var(--nx-text);font-size:13px;font-weight:600}
 .nx-panel-brand{display:flex;flex-direction:column;gap:2px}
 .nx-panel-brand b{font-size:16px;font-weight:700;letter-spacing:-.2px}
 .nx-panel-brand span{font-size:11.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--nx-muted)}
@@ -105,7 +118,11 @@
 .nx-link i{font-style:normal;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:9px;background:var(--nx-sunken);color:var(--nx-muted);flex:none}
 .nx-link.on i{background:rgba(255,255,255,.55);color:var(--nx-accent)}
 
-.nx-panel-foot{margin-top:auto;display:flex;flex-direction:column;gap:14px;padding-top:14px}
+.nx-panel-foot{flex:none;display:flex;flex-direction:column;gap:14px;padding-top:16px}
+.nx-dock-launch{display:flex;align-items:center;gap:10px;height:60px;flex:none}
+.nx-dock-launch-label{font-size:13px;color:var(--nx-muted)}
+.nx-dock-toggle{transition:background .15s,color .15s,transform .2s}
+.nx-dock-toggle.on{background:var(--nx-accent-soft);color:var(--nx-accent)}
 .nx-storage{display:flex;flex-direction:column;gap:7px;background:var(--nx-sunken);border-radius:var(--nx-r-md);padding:12px 13px}
 .nx-storage-top{display:flex;justify-content:space-between;font-size:12.5px;color:var(--nx-muted)}
 .nx-storage-top b{color:var(--nx-text);font-weight:600}
@@ -149,15 +166,8 @@
 .nx-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex:none}
 .nx-head h1{font-size:23px;font-weight:700;letter-spacing:-.5px}
 .nx-head p{font-size:13px;color:var(--nx-muted);margin-top:4px}
-.nx-find{display:flex;align-items:center;gap:10px;background:var(--nx-surface);border-radius:var(--nx-r-lg);
- box-shadow:var(--nx-shadow-sm);padding:0 15px;height:46px;width:min(320px,42vw);flex:none}
-.nx-find>svg{color:var(--nx-muted);flex:none}
-.nx-find input{flex:1;font-size:13.5px}
-.nx-find input::placeholder{color:var(--nx-muted)}
-.nx-find button{width:26px;height:26px;display:grid;place-items:center;border-radius:8px;color:var(--nx-muted);flex:none}
-
 /* ── сетка плиток ─────────────────────────────────────────────── */
-.nx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--nx-tile,170px),1fr));gap:16px}
+.nx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--nx-tile,170px),1fr));gap:var(--nx-gap,16px)}
 .nx-groups{display:flex;flex-direction:column;gap:26px}
 .nx-group{display:flex;flex-direction:column;gap:12px}
 .nx-group-head{display:flex;align-items:center;gap:9px}
@@ -200,9 +210,20 @@
 .nx-empty span{font-size:13px}
 
 /* ── нижний док ───────────────────────────────────────────────── */
-.nx-dock-wrap{position:absolute;left:0;right:0;bottom:22px;display:flex;justify-content:center;pointer-events:none}
-.nx-dock{display:flex;align-items:center;gap:5px;background:var(--nx-surface);border-radius:20px;
- box-shadow:var(--nx-shadow);padding:8px;pointer-events:auto;max-width:calc(100vw - 32px);overflow-x:auto;scrollbar-width:none}
+.nx-dock-wrap{position:absolute;left:0;right:0;bottom:22px;display:flex;justify-content:flex-start;padding:0 30px;pointer-events:none}
+.nx-dock{display:flex;align-items:center;gap:5px;background:var(--nx-surface);border-radius:20px;height:60px;
+ box-shadow:var(--nx-shadow);padding:8px;max-width:calc(100% - 4px);overflow-x:auto;scrollbar-width:none;
+ transform-origin:left center;transform:translateX(-24px) scaleX(.06);opacity:0;pointer-events:none;
+ transition:transform .3s cubic-bezier(.2,.85,.25,1),opacity .18s ease}
+.nx-dock.open{transform:none;opacity:1;pointer-events:auto}
+.nx-dock>*{transition:opacity .16s ease .06s}
+.nx-dock:not(.open)>*{opacity:0}
+.nx-dock.searching{width:min(520px,100%)}
+.nx-dock-search{display:flex;align-items:center;gap:10px;flex:1;min-width:0;height:44px;padding:0 6px 0 12px}
+.nx-dock-search>svg{color:var(--nx-muted);flex:none}
+.nx-dock-search input{flex:1;font-size:14px;border-radius:10px}
+.nx-dock-search input::placeholder{color:var(--nx-muted)}
+.nx-dock-search button{width:32px;height:32px}
 .nx-dock::-webkit-scrollbar{display:none}
 .nx-dock button{width:44px;height:44px;flex:none;display:grid;place-items:center;border-radius:14px;color:var(--nx-muted);
  transition:background .15s,color .15s}
@@ -240,6 +261,74 @@
  .nx-grid{--nx-tile:136px;gap:12px}
  .nx-tile{min-height:128px;padding:18px 10px 16px;gap:10px}
  .nx-mark{width:46px;height:46px;border-radius:14px}
- .nx-dock-wrap{bottom:14px}
- .nx-dock button{width:40px;height:40px}
+ .nx-dock-wrap{bottom:14px;padding:0 12px;justify-content:center}
+ .nx-dock{gap:3px;padding:7px;height:54px}
+ .nx-dock button{width:38px;height:38px;border-radius:12px}
+ .nx-dock-sep{margin:0 2px}
 }
+
+/* ── компактное окно настроек ──────────────────────────────────
+   Панель прижата к правому краю и ничего не перекрывает, поэтому
+   изменения видно на главной странице сразу. */
+.nx-settings{
+ position:fixed;top:16px;right:16px;bottom:16px;z-index:50;
+ width:min(380px,calc(100vw - 32px));display:flex;flex-direction:column;
+ background:var(--nx-surface);border-radius:var(--nx-r-lg);box-shadow:var(--nx-shadow-lg);
+ color:var(--nx-text);overflow:hidden;
+ animation:nx-settings-in .22s cubic-bezier(.2,.85,.25,1)
+}
+@keyframes nx-settings-in{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+.nx-settings-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--nx-line)}
+.nx-settings-head h2{font-size:16px;font-weight:700;margin-top:3px}
+.nx-settings-nav{display:flex;gap:5px;padding:10px 12px;background:var(--nx-sunken);border-bottom:1px solid var(--nx-line);
+ overflow-x:auto;scrollbar-width:none}
+.nx-settings-nav::-webkit-scrollbar{display:none}
+.nx-settings-nav button{display:flex;align-items:center;gap:6px;flex:0 0 auto;padding:7px 11px;border-radius:10px;
+ font-size:12.5px;font-weight:500;color:var(--nx-muted);white-space:nowrap}
+.nx-settings-nav button:hover{background:var(--nx-surface);color:var(--nx-text)}
+.nx-settings-nav button.on{background:var(--nx-accent-soft);color:var(--nx-accent);font-weight:600}
+.nx-settings-body{flex:1;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.nx-card{background:var(--nx-sunken);border-radius:var(--nx-r-md);padding:13px 14px;display:flex;flex-direction:column;gap:10px}
+.nx-card h3{font-size:13.5px;font-weight:700}
+.nx-card-hint{font-size:12px;color:var(--nx-muted);line-height:1.45}
+.nx-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 0;border-top:1px solid var(--nx-line)}
+.nx-row:first-of-type{border-top:0;padding-top:0}
+.nx-row>span{min-width:0}
+.nx-row b{display:block;font-size:13px;font-weight:600}
+.nx-row small{display:block;font-size:11.5px;color:var(--nx-muted);margin-top:2px;line-height:1.35}
+.nx-row select{flex:none;max-width:150px;background:var(--nx-surface);color:var(--nx-text);border:1px solid var(--nx-line);
+ border-radius:9px;padding:7px 9px;font-size:12.5px}
+.nx-choices{display:flex;flex-wrap:wrap;gap:6px}
+.nx-choices button{display:flex;align-items:center;gap:5px;padding:8px 12px;border-radius:10px;background:var(--nx-surface);
+ color:var(--nx-muted);font-size:12.5px;font-weight:500}
+.nx-choices button:hover{color:var(--nx-text)}
+.nx-choices button.on{background:var(--nx-accent-soft);color:var(--nx-accent);font-weight:600}
+.nx-swatches{display:flex;gap:9px}
+.nx-swatches button{width:26px;height:26px;border-radius:50%;box-shadow:0 0 0 1px var(--nx-line)}
+.nx-swatches button.on{box-shadow:0 0 0 2px var(--nx-surface),0 0 0 4px var(--nx-accent)}
+.nx-range{display:flex;align-items:center;gap:10px}
+.nx-range input{flex:1;accent-color:var(--nx-accent)}
+.nx-range output{font-size:12.5px;color:var(--nx-accent);min-width:42px;text-align:right}
+.nx-switch{width:38px;height:22px;flex:none;border-radius:999px;background:var(--nx-line);position:relative;transition:background .15s}
+.nx-switch span{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s;
+ box-shadow:0 1px 3px rgba(20,28,45,.25)}
+.nx-switch.on{background:var(--nx-accent)}
+.nx-switch.on span{left:19px}
+.nx-card-buttons{display:flex;flex-wrap:wrap;gap:7px}
+.nx-card-buttons button{display:flex;align-items:center;gap:6px;padding:8px 11px;border-radius:10px;background:var(--nx-surface);
+ color:var(--nx-accent);font-size:12.5px;font-weight:500}
+.nx-card-buttons button.danger{color:#c33547}
+@media (max-width:900px){
+ .nx-settings{top:auto;left:8px;right:8px;bottom:8px;width:auto;height:min(74vh,580px)}
+}
+
+/* Панель импорта из браузера живёт в настройках и наследует их палитру. */
+.nx-settings .browser-import-card{gap:12px}
+.nx-settings .browser-import-card h4{font-size:13.5px;font-weight:700;color:var(--nx-text)}
+.nx-settings .browser-import-card small,
+.nx-settings .browser-import-card p,
+.nx-settings .browser-extension-row label>span,
+.nx-settings .browser-import-hint{color:var(--nx-muted)}
+.nx-settings .browser-extension-row input,
+.nx-settings .browser-import-card select{background:var(--nx-surface);color:var(--nx-text);border:1px solid var(--nx-line);border-radius:9px;padding:7px 9px;font-size:12.5px}
+.nx-settings .browser-import-card button{border-radius:10px}
