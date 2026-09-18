@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { tabs as countTabs, plural } from '../domain/plural';
 const countNewSites=(n:number)=>plural(n,'новый сайт','новых сайта','новых сайтов');
 const countDomains=(n:number)=>plural(n,'новый домен','новых домена','новых доменов');
-import { CheckCircle2, FolderPlus, Monitor, RefreshCw, Save, Unplug } from 'lucide-react';
+import { CheckCircle2, FolderPlus, Monitor, RefreshCw, Save, Unplug } from '../app/icons.generated';
 import type { BrowserSession, Project, SiteRecord } from '../domain/types';
 import {
   checkBrowserExtension,

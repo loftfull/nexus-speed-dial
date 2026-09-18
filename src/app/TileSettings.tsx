@@ -4,13 +4,13 @@ import {
   Frame, Gauge, Grid2X2, Hand, LayoutGrid, Layers3, MousePointerClick, Move3D, MoveVertical,
   Palette, PanelTop, Rows3, Scaling, Sparkles, Square, SquareDashed, SquareStack, Star, Sun,
   Tag, Type, Waves, Zap,
-} from 'lucide-react';
+} from './icons.generated';
 import {
   PRESET_LABELS, PRESET_ORDER, TILE_BOUNDS, TILE_PRESETS, backdropVisible, toTileVars,
   type TileAppearance, type TileNumberKey,
 } from '../domain/tileAppearance';
 import type { VisualPreset } from '../domain/types';
-import { monogram } from './Tile';
+import { SiteIcon } from './SiteIcon';
 import { Cell, Group, Pick, Switch, type ControlIcon } from './SettingControls';
 
 type Icon = ControlIcon;
@@ -46,12 +46,12 @@ function SampleTile({ tile, state, label }: { tile: TileAppearance; state?: 'hov
       <div className="nx-sample-stage" style={toTileVars(tile) as React.CSSProperties}>
         <div className={'nx-tile nx-tile-' + tile.mode + (state === 'hover' ? ' is-hover' : state === 'press' ? ' is-press' : '')}>
           <span className="nx-tile-face">
-            <span className="nx-mark" style={{ background: site.color }} aria-hidden="true">{monogram(site.title)}</span>
+            <SiteIcon title={site.title} domain={site.domain} color={site.color} />
             <span className="nx-tile-name">{site.title}</span>
             <span className="nx-tile-desc">{site.desc}</span>
             <span className="nx-tile-sub">{site.domain}</span>
           </span>
-          <Star className="nx-tile-star" size={14} fill="currentColor" aria-hidden="true" />
+          <Star className="nx-tile-star" size={14} weight="fill" aria-hidden="true" />
         </div>
       </div>
       <small>{label}</small>
@@ -78,7 +78,7 @@ export function TileSettings({ tile, patch, applyPreset, siteIcons, setSiteIcons
                 <span className="nx-preset-stage" style={toTileVars({ ...sample, mode: 'standard' }) as React.CSSProperties} aria-hidden="true">
                   <span className="nx-tile nx-tile-standard">
                     <span className="nx-tile-face">
-                      <span className="nx-mark" style={{ background: '#f24e35' }}>F</span>
+                      <SiteIcon title="Figma" domain="figma.com" color="#f24e35" />
                       <span className="nx-tile-name">Figma</span>
                     </span>
                   </span>

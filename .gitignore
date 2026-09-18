@@ -4,3 +4,6 @@ dist/
 
 test-results/
 playwright-report/
+
+# Фирменные знаки собираются из simple-icons на этапе сборки.
+public/brands/

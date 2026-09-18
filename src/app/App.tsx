@@ -4,7 +4,7 @@ import {
   Briefcase, Cloud, CloudRain, GraduationCap, ShoppingBag, Snowflake, Sun,
   Grid3X3, MoreHorizontal, Plus, Rows3, RotateCw, Search, Settings as SettingsIcon, SlidersHorizontal,
   Star, StickyNote, Table2, Tag, Trash2, Wind, X,
-} from 'lucide-react';
+} from './icons.generated';
 
 import '../styles.css';
 import './theme.css';
@@ -22,8 +22,10 @@ import { tileLayoutClass, toTileVars } from '../domain/tileAppearance';
 import { sites as countSites } from '../domain/plural';
 import type { Category, Project, SiteGroup, SiteRecord as Site } from '../domain/types';
 
-import { Tile, monogram } from './Tile';
+import { Tile } from './Tile';
 import type { TileLayout } from './Tile';
+import { SiteIcon } from './SiteIcon';
+import type { ControlIcon } from './SettingControls';
 import { AddSiteModal } from '../components/AddSiteModal';
 import { CalendarPopover } from '../components/CalendarPopover';
 import { MobileSections } from '../components/MobileSections';
@@ -38,7 +40,7 @@ type AppActionDialog =
   | { kind: 'group'; categoryId: string }
   | { kind: 'empty-trash' };
 
-const SECTIONS: { id: SectionId; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
+const SECTIONS: { id: SectionId; label: string; icon: ControlIcon }[] = [
   { id: 'sites', label: 'Быстрый доступ', icon: Home },
   { id: 'favorites', label: 'Избранное', icon: Star },
   { id: 'recent', label: 'Недавние', icon: Clock3 },
@@ -53,7 +55,7 @@ export const DOCK_DRAG_TYPE = 'application/x-nexus-site';
 const WEATHER_PLACES: Record<string, [number, number]> = {
   'Москва': [55.75, 37.62], 'Санкт-Петербург': [59.93, 30.31], 'Берлин': [52.52, 13.4], 'Лондон': [51.51, -0.13],
 };
-const WEATHER_ICONS: Record<number, React.ComponentType<{ size?: number }>> = {
+const WEATHER_ICONS: Record<number, ControlIcon> = {
   0: Sun, 1: Sun, 2: CloudSun, 3: Cloud, 61: CloudRain, 63: CloudRain, 71: Snowflake,
 };
 const WEATHER_LABELS: Record<number, string> = {
@@ -426,7 +428,7 @@ export function App() {
           {trash.map(site => (
             <div className="nx-tile" key={site.id}>
               <div className="nx-tile-face">
-                <span className="nx-mark" style={{ background: site.color }} aria-hidden="true">{site.title.slice(0, 2).toUpperCase()}</span>
+                <SiteIcon title={site.title} domain={site.domain} color={site.color} logos={useFavicons} />
                 <span className="nx-tile-name">{site.title}</span>
                 <span className="nx-tile-sub">{site.domain}</span>
               </div>
@@ -523,7 +525,7 @@ export function App() {
                       setOpenCategories([]);
                     }}>
                     {panelOpen && <ChevronRight size={14} className={'nx-tree-caret' + (expanded ? ' open' : '')} aria-hidden="true" />}
-                    <Glyph size={17} />
+                    <Glyph size={17} weight={current ? 'duotone' : 'regular'} />
                     {panelOpen && <span>{project.name}</span>}
                     {panelOpen && treeCounts.byProject.get(project.id) ? <i>{treeCounts.byProject.get(project.id)}</i> : null}
                   </button>
@@ -548,7 +550,7 @@ export function App() {
                                 setOpenCategories(open => (open.includes(category.id) ? [] : [category.id]));
                               }}>
                               <ChevronRight size={13} className={'nx-tree-caret' + (catOpen ? ' open' : '')} aria-hidden="true" />
-                              <Tag size={15} />
+                              <Tag size={15} weight={categoryId === category.id && !groupId ? 'duotone' : 'regular'} />
                               <span>{category.name}</span>
                               {treeCounts.byCategory.get(category.id) ? <i>{treeCounts.byCategory.get(category.id)}</i> : null}
                             </button>
@@ -566,7 +568,7 @@ export function App() {
                                       setGroupId(current => (current === group.id ? null : group.id));
                                     }}>
                                     <span className="nx-tree-spacer" aria-hidden="true" />
-                                    <Layers3 size={15} />
+                                    <Layers3 size={15} weight={groupId === group.id ? 'duotone' : 'regular'} />
                                     <span>{group.name}</span>
                                     {treeCounts.byGroup.get(group.id) ? <i>{treeCounts.byGroup.get(group.id)}</i> : null}
                                   </button>
@@ -773,7 +775,8 @@ export function App() {
                         setPinned(current => current.filter(id => id !== site.id));
                         setToast(`«${site.title}» убран из док-панели`);
                       }}>
-                      <PinMark site={site} useFavicons={useFavicons} />
+                      <SiteIcon title={site.title} domain={site.domain} color={site.color}
+                        logos={useFavicons} className="nx-dock-mark" />
                     </button>
                     {pinEdit && <span className="nx-dock-pin-x" aria-hidden="true"><X size={11} /></span>}
                   </span>
@@ -927,17 +930,6 @@ function ForecastPanel({ weather, city, onClose }: { weather: Weather; city: str
   );
 }
 
-function PinMark({ site, useFavicons }: { site: Site; useFavicons: boolean }) {
-  const [loaded, setLoaded] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const icon = useFavicons && !failed && site.domain ? `https://${site.domain}/favicon.ico` : '';
-  return (
-    <span className={'nx-dock-mark' + (loaded ? ' plain' : '')} style={loaded ? undefined : { background: site.color }} aria-hidden="true">
-      {icon && <img src={icon} alt="" loading="lazy" hidden={!loaded} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
-      {!loaded && monogram(site.title)}
-    </span>
-  );
-}
 
 function Empty({ title, hint }: { title: string; hint: string }) {
   return (

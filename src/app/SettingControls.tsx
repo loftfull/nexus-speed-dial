@@ -1,6 +1,8 @@
 import React from 'react';
 
-export type ControlIcon = React.ComponentType<{ size?: number }>;
+import type { IconProps } from './icons.generated';
+
+export type ControlIcon = React.ComponentType<IconProps>;
 
 /** Группа настроек. Сетка внутри всегда ровно в три столбца. */
 export function Group({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -24,7 +26,7 @@ export function Cell({ icon: Icon, label, why, disabled, children, as = 'div' }:
       <span className="nx-cell-top"><Icon size={14} /></span>
       {children}
       <span className="nx-cell-label">{label}</span>
-      {disabled && why && <span className="nx-cell-why">{why}</span>}
+      {why && <span className="nx-cell-why">{why}</span>}
     </Tag>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from '../app/icons.generated';
 
 export function CalendarPopover({ onClose }: { onClose: () => void }) {
   const [cursor, setCursor] = useState(new Date());

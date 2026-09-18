@@ -15,17 +15,23 @@
     "test:visual": "playwright test e2e/visual.spec.ts",
     "qa:e2e:all": "playwright test",
     "qa:reference": "node scripts/qa-reference.mjs",
-    "qa:full": "npm run qa:unit && npm run qa:reference && npm run qa:e2e && npm run test:visual"
+    "qa:full": "npm run qa:unit && npm run qa:reference && npm run qa:e2e && npm run test:visual",
+    "brands": "node scripts/build-brand-marks.mjs",
+    "prebuild": "npm run brands",
+    "predev": "npm run brands",
+    "prepreview": "npm run brands",
+    "icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.1.1",
-    "lucide-react": "1.46.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "simple-icons": "^16.31.0",
     "typescript": "7.0.2",
     "vite": "8.3.0"
   },
   "devDependencies": {
+    "@phosphor-icons/core": "^2.1.1",
     "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

@@ -1,14 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { ExternalLink, MoreVertical, Pencil, Star, Trash2 } from 'lucide-react';
+import { ExternalLink, MoreVertical, Pencil, Star, Trash2 } from './icons.generated';
 import type { SiteRecord } from '../domain/types';
+import { SiteIcon } from './SiteIcon';
 
-/** Two-letter monogram used until (or instead of) the site's own favicon. */
-export function monogram(title: string): string {
-  const words = title.trim().split(/[\s_.\-—]+/).filter(Boolean);
-  if (!words.length) return '?';
-  if (words.length === 1) return words[0][0].toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
-}
+export { monogram } from './SiteIcon';
 
 /** How one site is drawn. `table`/`row`/`icon` back the three mobile arrangements. */
 export type TileLayout = 'standard' | 'icon' | 'list' | 'preview' | 'table' | 'row';
@@ -36,13 +31,8 @@ export function Tile({
   showCategory = false, useFavicons = true, onOpen, onFavorite, onEdit, onDelete,
 }: TileProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  // The monogram stays on screen until the site's own icon has actually loaded:
-  // a pending or broken <img> draws a placeholder in WebKit otherwise.
-  const [iconLoaded, setIconLoaded] = useState(false);
-  const [iconFailed, setIconFailed] = useState(false);
   const holder = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
-  const icon = useFavicons && !iconFailed && site.domain ? `https://${site.domain}/favicon.ico` : '';
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -75,11 +65,7 @@ export function Tile({
       onKeyDown={event => { if (event.key === 'Escape' && menuOpen) { event.stopPropagation(); close(); } }}
     >
       <button type="button" className="nx-tile-face" aria-label={`Открыть «${site.title}»`} onClick={onOpen}>
-        <span className={'nx-mark' + (iconLoaded ? ' plain' : '')} style={iconLoaded ? undefined : { background: site.color }} aria-hidden="true">
-          {icon && <img src={icon} alt="" loading="lazy" hidden={!iconLoaded}
-            onLoad={() => setIconLoaded(true)} onError={() => setIconFailed(true)} />}
-          {!iconLoaded && monogram(site.title)}
-        </span>
+        <SiteIcon title={site.title} domain={site.domain} color={site.color} logos={useFavicons} />
         {HORIZONTAL.includes(layout) ? (
           <span className="nx-tile-text">
             <span className="nx-tile-name">{site.title}</span>
@@ -96,7 +82,7 @@ export function Tile({
           </>
         )}
       </button>
-      {site.favorite && <Star className="nx-tile-star" size={14} fill="currentColor" aria-label="В избранном" />}
+      {site.favorite && <Star className="nx-tile-star" size={14} weight="fill" aria-label="В избранном" />}
       <button
         type="button"
         ref={toggle}

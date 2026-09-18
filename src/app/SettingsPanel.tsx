@@ -4,7 +4,7 @@ import {
   Globe, Grid2X2, Grid3X3, History, Image as ImageIcon, Keyboard, ListFilter, MapPin, Minimize2,
   Monitor, Moon, Palette, PanelLeft, RefreshCw, RotateCcw, Rows3, Search,
   Settings as SettingsIcon, ShieldCheck, Smartphone, Sun, Thermometer, Trash2, Upload, X, Zap,
-} from 'lucide-react';
+} from './icons.generated';
 import type { AppearanceState, MobileMode, TileState, UiState } from '../domain/appStore';
 import type { BrowserSession, Category, Project, SiteGroup, SiteRecord as Site, VisualPreset } from '../domain/types';
 import { TILE_PRESETS, normalizeTileAppearance } from '../domain/tileAppearance';
@@ -18,7 +18,7 @@ import { BrowserImportPanel } from '../components/BrowserImportPanel';
 import { ActionDialog } from './ActionDialog';
 
 type SectionId = 'general' | 'look' | 'tiles' | 'panel' | 'mobile' | 'search' | 'weather' | 'privacy' | 'keys' | 'data';
-const SECTIONS: { id: SectionId; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
+const SECTIONS: { id: SectionId; label: string; icon: ControlIcon }[] = [
   { id: 'general', label: 'Общие', icon: SettingsIcon },
   { id: 'look', label: 'Оформление', icon: Palette },
   { id: 'tiles', label: 'Плитки', icon: Grid2X2 },
@@ -107,7 +107,7 @@ export function SettingsPanel(props: SettingsProps) {
               <h3>
                 <button type="button" className="nx-fold-head" aria-expanded={expanded}
                   onClick={() => setOpen(current => (current === item.id ? null : item.id))}>
-                  <item.icon size={16} />
+                  <item.icon size={16} weight={expanded ? 'duotone' : 'regular'} />
                   <span>{item.label}</span>
                   <ChevronDown size={16} className="nx-fold-caret" aria-hidden="true" />
                 </button>
@@ -223,11 +223,13 @@ export function SettingsPanel(props: SettingsProps) {
         )}
 
         {section === 'privacy' && (
-          <Group title="Приватность" hint="Плитки, проекты и категории всегда остаются в этом браузере: приложение не имеет сервера и никуда их не отправляет.">
+          <Group title="Приватность" hint="Плитки, проекты и категории всегда остаются в этом браузере: приложение не имеет сервера и никуда их не отправляет. Фирменные знаки сайтов лежат рядом с приложением, поэтому за ними никуда обращаться не нужно.">
             <Switch icon={History} label="История открытий" value={ui.saveHistory !== false}
               onChange={value => patchUi({ saveHistory: value })} />
+            {/* Знак из набора берётся локально; запрос уходит только когда знака нет. */}
             <Switch icon={Eye} label="Логотипы сайтов" value={ui.siteIcons !== false}
-              onChange={value => patchUi({ siteIcons: value })} />
+              onChange={value => patchUi({ siteIcons: value })}
+              why="Выключено — везде монограмма. Включено — знак из набора, а для сайтов без него иконка запрашивается у самого сайта" />
             <Switch icon={Camera} label="Внешние превью" value={ui.remotePreviews === true}
               onChange={value => patchUi({ remotePreviews: value })} />
           </Group>

@@ -1,7 +1,9 @@
-import { ChevronRight, Folder, Plus, X } from 'lucide-react';
+import { ChevronRight, Folder, Plus, X } from '../app/icons.generated';
 import type { ComponentType } from 'react';
 
-type SectionIcon = ComponentType<{ size?: number }>;
+import type { IconProps } from '../app/icons.generated';
+
+type SectionIcon = ComponentType<IconProps>;
 type MobileProject = { id: string; name: string };
 
 export function MobileSections({

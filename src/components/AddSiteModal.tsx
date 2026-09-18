@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LoaderCircle, X } from 'lucide-react';
+import { LoaderCircle, X } from '../app/icons.generated';
 import type { SiteRecord as Site } from '../domain/types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 

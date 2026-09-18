@@ -1,4 +1,4 @@
-import { Pencil, StickyNote } from 'lucide-react';
+import { Pencil, StickyNote } from '../app/icons.generated';
 import type { SiteRecord } from '../domain/types';
 
 export function NotesWorkspace({ sites, onEdit }: { sites: SiteRecord[]; onEdit: (site: SiteRecord) => void }) {

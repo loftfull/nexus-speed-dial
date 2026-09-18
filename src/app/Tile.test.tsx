@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Tile, monogram } from './Tile';
@@ -70,9 +70,28 @@ describe('Tile', () => {
   it('держит монограмму на экране, пока иконка сайта не загрузилась', () => {
     const { container } = render(<Tile site={site} useFavicons {...handlers()} />);
     const image = container.querySelector('img') as HTMLImageElement;
-    expect(image.src).toBe('https://figma.com/favicon.ico');
-    // Иначе WebKit рисует значок битой картинки поверх плитки.
-    expect(image.hidden).toBe(true);
+    // Сначала пробуется крупная иконка сайта, а не 16-пиксельный favicon.ico.
+    expect(image.src).toBe('https://figma.com/apple-touch-icon.png');
+    // Незагруженная картинка не помечена ready и потому прозрачна, но остаётся
+    // в разметке: скрытая через display:none она бы не загрузилась вовсе.
+    expect(image.className).not.toContain('ready');
+    expect(image.hidden).toBe(false);
+    expect(container.querySelector('.nx-mark')).toHaveTextContent('F');
+  });
+
+  it('переходит к следующему адресу, когда иконка не загрузилась', async () => {
+    const { container } = render(<Tile site={site} useFavicons {...handlers()} />);
+    const image = () => container.querySelector('img') as HTMLImageElement;
+    expect(image().src).toBe('https://figma.com/apple-touch-icon.png');
+    await act(async () => { fireEvent.error(image()); });
+    expect(image().src).toBe('https://figma.com/apple-touch-icon-precomposed.png');
+    // Монограмма никуда не делась и продолжает держать плитку.
+    expect(container.querySelector('.nx-mark')).toHaveTextContent('F');
+  });
+
+  it('не запрашивает иконку сайта, когда логотипы выключены', () => {
+    const { container } = render(<Tile site={site} useFavicons={false} {...handlers()} />);
+    expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('.nx-mark')).toHaveTextContent('F');
   });
 });

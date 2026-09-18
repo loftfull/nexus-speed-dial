@@ -13,22 +13,51 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
   });
 
-  test('a tile shows its monogram and never a pending site icon', async ({ page }) => {
+  test('a pending site icon is invisible but still loads', async ({ page }) => {
     await page.goto('/');
     const mark = page.locator('.nx-mark').first();
     await expect(mark).not.toBeEmpty();
-    // The icon is hidden until it has loaded. A CSS display rule can silently
-    // override the hidden attribute, and then the browser paints its
-    // broken-image placeholder over the monogram, so assert the computed value.
-    const display = await mark.evaluate(element => {
-      const probe = document.createElement('img');
-      probe.hidden = true;
-      element.appendChild(probe);
-      const value = getComputedStyle(probe).display;
-      probe.remove();
+    // Прятать незагруженную картинку через display:none нельзя: браузер тогда
+    // её не загружает и на плитке навсегда остаётся буква. Она должна быть
+    // прозрачной, но оставаться в раскладке.
+    const probe = await mark.evaluate(element => {
+      const image = document.createElement('img');
+      element.appendChild(image);
+      const style = getComputedStyle(image);
+      const value = { display: style.display, opacity: style.opacity };
+      image.remove();
       return value;
     });
-    expect(display).toBe('none');
+    expect(probe.display).not.toBe('none');
+    expect(probe.opacity).toBe('0');
+  });
+
+  test('tiles carry real brand marks, not letters', async ({ page }) => {
+    await page.goto('/');
+    // Знаки лежат рядом с приложением, поэтому ждать сети не нужно.
+    await expect(page.locator('.nx-main .nx-mark.brand img.ready').first()).toBeVisible();
+    const marks = await page.locator('.nx-main .nx-tile .nx-mark').evaluateAll(nodes => nodes.map(node => {
+      const image = node.querySelector('img');
+      return { brand: node.classList.contains('brand'), src: image?.getAttribute('src') ?? null };
+    }));
+    const branded = marks.filter(mark => mark.brand && mark.src?.startsWith('/brands/'));
+    // Большинство известных сайтов получает свой векторный знак.
+    expect(branded.length).toBeGreaterThanOrEqual(Math.ceil(marks.length / 2));
+    expect(branded.every(mark => mark.src!.endsWith('.svg'))).toBe(true);
+  });
+
+  test('a site without a brand mark still gets a designed plate', async ({ page }) => {
+    await page.goto('/');
+    const plain = page.locator('.nx-main .nx-tile .nx-mark:not(.brand)').first();
+    if (await plain.count() === 0) test.skip(true, 'Все сайты этого проекта получили фирменный знак.');
+    // Подложка — градиент, а не плоская заливка, и буква на ней читается.
+    const style = await plain.evaluate(node => {
+      const computed = getComputedStyle(node);
+      return { image: computed.backgroundImage, shadow: computed.boxShadow };
+    });
+    expect(style.image).toContain('gradient');
+    expect(style.shadow).not.toBe('none');
+    await expect(plain.locator('.nx-mark-text')).not.toBeEmpty();
   });
 
   test('the add-site dialog is a centred card and closes with Escape', async ({ page }) => {
