@@ -1,2 +1,2 @@
-mode=accept
-scope=remove-fake-seed-counters-and-privacy-copy-retry-after-v2-docs
+mode=candidate
+scope=merged-v2-action-dialogs-and-audit-fixes
