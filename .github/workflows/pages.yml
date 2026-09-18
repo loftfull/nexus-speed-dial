@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -37,6 +37,17 @@ jobs:
           path: dist
           if-no-files-found: error
           retention-days: 7
+      - name: Stage standalone preview payload
+        if: github.actor != 'github-actions[bot]'
+        run: |
+          rm -rf .nexus-preview-dist
+          mkdir -p .nexus-preview-dist
+          cp -R dist/. .nexus-preview-dist/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f .nexus-preview-dist
+          git commit -m "chore: stage Nexus preview payload [skip ci]"
+          git push origin HEAD:${GITHUB_REF_NAME}
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload GitHub Pages artifact
