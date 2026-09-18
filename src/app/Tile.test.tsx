@@ -67,9 +67,12 @@ describe('Tile', () => {
     expect(screen.getByRole('menuitem', { name: /Убрать из избранного/ })).toBeInTheDocument();
   });
 
-  it('подставляет монограмму, когда иконка сайта не загрузилась', () => {
-    render(<Tile site={site} useFavicons {...handlers()} />);
-    const image = screen.getByRole('presentation', { hidden: true }) as HTMLImageElement;
+  it('держит монограмму на экране, пока иконка сайта не загрузилась', () => {
+    const { container } = render(<Tile site={site} useFavicons {...handlers()} />);
+    const image = container.querySelector('img') as HTMLImageElement;
     expect(image.src).toBe('https://figma.com/favicon.ico');
+    // Иначе WebKit рисует значок битой картинки поверх плитки.
+    expect(image.hidden).toBe(true);
+    expect(container.querySelector('.nx-mark')).toHaveTextContent('F');
   });
 });

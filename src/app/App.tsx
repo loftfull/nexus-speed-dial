@@ -744,11 +744,13 @@ function ForecastPanel({ weather, city, onClose }: { weather: Weather; city: str
 }
 
 function PinMark({ site, useFavicons }: { site: Site; useFavicons: boolean }) {
+  const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const icon = useFavicons && !failed && site.domain ? `https://${site.domain}/favicon.ico` : '';
   return (
-    <span className={'nx-dock-mark' + (icon ? ' plain' : '')} style={icon ? undefined : { background: site.color }} aria-hidden="true">
-      {icon ? <img src={icon} alt="" loading="lazy" onError={() => setFailed(true)} /> : monogram(site.title)}
+    <span className={'nx-dock-mark' + (loaded ? ' plain' : '')} style={loaded ? undefined : { background: site.color }} aria-hidden="true">
+      {icon && <img src={icon} alt="" loading="lazy" hidden={!loaded} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
+      {!loaded && monogram(site.title)}
     </span>
   );
 }

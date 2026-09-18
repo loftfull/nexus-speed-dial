@@ -25,6 +25,9 @@ export type TileProps = {
 
 export function Tile({ site, dragType, showDomain = false, showBadge = true, useFavicons = true, onOpen, onFavorite, onEdit, onDelete }: TileProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  // The monogram stays on screen until the site's own icon has actually loaded:
+  // a pending or broken <img> draws a placeholder in WebKit otherwise.
+  const [iconLoaded, setIconLoaded] = useState(false);
   const [iconFailed, setIconFailed] = useState(false);
   const holder = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
@@ -54,10 +57,10 @@ export function Tile({ site, dragType, showDomain = false, showBadge = true, use
       onKeyDown={event => { if (event.key === 'Escape' && menuOpen) { event.stopPropagation(); close(); } }}
     >
       <button type="button" className="nx-tile-face" aria-label={`Открыть «${site.title}»`} onClick={onOpen}>
-        <span className={'nx-mark' + (icon ? ' plain' : '')} style={icon ? undefined : { background: site.color }} aria-hidden="true">
-          {icon
-            ? <img src={icon} alt="" loading="lazy" onError={() => setIconFailed(true)} />
-            : monogram(site.title)}
+        <span className={'nx-mark' + (iconLoaded ? ' plain' : '')} style={iconLoaded ? undefined : { background: site.color }} aria-hidden="true">
+          {icon && <img src={icon} alt="" loading="lazy" hidden={!iconLoaded}
+            onLoad={() => setIconLoaded(true)} onError={() => setIconFailed(true)} />}
+          {!iconLoaded && monogram(site.title)}
         </span>
         <span className="nx-tile-name">{site.title}</span>
         {showDomain && <span className="nx-tile-sub">{site.domain}</span>}
