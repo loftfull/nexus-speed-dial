@@ -7,6 +7,7 @@ import { createBookmarkHtml, parseBookmarkHtml, withoutExistingDomains } from '.
 import { SEARCH_ENGINES } from '../domain/webSearch';
 import { sites as countSites } from '../domain/plural';
 import { BrowserImportPanel } from '../components/BrowserImportPanel';
+import { ActionDialog } from './ActionDialog';
 
 type SectionId = 'look' | 'tiles' | 'search' | 'weather' | 'privacy' | 'data';
 const SECTIONS: { id: SectionId; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
@@ -216,6 +217,7 @@ function Toggle({ value, label, onChange }: { value: boolean; label: string; onC
 function DataSection({ sites, setSites, categories, setCategories, groups, setGroups, projects, setProjects, sessions, setSessions, density, ui, tile, appearance }: SettingsProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
+  const [clearOpen, setClearOpen] = useState(false);
 
   const download = (content: string, type: string, name: string) => {
     const link = document.createElement('a');
@@ -276,13 +278,27 @@ function DataSection({ sites, setSites, categories, setCategories, groups, setGr
       </Card>
       <Card title="Опасная зона" hint="Удаляет сайты, проекты и сохранённые сессии. Настройки интерфейса останутся.">
         <div className="nx-card-buttons">
-          <button type="button" className="danger" onClick={() => {
-            if (!confirm('Очистить сайты, проекты и сохранённые сессии?')) return;
-            setSites([]); setProjects([]); setSessions([]);
-            setMessage('Рабочие данные очищены.');
-          }}><Trash2 size={15} /> Очистить рабочие данные</button>
+          <button type="button" className="danger" onClick={() => setClearOpen(true)}>
+            <Trash2 size={15} /> Очистить рабочие данные
+          </button>
         </div>
       </Card>
+      {clearOpen && (
+        <ActionDialog
+          title="Очистить рабочие данные?"
+          description="Будут удалены сайты, проекты и сохранённые сессии. Настройки интерфейса останутся."
+          confirmLabel="Очистить данные"
+          danger
+          onClose={() => setClearOpen(false)}
+          onConfirm={() => {
+            setSites([]);
+            setProjects([]);
+            setSessions([]);
+            setMessage('Рабочие данные очищены.');
+            setClearOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }

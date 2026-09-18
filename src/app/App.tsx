@@ -25,9 +25,15 @@ import { AddSiteModal } from '../components/AddSiteModal';
 import { CalendarPopover } from '../components/CalendarPopover';
 import { MobileSections } from '../components/MobileSections';
 import { SettingsPanel } from './SettingsPanel';
+import { ActionDialog } from './ActionDialog';
 import { NotesWorkspace } from '../components/NotesWorkspace';
 
 type SectionId = 'sites' | 'favorites' | 'trash' | 'recent' | 'notes';
+type AppActionDialog =
+  | { kind: 'project' }
+  | { kind: 'category' }
+  | { kind: 'group'; categoryId: string }
+  | { kind: 'empty-trash' };
 
 const SECTIONS: { id: SectionId; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
   { id: 'sites', label: 'Быстрый доступ', icon: Home },
@@ -83,6 +89,7 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<Site | null>(null);
+  const [actionDialog, setActionDialog] = useState<AppActionDialog | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const [panelOpen, setPanelOpen] = useState(() => readStorage('nexus-panel-open', true));
   const [dockOpen, setDockOpen] = useState(() => readStorage('nexus-dock-open', false));
@@ -197,7 +204,7 @@ export function App() {
       if (event.ctrlKey && key === 'n') { event.preventDefault(); setAddOpen(true); }
       if (event.ctrlKey && key === ',') { event.preventDefault(); setSettingsOpen(true); }
       if (event.ctrlKey && key === 'b') { event.preventDefault(); setSection('favorites'); }
-      if (key === 'escape') { setCalendarOpen(false); setMobileNav(false); setSettingsOpen(false); setForecastOpen(false); setAddOpen(false); setEditing(null); }
+      if (key === 'escape') { setCalendarOpen(false); setMobileNav(false); setSettingsOpen(false); setForecastOpen(false); setAddOpen(false); setEditing(null); setActionDialog(null); }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -232,28 +239,64 @@ export function App() {
   };
 
   const selectProject = (id: string) => { setSection('sites'); setProjectId(id); setCategoryId(null); setGroupId(null); };
-  const addProject = () => {
-    const name = prompt('Название проекта')?.trim();
-    if (!name) return;
-    const project: Project = { id: `project-${Date.now()}`, name, color: '#3b7df0', icon: name[0], siteIds: [], createdAt: Date.now(), updatedAt: Date.now() };
-    setProjects(current => [...current, project]);
-    selectProject(project.id);
-  };
+  const addProject = () => setActionDialog({ kind: 'project' });
   const addCategory = () => {
     if (!activeProjectId) { setToast('Сначала создайте проект'); return; }
-    const name = prompt('Название категории')?.trim();
-    if (!name) return;
-    if (projectCategories.some(item => item.name === name)) { setToast('Такая категория уже есть'); return; }
-    const created: Category = { id: makeCategoryId(name, activeProjectId), name, projectId: activeProjectId };
-    setCategories(current => [...current, created]);
-    setSection('sites');
-    setCategoryId(created.id);
+    setActionDialog({ kind: 'category' });
   };
-  const addGroup = (targetCategoryId: string) => {
-    const name = prompt('Название группы')?.trim();
-    if (!name) return;
-    if (groups.some(item => item.categoryId === targetCategoryId && item.name === name)) { setToast('Такая группа уже есть'); return; }
-    setGroups(current => [...current, { id: makeGroupId(name, targetCategoryId), name, categoryId: targetCategoryId }]);
+  const addGroup = (targetCategoryId: string) => setActionDialog({ kind: 'group', categoryId: targetCategoryId });
+
+  const submitActionDialog = (value: string) => {
+    const action = actionDialog;
+    if (!action) return;
+
+    if (action.kind === 'project') {
+      if (projects.some(item => item.name.trim().toLocaleLowerCase() === value.toLocaleLowerCase())) {
+        setToast('Такой проект уже есть');
+        return;
+      }
+      const project: Project = {
+        id: `project-${Date.now()}`,
+        name: value,
+        color: '#3b7df0',
+        icon: value[0],
+        siteIds: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      setProjects(current => [...current, project]);
+      selectProject(project.id);
+      setActionDialog(null);
+      return;
+    }
+
+    if (action.kind === 'category') {
+      if (!activeProjectId) { setToast('Сначала создайте проект'); setActionDialog(null); return; }
+      if (projectCategories.some(item => item.name.trim().toLocaleLowerCase() === value.toLocaleLowerCase())) {
+        setToast('Такая категория уже есть');
+        return;
+      }
+      const created: Category = { id: makeCategoryId(value, activeProjectId), name: value, projectId: activeProjectId };
+      setCategories(current => [...current, created]);
+      setSection('sites');
+      setCategoryId(created.id);
+      setActionDialog(null);
+      return;
+    }
+
+    if (action.kind === 'group') {
+      if (groups.some(item => item.categoryId === action.categoryId && item.name.trim().toLocaleLowerCase() === value.toLocaleLowerCase())) {
+        setToast('Такая группа уже есть');
+        return;
+      }
+      setGroups(current => [...current, { id: makeGroupId(value, action.categoryId), name: value, categoryId: action.categoryId }]);
+      setActionDialog(null);
+      return;
+    }
+
+    setTrash([]);
+    setToast('Корзина очищена');
+    setActionDialog(null);
   };
 
   const scoped = useMemo(() => {
@@ -362,9 +405,9 @@ export function App() {
             </div>
           ))}
         </div>
-        <button type="button" className="nx-more" onClick={() => {
-          if (confirm('Очистить корзину без возможности восстановить?')) { setTrash([]); setToast('Корзина очищена'); }
-        }}><Trash2 size={15} /> Очистить корзину</button>
+        <button type="button" className="nx-more" onClick={() => setActionDialog({ kind: 'empty-trash' })}>
+          <Trash2 size={15} /> Очистить корзину
+        </button>
       </>
     ) : <Empty title="Корзина пуста" hint="Удалённые сайты можно восстановить отсюда" />;
   } else if (section === 'recent') {
@@ -669,7 +712,11 @@ export function App() {
             const match = SECTIONS.find(item => item.label === label);
             if (match) setSection(match.id);
           }}
-          items={SECTIONS.map(item => [item.label, item.icon] as const)} />
+          items={SECTIONS.map(item => [item.label, item.icon] as const)}
+          projects={projects}
+          activeProjectId={activeProjectId}
+          onProjectSelect={selectProject}
+          onAddProject={addProject} />
       )}
       {(addOpen || editing) && (
         <AddSiteModal
@@ -684,6 +731,46 @@ export function App() {
             setAddOpen(false);
             setEditing(null);
           }} />
+      )}
+      {actionDialog?.kind === 'project' && (
+        <ActionDialog
+          title="Новый проект"
+          description="Создайте отдельное рабочее пространство для сайтов и категорий."
+          input={{ label: 'Название проекта', placeholder: 'Например, Работа' }}
+          confirmLabel="Создать"
+          onConfirm={submitActionDialog}
+          onClose={() => setActionDialog(null)}
+        />
+      )}
+      {actionDialog?.kind === 'category' && (
+        <ActionDialog
+          title="Новая категория"
+          description="Категория появится внутри выбранного проекта."
+          input={{ label: 'Название категории', placeholder: 'Например, Исследования' }}
+          confirmLabel="Создать"
+          onConfirm={submitActionDialog}
+          onClose={() => setActionDialog(null)}
+        />
+      )}
+      {actionDialog?.kind === 'group' && (
+        <ActionDialog
+          title="Новая группа"
+          description="Группа объединит связанные плитки внутри категории."
+          input={{ label: 'Название группы', placeholder: 'Например, Инструменты' }}
+          confirmLabel="Создать"
+          onConfirm={submitActionDialog}
+          onClose={() => setActionDialog(null)}
+        />
+      )}
+      {actionDialog?.kind === 'empty-trash' && (
+        <ActionDialog
+          title="Очистить корзину?"
+          description="Восстановить эти сайты после очистки будет нельзя."
+          confirmLabel="Очистить"
+          danger
+          onConfirm={submitActionDialog}
+          onClose={() => setActionDialog(null)}
+        />
       )}
       {settingsOpen && (
         <SettingsPanel onClose={() => setSettingsOpen(false)} density={state.density} setDensity={setDensity}

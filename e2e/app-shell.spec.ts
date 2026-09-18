@@ -365,13 +365,25 @@ test.describe('Nexus shell', () => {
     });
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Добавить проект' }).first().click();
+    const sidebarAddProject = page.locator('.nx-panel').getByRole('button', { name: 'Добавить проект' }).first();
+    if (await sidebarAddProject.isVisible()) {
+      await sidebarAddProject.click();
+    } else {
+      await page.getByRole('button', { name: 'Разделы' }).click();
+      await page.locator('.mobile-sections-card').getByRole('button', { name: 'Добавить проект' }).click();
+    }
     const dialog = page.getByRole('dialog', { name: 'Новый проект' });
     await expect(dialog).toBeVisible();
     await dialog.getByRole('textbox', { name: 'Название проекта' }).fill('Проект E2E');
     await dialog.getByRole('button', { name: 'Создать' }).click();
 
-    await expect(page.getByRole('button', { name: 'Проект «Проект E2E»' })).toBeVisible();
+    const sidebarProject = page.locator('.nx-panel').getByRole('button', { name: 'Проект «Проект E2E»' });
+    if (await sidebarProject.isVisible()) {
+      await expect(sidebarProject).toBeVisible();
+    } else {
+      await page.getByRole('button', { name: 'Разделы' }).click();
+      await expect(page.locator('.mobile-sections-card').getByRole('button', { name: 'Проект «Проект E2E»' })).toBeVisible();
+    }
     expect(await page.evaluate(() => (window as typeof window & { __nexusNativePrompt?: boolean }).__nexusNativePrompt)).toBeFalsy();
   });
 
