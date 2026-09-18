@@ -94,4 +94,14 @@ describe('SettingsPanel', () => {
     expect(props.setSessions).toHaveBeenCalledWith([]);
   });
 
+
+  it('describes the external weather request without claiming zero disclosure', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await user.click(screen.getByRole('button', { name: 'Погода' }));
+    expect(screen.queryByText(/без передачи ваших данных/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/запрос отправляется.*Open-Meteo/i)).toBeInTheDocument();
+  });
+
 });
