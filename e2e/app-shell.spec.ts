@@ -13,6 +13,24 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
   });
 
+  test('a tile shows its monogram and never a pending site icon', async ({ page }) => {
+    await page.goto('/');
+    const mark = page.locator('.nx-mark').first();
+    await expect(mark).not.toBeEmpty();
+    // The icon is hidden until it has loaded. A CSS display rule can silently
+    // override the hidden attribute, and then the browser paints its
+    // broken-image placeholder over the monogram, so assert the computed value.
+    const display = await mark.evaluate(element => {
+      const probe = document.createElement('img');
+      probe.hidden = true;
+      element.appendChild(probe);
+      const value = getComputedStyle(probe).display;
+      probe.remove();
+      return value;
+    });
+    expect(display).toBe('none');
+  });
+
   test('category tabs scope the grid and switch between all sites and groups', async ({ page }) => {
     await page.goto('/');
     const tabs = page.locator('.nx-cats-tabs');
