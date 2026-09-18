@@ -147,7 +147,7 @@ export function SettingsPanel(props: SettingsProps) {
         )}
 
         {section === 'weather' && (
-          <Card title="Погода" hint="Данные берутся с open-meteo.com без ключа и без передачи ваших данных.">
+          <Card title="Погода" hint="Данные берутся с Open-Meteo без ключа. Запрос отправляется сервису Open-Meteo при обновлении прогноза.">
             <Row title="Показывать погоду" desc="Карточка внизу бокового окна">
               <Toggle value={ui.weather} label="Показывать погоду" onChange={value => patchUi({ weather: value })} />
             </Row>

@@ -36,10 +36,10 @@ const site = (
 ): SiteRecord => ({ id, title, desc, domain, color, icon, categoryId, category, groupId, ...extra });
 
 export const seedSites: SiteRecord[] = [
-  site('site-youtube', 'YouTube', 'Видео и музыка', 'youtube.com', '#ff0033', '▶', 'cat-home-social', 'Соцсети', 'grp-social-video', { badge: '3' }),
+  site('site-youtube', 'YouTube', 'Видео и музыка', 'youtube.com', '#ff0033', '▶', 'cat-home-social', 'Соцсети', 'grp-social-video'),
   site('site-vk', 'ВКонтакте', 'Лента и сообщения', 'vk.com', '#0077ff', '❖', 'cat-home-social', 'Соцсети', 'grp-social-chats'),
-  site('site-telegram', 'Telegram', 'Мессенджер', 'telegram.org', '#229ed9', '➤', 'cat-home-social', 'Соцсети', 'grp-social-chats', { badge: '12' }),
-  site('site-mail', 'Почта', 'Входящие сообщения', 'mail.google.com', '#e94235', '✉', 'cat-home-social', 'Соцсети', 'grp-social-mail', { badge: '5' }),
+  site('site-telegram', 'Telegram', 'Мессенджер', 'telegram.org', '#229ed9', '➤', 'cat-home-social', 'Соцсети', 'grp-social-chats'),
+  site('site-mail', 'Почта', 'Входящие сообщения', 'mail.google.com', '#e94235', '✉', 'cat-home-social', 'Соцсети', 'grp-social-mail'),
   site('site-spotify', 'Spotify', 'Музыка для работы', 'spotify.com', '#1ed760', '◔', 'cat-home-fun', 'Развлечения'),
   site('site-dribbble', 'Dribbble', 'Вдохновение для дизайна', 'dribbble.com', '#ea4c89', '●', 'cat-home-fun', 'Развлечения'),
   site('site-figma', 'Figma', 'Дизайн и прототипирование', 'figma.com', '#f24e35', 'F', 'cat-work-tools', 'Инструменты', 'grp-tools-design', { favorite: true }),
