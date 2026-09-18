@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
-  CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock3, CloudSun, Droplets, Home, Layers3, LayoutGrid,
+  CalendarDays, Check, ChevronDown, ChevronUp, Clock3, CloudSun, Droplets, Home, Layers3, LayoutGrid,
   Briefcase, GraduationCap, PanelLeftClose, PanelLeftOpen, ShoppingBag,
   Moon, MoreHorizontal, Plus, RotateCw, Search, Settings as SettingsIcon, SlidersHorizontal,
   Star, StickyNote, Sun, Tag, Trash2, Wind, X,
@@ -12,7 +12,7 @@ import './theme.css';
 import { appReducer, createInitialAppState, persistAppState } from '../domain/appStore';
 import type { AppearanceState } from '../domain/appStore';
 import { seedSites } from '../domain/seed';
-import { getStorageUsage, readStorage, writeStorage } from '../domain/storage';
+import { readStorage, writeStorage } from '../domain/storage';
 import { makeCategoryId, makeGroupId } from '../domain/hierarchy';
 import { buildWebSearchUrl } from '../domain/webSearch';
 import { recordSiteOpen, resolveHistoryTarget, resolveSiteUrl } from '../domain/siteOpen';
@@ -20,7 +20,7 @@ import { filterSites } from '../domain/siteUtils';
 import { sites as countSites } from '../domain/plural';
 import type { Category, Project, SiteGroup, SiteRecord as Site } from '../domain/types';
 
-import { Tile } from './Tile';
+import { Tile, monogram } from './Tile';
 import { AddSiteModal } from '../components/AddSiteModal';
 import { CalendarPopover } from '../components/CalendarPopover';
 import { MobileSections } from '../components/MobileSections';
@@ -39,6 +39,7 @@ const SECTIONS: { id: SectionId; label: string; icon: React.ComponentType<{ size
 const SECTION_TITLE = Object.fromEntries(SECTIONS.map(s => [s.id, s.label])) as Record<SectionId, string>;
 const PROJECT_GLYPHS = [Home, Briefcase, GraduationCap, Star, Layers3, ShoppingBag];
 const PAGE = 24;
+export const DOCK_DRAG_TYPE = 'application/x-nexus-site';
 
 const WEATHER_PLACES: Record<string, [number, number]> = {
   'Москва': [55.75, 37.62], 'Санкт-Петербург': [59.93, 30.31], 'Берлин': [52.52, 13.4], 'Лондон': [51.51, -0.13],
@@ -82,11 +83,14 @@ export function App() {
   const [panelOpen, setPanelOpen] = useState(() => readStorage('nexus-panel-open', true));
   const [dockOpen, setDockOpen] = useState(() => readStorage('nexus-dock-open', true));
   const [searchOpen, setSearchOpen] = useState(false);
+  const [whenOpen, setWhenOpen] = useState(false);
+  const [pinned, setPinned] = useState<string[]>(() => readStorage('nexus-dock-pins', [] as string[]));
+  const [pinEdit, setPinEdit] = useState(false);
+  const [dragOverDock, setDragOverDock] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState('');
   const [now, setNow] = useState(() => new Date());
   const [weather, setWeather] = useState<Weather>(WEATHER_EMPTY);
-  const storage = getStorageUsage();
 
   const activeProjectId = projectId ?? projects[0]?.id ?? null;
   const activeProject = projects.find(item => item.id === activeProjectId) ?? null;
@@ -103,6 +107,14 @@ export function App() {
   useEffect(() => { writeStorage('nexus-view-mode', view); }, [view]);
   useEffect(() => { writeStorage('nexus-panel-open', panelOpen); }, [panelOpen]);
   useEffect(() => { writeStorage('nexus-dock-open', dockOpen); }, [dockOpen]);
+  useEffect(() => { writeStorage('nexus-dock-pins', pinned); }, [pinned]);
+  useEffect(() => {
+    setPinned(current => {
+      const alive = current.filter(id => sites.some(site => site.id === id));
+      return alive.length === current.length ? current : alive;
+    });
+  }, [sites]);
+  useEffect(() => { if (!pinned.length) setPinEdit(false); }, [pinned]);
   useEffect(() => { if (searchOpen) searchInput.current?.focus(); }, [searchOpen]);
   useEffect(() => { if (!dockOpen) setSearchOpen(false); }, [dockOpen]);
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches);
@@ -180,6 +192,7 @@ export function App() {
 
   const time = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const dateLine = `${capitalise(now.toLocaleDateString('ru-RU', { weekday: 'long' }))}, ${now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`;
+  const dateShort = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
 
   const openUrl = (url: string) => { window.open(url, '_blank', 'noopener,noreferrer'); };
   const openSite = (site: Site) => {
@@ -267,6 +280,7 @@ export function App() {
     <Tile
       key={site.id}
       site={site}
+      dragType={DOCK_DRAG_TYPE}
       useFavicons={useFavicons}
       showDomain={tile.showDomain === true}
       showBadge={tile.showNotifications !== false}
@@ -277,11 +291,9 @@ export function App() {
     />
   );
 
-  const heading = section === 'sites'
-    ? (activeCategory?.name ?? activeProject?.name ?? 'Быстрый доступ')
-    : SECTION_TITLE[section];
+  const heading = section === 'sites' ? '' : SECTION_TITLE[section];
   const subheading = section === 'sites'
-    ? `${view === 'groups' ? 'По группам категории' : 'Все сайты категории'} · ${countSites(found.length)}`
+    ? `${view === 'groups' ? 'По группам' : 'Все сайты'} · ${countSites(found.length)}`
     : section === 'favorites' ? `Отмеченные плитки · ${countSites(found.length)}`
     : section === 'trash' ? `Удалённые сайты · ${countSites(trash.length)}`
     : 'Раздел рабочего пространства';
@@ -348,6 +360,7 @@ export function App() {
 
   const showCategoryBar = section === 'sites';
   const dockVisible = dockOpen || narrow;
+  const pinnedSites = pinned.map(id => sites.find(site => site.id === id)).filter(Boolean) as Site[];
 
   return (
     <div className={'nx-root' + (panelOpen ? '' : ' panel-collapsed')}>
@@ -413,54 +426,41 @@ export function App() {
         </div>
 
         <div className="nx-panel-foot">
-          {panelOpen && (
-            <div className="nx-storage">
-              <div className="nx-storage-top"><span>Хранилище</span><b>{storage.percent}%</b></div>
-              <div className="nx-storage-bar"><i style={{ width: `${storage.percent}%` }} /></div>
-              <small>Использовано {storage.label}</small>
+          <div className={'nx-when' + (whenOpen ? ' open' : '')}>
+            <div className="nx-when-row">
+              <button type="button" className="nx-when-main" aria-expanded={whenOpen}
+                aria-label={whenOpen ? 'Свернуть подробности' : 'Показать подробности о погоде и дате'}
+                onClick={() => setWhenOpen(value => !value)}>
+                <b>{time}</b>
+                {panelOpen && <span className="nx-when-date">{dateShort}</span>}
+                {ui.weather && <span className="nx-when-temp"><CloudSun size={16} aria-hidden="true" />{weather.temp}</span>}
+                {panelOpen && <ChevronDown size={14} className="nx-when-caret" aria-hidden="true" />}
+              </button>
+              <button type="button" data-calendar-trigger className="nx-when-cal" aria-expanded={calendarOpen}
+                aria-label="Открыть календарь" title="Открыть календарь" onClick={() => setCalendarOpen(value => !value)}>
+                <CalendarDays size={16} />
+              </button>
             </div>
-          )}
-          <button type="button" data-calendar-trigger className={'nx-clock' + (calendarOpen ? ' open' : '')}
-            aria-expanded={calendarOpen} aria-label="Открыть календарь" title="Открыть календарь"
-            onClick={() => setCalendarOpen(value => !value)}>
-            {panelOpen ? <><b>{time}</b><small>{dateLine}</small></> : <CalendarDays size={19} />}
-          </button>
-
-          {ui.weather && panelOpen && (
-            <div className="nx-weather">
-              <div className="nx-weather-top">
-                <CloudSun size={34} aria-hidden="true" />
-                <span className="nx-weather-now"><b>{weather.temp}</b><span>{weather.label}</span></span>
+            {whenOpen && (
+              <div className="nx-when-more">
+                <span className="nx-when-full">{dateLine}</span>
+                {ui.weather && <span className="nx-when-label">{weather.label}</span>}
+                {ui.weather && weather.ready && (weather.hi || weather.humidity) && (
+                  <div className="nx-weather-stats">
+                    {weather.hi && <span title="Максимум за сутки"><ChevronUp size={13} /> {weather.hi}</span>}
+                    {weather.lo && <span title="Минимум за сутки"><ChevronDown size={13} /> {weather.lo}</span>}
+                    {weather.humidity && <span title="Влажность"><Droplets size={13} /> {weather.humidity}</span>}
+                    {weather.wind && <span title="Ветер"><Wind size={13} /> {weather.wind}</span>}
+                  </div>
+                )}
               </div>
-              {weather.ready && (weather.hi || weather.humidity) && (
-                <div className="nx-weather-stats">
-                  {weather.hi && <span title="Максимум за сутки"><ChevronUp size={13} /> {weather.hi}</span>}
-                  {weather.lo && <span title="Минимум за сутки"><ChevronDown size={13} /> {weather.lo}</span>}
-                  {weather.humidity && <span title="Влажность"><Droplets size={13} /> {weather.humidity}</span>}
-                  {weather.wind && <span title="Ветер"><Wind size={13} /> {weather.wind}</span>}
-                </div>
-              )}
-            </div>
-          )}
-          {ui.weather && !panelOpen && (
-            <span className="nx-weather-mini" title={`${weather.temp} · ${weather.label}`}><CloudSun size={19} aria-hidden="true" /><b>{weather.temp}</b></span>
-          )}
+            )}
+          </div>
 
           <button type="button" className="nx-link" title="Настройки"
             aria-label={panelOpen ? undefined : 'Настройки'} onClick={() => setSettingsOpen(true)}>
             <SettingsIcon size={17} />{panelOpen && <span>Настройки</span>}
           </button>
-
-          <div className="nx-dock-launch">
-            <button type="button" className={'nx-icon-btn nx-dock-toggle' + (dockOpen ? ' on' : '')}
-              aria-expanded={dockOpen} aria-controls="nx-dock"
-              aria-label={dockOpen ? 'Свернуть панель быстрого доступа' : 'Развернуть панель быстрого доступа'}
-              title={dockOpen ? 'Свернуть панель быстрого доступа' : 'Развернуть панель быстрого доступа'}
-              onClick={() => setDockOpen(value => !value)}>
-              {dockOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
-            </button>
-            {panelOpen && <span className="nx-dock-launch-label">Быстрый доступ</span>}
-          </div>
         </div>
       </aside>
 
@@ -500,9 +500,9 @@ export function App() {
             </nav>
           )}
 
-          <div className="nx-head">
+          <div className={'nx-head' + (heading ? '' : ' bare')}>
             <div>
-              <h1>{heading}</h1>
+              {heading && <h1>{heading}</h1>}
               <p>{subheading}</p>
             </div>
           </div>
@@ -510,8 +510,29 @@ export function App() {
           {body}
         </div>
 
-        <div className="nx-dock-wrap" aria-hidden={!dockVisible}>
-          <div className={'nx-dock' + (dockVisible ? ' open' : '') + (searchOpen ? ' searching' : '')} id="nx-dock" role="toolbar" aria-label="Панель быстрого доступа">
+        <div className="nx-dock-wrap">
+          {!dockVisible && (
+            <button type="button" className="nx-dock-call" aria-expanded={false} aria-controls="nx-dock"
+              aria-label="Открыть панель быстрого доступа" title="Открыть панель быстрого доступа"
+              onClick={() => setDockOpen(true)}>
+              <ChevronUp size={16} /><span>Быстрый доступ</span>
+            </button>
+          )}
+          <div
+            className={'nx-dock' + (dockVisible ? ' open' : '') + (searchOpen ? ' searching' : '') + (dragOverDock ? ' drop' : '')}
+            id="nx-dock" role="toolbar" aria-label="Панель быстрого доступа" aria-hidden={!dockVisible}
+            onDragOver={event => { if (event.dataTransfer.types.includes(DOCK_DRAG_TYPE)) { event.preventDefault(); setDragOverDock(true); } }}
+            onDragLeave={() => setDragOverDock(false)}
+            onDrop={event => {
+              const id = event.dataTransfer.getData(DOCK_DRAG_TYPE);
+              setDragOverDock(false);
+              if (!id) return;
+              event.preventDefault();
+              if (pinned.includes(id)) { setToast('Этот сайт уже в панели'); return; }
+              setPinned(current => [...current, id]);
+              setToast(`«${sites.find(item => item.id === id)?.title ?? 'Сайт'}» закреплён в панели`);
+            }}
+          >
             {searchOpen ? (
               <label className="nx-dock-search">
                 <Search size={18} />
@@ -535,10 +556,36 @@ export function App() {
                     <item.icon size={19} />
                   </button>
                 ))}
+                {pinnedSites.length > 0 && <span className="nx-dock-sep" />}
+                {pinnedSites.map(site => (
+                  <span className="nx-dock-pin" key={site.id}>
+                    <button type="button" className="nx-dock-pin-open" title={site.title}
+                      aria-label={pinEdit ? `Убрать «${site.title}» из панели` : `Открыть «${site.title}»`}
+                      onClick={() => {
+                        if (!pinEdit) { openSite(site); return; }
+                        setPinned(current => current.filter(id => id !== site.id));
+                        setToast(`«${site.title}» убран из панели`);
+                      }}>
+                      <PinMark site={site} useFavicons={useFavicons} />
+                    </button>
+                    {pinEdit && <span className="nx-dock-pin-x" aria-hidden="true"><X size={11} /></span>}
+                  </span>
+                ))}
                 <span className="nx-dock-sep" />
+                {pinnedSites.length > 0 && (
+                  <button type="button" className={pinEdit ? 'on' : ''} aria-pressed={pinEdit}
+                    aria-label={pinEdit ? 'Закончить удаление иконок' : 'Удалить иконку сайта из панели'}
+                    title={pinEdit ? 'Закончить удаление' : 'Удалить иконку сайта из панели'}
+                    onClick={() => setPinEdit(value => !value)}>
+                    {pinEdit ? <Check size={19} /> : <Trash2 size={19} />}
+                  </button>
+                )}
                 <button type="button" className={query ? 'on' : ''} aria-label="Поиск по закладкам" title="Поиск по закладкам или адрес" aria-expanded={searchOpen} onClick={() => setSearchOpen(true)}><Search size={19} /></button>
                 <button type="button" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}><Plus size={19} /></button>
                 <button type="button" aria-label="Настройки" title="Настройки (Ctrl ,)" onClick={() => setSettingsOpen(true)}><SettingsIcon size={19} /></button>
+                {!narrow && (
+                  <button type="button" aria-label="Свернуть панель быстрого доступа" title="Свернуть панель быстрого доступа" onClick={() => setDockOpen(false)}><ChevronDown size={19} /></button>
+                )}
               </>
             )}
           </div>
@@ -578,6 +625,16 @@ export function App() {
           sessions={sessions} setSessions={setSessions} />
       )}
     </div>
+  );
+}
+
+function PinMark({ site, useFavicons }: { site: Site; useFavicons: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const icon = useFavicons && !failed && site.domain ? `https://${site.domain}/favicon.ico` : '';
+  return (
+    <span className={'nx-dock-mark' + (icon ? ' plain' : '')} style={icon ? undefined : { background: site.color }} aria-hidden="true">
+      {icon ? <img src={icon} alt="" loading="lazy" onError={() => setFailed(true)} /> : monogram(site.title)}
+    </span>
   );
 }
 

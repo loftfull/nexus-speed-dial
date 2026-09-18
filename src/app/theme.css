@@ -71,9 +71,10 @@
 .nx-panel.collapsed .nx-section{width:100%;align-items:center}
 .nx-panel.collapsed .nx-link,.nx-panel.collapsed .nx-project-name{justify-content:center;padding:10px 0;width:46px}
 .nx-panel.collapsed .nx-panel-foot{width:100%;align-items:center;gap:10px}
-.nx-panel.collapsed .nx-clock{display:grid;place-items:center;width:46px;height:46px;background:var(--nx-sunken);color:var(--nx-muted)}
-.nx-weather-mini{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--nx-muted);font-size:11.5px}
-.nx-weather-mini b{color:var(--nx-text);font-size:13px;font-weight:600}
+.nx-panel.collapsed .nx-when-row{flex-direction:column;gap:4px;padding:6px 4px}
+.nx-panel.collapsed .nx-when-main{flex-direction:column;gap:2px;justify-content:center}
+.nx-panel.collapsed .nx-when-main b{font-size:13px}
+.nx-panel.collapsed .nx-when-more{display:none}
 .nx-panel-brand{display:flex;flex-direction:column;gap:2px}
 .nx-panel-brand b{font-size:16px;font-weight:700;letter-spacing:-.2px}
 .nx-panel-brand span{font-size:11.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--nx-muted)}
@@ -82,12 +83,19 @@
 .nx-clock small{display:block;font-size:12.5px;color:var(--nx-muted);margin-top:9px}
 .nx-clock.open b{font-size:54px}
 
-.nx-weather{background:var(--nx-sunken);border-radius:var(--nx-r-md);padding:13px 14px;display:flex;flex-direction:column;gap:10px}
-.nx-weather-top{display:flex;align-items:center;gap:12px}
-.nx-weather-top svg{color:#8a97a9;flex:none}
-.nx-weather-now{min-width:0}
-.nx-weather-now b{display:block;font-size:24px;font-weight:500;line-height:1.1}
-.nx-weather-now span{display:block;font-size:12.5px;color:var(--nx-muted);margin-top:2px}
+.nx-when{background:var(--nx-sunken);border-radius:var(--nx-r-md);overflow:hidden}
+.nx-when-row{display:flex;align-items:center;gap:6px;padding:4px 6px 4px 10px}
+.nx-when-main{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:6px 4px;border-radius:9px;color:var(--nx-text)}
+.nx-when-main b{font-size:16px;font-weight:600;letter-spacing:-.3px;flex:none}
+.nx-when-date{font-size:12px;color:var(--nx-muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.nx-when-temp{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--nx-text);flex:none}
+.nx-when-temp svg{color:#8a97a9}
+.nx-when-caret{color:var(--nx-muted);flex:none;transition:transform .18s}
+.nx-when.open .nx-when-caret{transform:rotate(180deg)}
+.nx-when-cal{width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:9px;color:var(--nx-muted)}
+.nx-when-cal:hover{background:var(--nx-surface);color:var(--nx-accent)}
+.nx-when-more{display:flex;flex-direction:column;gap:7px;padding:2px 12px 12px}
+.nx-when-full,.nx-when-label{font-size:12px;color:var(--nx-muted)}
 .nx-weather-stats{display:flex;flex-wrap:wrap;gap:6px 13px;font-size:12px;color:var(--nx-muted)}
 .nx-weather-stats span{display:inline-flex;align-items:center;gap:3px}
 
@@ -115,12 +123,6 @@
 .nx-dock-launch-label{font-size:13px;color:var(--nx-muted)}
 .nx-dock-toggle{transition:background .15s,color .15s,transform .2s}
 .nx-dock-toggle.on{background:var(--nx-accent-soft);color:var(--nx-accent)}
-.nx-storage{display:flex;flex-direction:column;gap:7px;background:var(--nx-sunken);border-radius:var(--nx-r-md);padding:12px 13px}
-.nx-storage-top{display:flex;justify-content:space-between;font-size:12.5px;color:var(--nx-muted)}
-.nx-storage-top b{color:var(--nx-text);font-weight:600}
-.nx-storage-bar{height:5px;border-radius:5px;background:var(--nx-line);overflow:hidden}
-.nx-storage-bar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#3b7df0,#6d51e0)}
-.nx-storage small{font-size:11.5px;color:var(--nx-muted)}
 .nx-panel-actions{display:flex;gap:8px}
 .nx-icon-btn{width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:12px;
  background:var(--nx-sunken);color:var(--nx-muted);transition:background .15s,color .15s}
@@ -148,6 +150,7 @@
 .nx-seg button.on{background:var(--nx-accent-soft);color:var(--nx-accent)}
 
 .nx-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex:none}
+.nx-head.bare{margin-top:-6px}
 .nx-head h1{font-size:23px;font-weight:700;letter-spacing:-.5px}
 .nx-head p{font-size:13px;color:var(--nx-muted);margin-top:4px}
 /* ── сетка плиток ─────────────────────────────────────────────── */
@@ -194,12 +197,12 @@
 .nx-empty span{font-size:13px}
 
 /* ── нижний док ───────────────────────────────────────────────── */
-.nx-dock-wrap{position:absolute;left:0;right:0;bottom:22px;display:flex;justify-content:flex-start;padding:0 30px;pointer-events:none}
+.nx-dock-wrap{position:absolute;left:0;right:0;bottom:22px;height:60px;pointer-events:none}
 .nx-dock{display:flex;align-items:center;gap:5px;background:var(--nx-surface);border-radius:20px;height:60px;
- box-shadow:var(--nx-shadow);padding:8px;max-width:calc(100% - 4px);overflow-x:auto;scrollbar-width:none;
- transform-origin:left center;transform:translateX(-24px) scaleX(.06);opacity:0;pointer-events:none;
+ box-shadow:var(--nx-shadow);padding:8px;max-width:calc(100vw - 48px);overflow-x:auto;scrollbar-width:none;
+ position:absolute;left:50%;bottom:0;transform-origin:bottom center;transform:translate(-50%,26px) scale(.94);opacity:0;pointer-events:none;
  transition:transform .3s cubic-bezier(.2,.85,.25,1),opacity .18s ease}
-.nx-dock.open{transform:none;opacity:1;pointer-events:auto}
+.nx-dock.open{transform:translate(-50%,0) scale(1);opacity:1;pointer-events:auto}
 .nx-dock>*{transition:opacity .16s ease .06s}
 .nx-dock:not(.open)>*{opacity:0}
 .nx-dock.searching{width:min(520px,100%)}
@@ -208,6 +211,20 @@
 .nx-dock-search input{flex:1;font-size:14px;border-radius:10px}
 .nx-dock-search input::placeholder{color:var(--nx-muted)}
 .nx-dock-search button{width:32px;height:32px}
+.nx-dock-call{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;pointer-events:auto;
+ background:var(--nx-surface);box-shadow:var(--nx-shadow);color:var(--nx-muted);font-size:13px;font-weight:500;
+ animation:nx-call-in .2s ease}
+.nx-dock-call:hover{color:var(--nx-accent)}
+@keyframes nx-call-in{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translateX(-50%)}}
+.nx-dock.drop{box-shadow:0 0 0 2px var(--nx-accent),var(--nx-shadow)}
+.nx-dock-pin{position:relative;flex:none;display:block}
+.nx-dock-pin-open{width:44px;height:44px;display:grid;place-items:center;border-radius:14px}
+.nx-dock-mark{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;overflow:hidden;
+ font-size:12px;font-weight:700;color:#fff}
+.nx-dock-mark.plain{background:var(--nx-sunken)}
+.nx-dock-mark img{width:20px;height:20px;object-fit:contain;display:block}
+.nx-dock-pin-x{position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;display:grid;place-items:center;
+ background:#d32d43;color:#fff;pointer-events:none}
 .nx-dock::-webkit-scrollbar{display:none}
 .nx-dock button{width:44px;height:44px;flex:none;display:grid;place-items:center;border-radius:14px;color:var(--nx-muted);
  transition:background .15s,color .15s}
@@ -244,7 +261,7 @@
  .nx-grid{--nx-tile:136px;gap:12px}
  .nx-tile{min-height:128px;padding:18px 10px 16px;gap:10px}
  .nx-mark{width:46px;height:46px;border-radius:14px}
- .nx-dock-wrap{bottom:14px;padding:0 12px;justify-content:center}
+ .nx-dock-wrap{bottom:14px;height:54px}
  .nx-dock{gap:3px;padding:7px;height:54px}
  .nx-dock button{width:38px;height:38px;border-radius:12px}
  .nx-dock-sep{margin:0 2px}
@@ -263,14 +280,18 @@
 @keyframes nx-settings-in{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
 .nx-settings-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--nx-line)}
 .nx-settings-head h2{font-size:16px;font-weight:700;margin-top:3px}
-.nx-settings-nav{display:flex;gap:5px;padding:10px 12px;background:var(--nx-sunken);border-bottom:1px solid var(--nx-line);
- overflow-x:auto;scrollbar-width:none}
-.nx-settings-nav::-webkit-scrollbar{display:none}
-.nx-settings-nav button{display:flex;align-items:center;gap:6px;flex:0 0 auto;padding:7px 11px;border-radius:10px;
- font-size:12.5px;font-weight:500;color:var(--nx-muted);white-space:nowrap}
-.nx-settings-nav button:hover{background:var(--nx-surface);color:var(--nx-text)}
-.nx-settings-nav button.on{background:var(--nx-accent-soft);color:var(--nx-accent);font-weight:600}
-.nx-settings-body{flex:1;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.nx-settings-body{flex:1;min-height:0;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
+.nx-fold{border-radius:var(--nx-r-md);background:var(--nx-sunken);overflow:hidden}
+.nx-fold h3{margin:0}
+.nx-fold-head{display:flex;align-items:center;gap:10px;width:100%;padding:12px 13px;font-size:13.5px;font-weight:600;color:var(--nx-text)}
+.nx-fold-head>span{flex:1;text-align:left}
+.nx-fold-head>svg:first-child{color:var(--nx-muted);flex:none}
+.nx-fold-caret{color:var(--nx-muted);flex:none;transition:transform .18s}
+.nx-fold.open .nx-fold-head{color:var(--nx-accent)}
+.nx-fold.open .nx-fold-head>svg:first-child,.nx-fold.open .nx-fold-caret{color:var(--nx-accent)}
+.nx-fold.open .nx-fold-caret{transform:rotate(180deg)}
+.nx-fold-body{display:flex;flex-direction:column;gap:10px;padding:0 13px 13px}
+.nx-fold-body .nx-card{background:var(--nx-surface);padding:12px 13px}
 .nx-card{background:var(--nx-sunken);border-radius:var(--nx-r-md);padding:13px 14px;display:flex;flex-direction:column;gap:10px}
 .nx-card h3{font-size:13.5px;font-weight:700}
 .nx-card-hint{font-size:12px;color:var(--nx-muted);line-height:1.45}
@@ -315,3 +336,30 @@
 .nx-settings .browser-extension-row input,
 .nx-settings .browser-import-card select{background:var(--nx-surface);color:var(--nx-text);border:1px solid var(--nx-line);border-radius:9px;padding:7px 9px;font-size:12.5px}
 .nx-settings .browser-import-card button{border-radius:10px}
+.nx-settings .browser-manual-import,
+.nx-settings .browser-tab-row,
+.nx-settings .browser-session-name{background:var(--nx-surface);border-color:var(--nx-line)}
+.nx-settings .browser-import-destination{background:var(--nx-accent-soft);border-color:transparent}
+.nx-settings .browser-status{background:var(--nx-sunken);color:var(--nx-muted)}
+:root[data-theme="dark"] .nx-settings .browser-status.connected{background:rgba(34,168,124,.18);color:#4fd0a4}
+:root[data-theme="dark"] .nx-settings .browser-status.checking{background:rgba(57,136,238,.18);color:#7fb2ff}
+:root[data-theme="dark"] .nx-settings .browser-status.missing{background:rgba(220,72,72,.18);color:#ff9b9b}
+
+/* Панель импорта рассчитана на широкое окно — в узком ставим всё в столбец. */
+.nx-settings .browser-import-card{display:flex;flex-direction:column;gap:12px}
+.nx-settings .browser-import-head{flex-direction:column;align-items:flex-start;gap:8px}
+.nx-settings .browser-extension-row,
+.nx-settings .browser-project-fields,
+.nx-settings .browser-extension-actions,
+.nx-settings .browser-preview-head,
+.nx-settings .browser-import-summary{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.nx-settings .browser-extension-row label,
+.nx-settings .browser-extension-row input,
+.nx-settings .browser-session-name{width:100%}
+.nx-settings .browser-import-card .save,
+.nx-settings .browser-import-card .outline{width:100%;justify-content:center}
+.nx-settings .browser-model-note,
+.nx-settings .browser-import-metadata,
+.nx-settings .browser-tab-copy{min-width:0;word-break:break-word}
+.nx-settings .browser-tabs-list{max-height:180px;overflow-y:auto}
+.nx-settings .browser-import-card .outline{background:var(--nx-sunken);border:0;border-radius:10px;padding:9px 12px}

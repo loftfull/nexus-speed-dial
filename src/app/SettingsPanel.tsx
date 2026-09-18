@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Check, Database, Download, Palette, Search, ShieldCheck, Trash2, Upload, X, Grid2X2, CloudSun } from 'lucide-react';
+import { Check, ChevronDown, Database, Download, Palette, Search, ShieldCheck, Trash2, Upload, X, Grid2X2, CloudSun } from 'lucide-react';
 import type { AppearanceState, TileState, UiState } from '../domain/appStore';
 import type { BrowserSession, Category, Project, SiteGroup, SiteRecord as Site } from '../domain/types';
 import { createBackup, parseBackup } from '../domain/backup';
@@ -38,7 +38,7 @@ export type SettingsProps = {
 
 export function SettingsPanel(props: SettingsProps) {
   const { onClose, ui, setUi, tile, setTile, appearance, setAppearance, density, setDensity } = props;
-  const [section, setSection] = useState<SectionId>('look');
+  const [open, setOpen] = useState<SectionId | null>('look');
 
   const patchUi = (patch: Partial<UiState>) => setUi(current => ({ ...current, ...patch }));
   const patchTile = (patch: Partial<TileState>) => setTile(current => ({ ...current, ...patch }));
@@ -54,16 +54,29 @@ export function SettingsPanel(props: SettingsProps) {
         <button type="button" className="nx-icon-btn" aria-label="Закрыть настройки" onClick={onClose}><X size={18} /></button>
       </header>
 
-      <nav className="nx-settings-nav" aria-label="Разделы настроек">
-        {SECTIONS.map(item => (
-          <button key={item.id} type="button" className={section === item.id ? 'on' : ''}
-            aria-current={section === item.id ? 'page' : undefined} onClick={() => setSection(item.id)}>
-            <item.icon size={15} /><span>{item.label}</span>
-          </button>
-        ))}
-      </nav>
-
       <div className="nx-settings-body">
+        {SECTIONS.map(item => {
+          const expanded = open === item.id;
+          return (
+            <section className={'nx-fold' + (expanded ? ' open' : '')} key={item.id}>
+              <h3>
+                <button type="button" className="nx-fold-head" aria-expanded={expanded}
+                  onClick={() => setOpen(current => (current === item.id ? null : item.id))}>
+                  <item.icon size={16} />
+                  <span>{item.label}</span>
+                  <ChevronDown size={16} className="nx-fold-caret" aria-hidden="true" />
+                </button>
+              </h3>
+              {expanded && <div className="nx-fold-body">{renderSection(item.id)}</div>}
+            </section>
+          );
+        })}
+      </div>
+    </section>
+  );
+
+  function renderSection(section: SectionId) {
+    return <>
         {section === 'look' && (
           <>
             <Card title="Тема">
@@ -168,9 +181,8 @@ export function SettingsPanel(props: SettingsProps) {
         )}
 
         {section === 'data' && <DataSection {...props} />}
-      </div>
-    </section>
-  );
+    </>;
+  }
 }
 
 function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {

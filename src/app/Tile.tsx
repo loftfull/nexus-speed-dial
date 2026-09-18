@@ -12,6 +12,8 @@ export function monogram(title: string): string {
 
 export type TileProps = {
   site: SiteRecord;
+  /** Media type used to hand the site over to a drop target such as the dock. */
+  dragType?: string;
   showDomain?: boolean;
   showBadge?: boolean;
   useFavicons?: boolean;
@@ -21,7 +23,7 @@ export type TileProps = {
   onDelete: () => void;
 };
 
-export function Tile({ site, showDomain = false, showBadge = true, useFavicons = true, onOpen, onFavorite, onEdit, onDelete }: TileProps) {
+export function Tile({ site, dragType, showDomain = false, showBadge = true, useFavicons = true, onOpen, onFavorite, onEdit, onDelete }: TileProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [iconFailed, setIconFailed] = useState(false);
   const holder = useRef<HTMLDivElement>(null);
@@ -43,6 +45,12 @@ export function Tile({ site, showDomain = false, showBadge = true, useFavicons =
     <div
       className={'nx-tile' + (menuOpen ? ' menu-open' : '')}
       ref={holder}
+      draggable={Boolean(dragType && site.id)}
+      onDragStart={event => {
+        if (!dragType || !site.id) return;
+        event.dataTransfer.setData(dragType, site.id);
+        event.dataTransfer.effectAllowed = 'copy';
+      }}
       onKeyDown={event => { if (event.key === 'Escape' && menuOpen) { event.stopPropagation(); close(); } }}
     >
       <button type="button" className="nx-tile-face" aria-label={`Открыть «${site.title}»`} onClick={onOpen}>

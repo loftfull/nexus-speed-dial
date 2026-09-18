@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 test.describe('Nexus shell', () => {
   test('shows the project grid and can open the add-site form', async ({ page }) => {
     await page.goto('/');
-    // The heading names the selected project, or the selected category.
-    await expect(page.locator('.nx-head h1')).not.toBeEmpty();
+    // The category tabs name the scope, so the page itself carries only the count.
+    await expect(page.locator('.nx-head p')).not.toBeEmpty();
     const shown = await page.locator('.nx-tile').count();
     expect(shown).toBeGreaterThan(0);
     await expect(page.locator('.nx-head p')).toContainText(String(shown));
@@ -20,7 +20,7 @@ test.describe('Nexus shell', () => {
 
     const all = await page.locator('.nx-tile').count();
     await tabs.getByRole('tab', { name: 'Соцсети' }).click();
-    await expect(page.locator('.nx-head h1')).toHaveText('Соцсети');
+    await expect(page.locator('.nx-cats-tabs').getByRole('tab', { name: 'Соцсети' })).toHaveAttribute('aria-selected', 'true');
     const scoped = await page.locator('.nx-tile').count();
     expect(scoped).toBeGreaterThan(0);
     expect(scoped).toBeLessThan(all);
@@ -160,24 +160,31 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-tile')).toHaveCount(total);
   });
 
-  test('the dock unfolds from the side panel and both panels collapse to icons', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'The side panel is replaced by the sections sheet below 900px.');
+  test('the dock folds away and is called back from the bottom of the screen', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Below 900px the dock always stays out.');
     await page.goto('/');
     const dock = page.locator('.nx-dock');
     await expect(dock).toHaveClass(/open/);
 
-    // The launcher sits opposite the dock, at the same height.
-    const launcher = page.getByRole('button', { name: 'Свернуть панель быстрого доступа' });
-    const launcherBox = await launcher.boundingBox();
-    const dockBox = await dock.boundingBox();
-    expect(Math.abs((launcherBox!.y + launcherBox!.height / 2) - (dockBox!.y + dockBox!.height / 2))).toBeLessThan(6);
-
-    await launcher.click();
+    await page.getByRole('button', { name: 'Свернуть панель быстрого доступа' }).click();
     await expect(dock).not.toHaveClass(/open/);
-    await page.getByRole('button', { name: 'Развернуть панель быстрого доступа' }).click();
-    await expect(dock).toHaveClass(/open/);
 
-    // The side panel collapses to icons and remembers the choice.
+    // The call button sits at the bottom centre of the screen.
+    const call = page.getByRole('button', { name: 'Открыть панель быстрого доступа' });
+    await expect(call).toBeVisible();
+    const callBox = (await call.boundingBox())!;
+    const viewport = page.viewportSize()!;
+    const main = (await page.locator('.nx-main').boundingBox())!;
+    expect(Math.abs((callBox.x + callBox.width / 2) - (main.x + main.width / 2))).toBeLessThan(6);
+    expect(viewport.height - (callBox.y + callBox.height)).toBeLessThan(60);
+
+    await call.click();
+    await expect(dock).toHaveClass(/open/);
+  });
+
+  test('the side panel collapses to icons and remembers it', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'The side panel is replaced by the sections sheet below 900px.');
+    await page.goto('/');
     const panel = page.locator('.nx-panel');
     const wide = (await panel.boundingBox())!.width;
     await page.getByRole('button', { name: 'Свернуть боковое окно' }).click();
@@ -187,14 +194,59 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-root')).toHaveClass(/panel-collapsed/);
   });
 
-  test('the clock, the weather and the calendar sit at the bottom of the side panel', async ({ page }, testInfo) => {
+  test('a site is dragged onto the dock and removed from it again', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Dragging is a pointer gesture.');
+    await page.goto('/');
+    const dock = page.locator('.nx-dock');
+    await expect(dock.locator('.nx-dock-pin')).toHaveCount(0);
+
+    const tile = page.locator('.nx-tile').first();
+    const title = (await tile.locator('.nx-tile-name').textContent())!.trim();
+    // Synthesised HTML5 drag: Playwright's mouse-driven dragTo does not always
+    // turn into a native drag in headless Chromium, and this exercises the same
+    // dragstart/dragover/drop handlers the browser would call.
+    await page.evaluate(() => {
+      const source = document.querySelector('.nx-tile')!;
+      const target = document.querySelector('.nx-dock')!;
+      const dataTransfer = new DataTransfer();
+      source.dispatchEvent(new DragEvent('dragstart', { dataTransfer, bubbles: true }));
+      target.dispatchEvent(new DragEvent('dragover', { dataTransfer, bubbles: true, cancelable: true }));
+      target.dispatchEvent(new DragEvent('drop', { dataTransfer, bubbles: true, cancelable: true }));
+    });
+    await expect(dock.locator('.nx-dock-pin')).toHaveCount(1);
+    await expect(dock.getByRole('button', { name: `Открыть «${title}»` })).toBeVisible();
+
+    // The pin survives a reload.
+    await page.reload();
+    await expect(page.locator('.nx-dock').locator('.nx-dock-pin')).toHaveCount(1);
+
+    // The delete button turns each pin into a remove target.
+    await page.getByRole('button', { name: 'Удалить иконку сайта из панели' }).click();
+    await page.getByRole('button', { name: `Убрать «${title}» из панели` }).click();
+    await expect(page.locator('.nx-dock').locator('.nx-dock-pin')).toHaveCount(0);
+  });
+
+  test('the clock, the date and the weather share one row and expand on demand', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'The compact card replaces the side panel below 900px.');
     await page.goto('/');
-    const foot = page.locator('.nx-panel-foot');
-    await expect(foot.locator('.nx-clock')).toContainText(/\d{1,2}:\d{2}/);
-    await expect(foot.locator('.nx-weather')).toBeVisible();
-    await foot.locator('[data-calendar-trigger]').click();
+    const when = page.locator('.nx-when');
+    await expect(when.locator('.nx-when-row')).toContainText(/\d{1,2}:\d{2}/);
+    await expect(when.locator('.nx-when-more')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Показать подробности о погоде и дате' }).click();
+    await expect(when.locator('.nx-when-more')).toBeVisible();
+
+    await when.getByRole('button', { name: 'Открыть календарь' }).click();
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeVisible();
+  });
+
+  test('the page does not repeat the project name that the side panel already shows', async ({ page }) => {
+    await page.goto('/');
+    const project = (await page.locator('.nx-panel .nx-link.on span').first().textContent())!.trim();
+    expect(project).toBeTruthy();
+    await expect(page.locator('.nx-head h1')).toHaveCount(0);
+    await expect(page.locator('.nx-head p')).toContainText('Все сайты');
+    await expect(page.locator('.nx-main')).not.toContainText(project);
   });
 
   test('mobile keeps the clock, the weather and the calendar in one compact card', async ({ page }, testInfo) => {
