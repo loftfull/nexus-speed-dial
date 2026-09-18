@@ -351,4 +351,54 @@ test.describe('Nexus shell', () => {
     await page.locator('.mobile-sections-card').getByRole('button', { name: 'Заметки', exact: true }).click();
     await expect(page.locator('.nx-head h1')).toHaveText('Заметки');
   });
+
+  test('project creation uses the Nexus dialog instead of window.prompt', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'prompt', {
+        configurable: true,
+        writable: true,
+        value: () => {
+          (window as typeof window & { __nexusNativePrompt?: boolean }).__nexusNativePrompt = true;
+          return null;
+        },
+      });
+    });
+    await page.goto('/');
+
+    await page.getByRole('button', { name: 'Добавить проект' }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'Новый проект' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('textbox', { name: 'Название проекта' }).fill('Проект E2E');
+    await dialog.getByRole('button', { name: 'Создать' }).click();
+
+    await expect(page.getByRole('button', { name: 'Проект «Проект E2E»' })).toBeVisible();
+    expect(await page.evaluate(() => (window as typeof window & { __nexusNativePrompt?: boolean }).__nexusNativePrompt)).toBeFalsy();
+  });
+
+  test('trash clearing uses the Nexus destructive dialog instead of window.confirm', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'confirm', {
+        configurable: true,
+        writable: true,
+        value: () => {
+          (window as typeof window & { __nexusNativeConfirm?: boolean }).__nexusNativeConfirm = true;
+          return false;
+        },
+      });
+    });
+    await page.goto('/');
+
+    const first = page.locator('.nx-tile').first();
+    await first.getByRole('button', { name: /Действия для/ }).click();
+    await first.getByRole('menuitem', { name: 'Удалить' }).click();
+    await page.locator('.nx-quick').getByRole('button', { name: 'Корзина' }).click();
+    await page.getByRole('button', { name: 'Очистить корзину' }).click();
+
+    const dialog = page.getByRole('dialog', { name: 'Очистить корзину?' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Очистить' }).click();
+    await expect(page.getByText('Корзина пуста')).toBeVisible();
+    expect(await page.evaluate(() => (window as typeof window & { __nexusNativeConfirm?: boolean }).__nexusNativeConfirm)).toBeFalsy();
+  });
+
 });
