@@ -260,6 +260,19 @@
 .nx-dock-search input::placeholder{color:var(--nx-muted)}
 .nx-dock-search button{width:32px;height:32px}
 
+.nx-root .calendar{position:fixed;left:calc(var(--nx-panel-w,272px) + 14px);bottom:104px;top:auto;z-index:40;
+ width:284px;padding:15px;border-radius:var(--nx-r-lg);background:var(--nx-surface);border:0;
+ box-shadow:var(--nx-shadow-lg);backdrop-filter:none;color:var(--nx-text);
+ animation:nx-forecast-in .2s cubic-bezier(.2,.85,.25,1)}
+.nx-root .cal-head b{font-size:13px;color:var(--nx-text)}
+.nx-root .cal-head span,.nx-root .cal-head button,.nx-root .week{color:var(--nx-muted)}
+.nx-root .days button{color:var(--nx-text)}
+.nx-root .days button:hover{background:var(--nx-sunken);color:var(--nx-accent)}
+.nx-root .days .today{background:var(--nx-accent);color:var(--nx-surface);box-shadow:none}
+.nx-root .cal-note{border-top-color:var(--nx-line)}
+.nx-root .cal-note b{color:var(--nx-text)}
+.nx-root .cal-note small,.nx-root .cal-note svg{color:var(--nx-muted)}
+
 /* ── тосты ────────────────────────────────────────────────────── */
 .nx-toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:60;
  background:var(--nx-text);color:var(--nx-canvas);padding:11px 18px;border-radius:999px;font-size:13.5px;box-shadow:var(--nx-shadow-lg)}
@@ -275,13 +288,14 @@
  .nx-mobile-top .nx-icon-btn{background:var(--nx-surface);box-shadow:var(--nx-shadow-sm)}
  .nx-mobile-card{flex:1;min-width:0;display:flex;align-items:center;gap:10px;height:46px;padding:0 8px 0 14px;
   background:var(--nx-surface);border-radius:var(--nx-r-md);box-shadow:var(--nx-shadow-sm)}
- .nx-mobile-time{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+ .nx-mobile-time{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:4px 6px;border-radius:9px}
+ .nx-mobile-time:hover{background:var(--nx-sunken)}
  .nx-mobile-time b{font-size:17px;font-weight:600;line-height:1.1}
  .nx-mobile-time small{font-size:11px;color:var(--nx-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
- .nx-mobile-weather{display:flex;align-items:center;gap:5px;flex:none;color:var(--nx-muted);font-size:14px}
+ .nx-mobile-weather{display:flex;align-items:center;gap:5px;flex:none;color:var(--nx-muted);font-size:14px;padding:6px 8px;border-radius:9px}
+ .nx-mobile-weather:hover{background:var(--nx-sunken);color:var(--nx-accent)}
  .nx-mobile-weather b{color:var(--nx-text);font-weight:600}
- .nx-mobile-cal{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:11px;background:var(--nx-sunken);color:var(--nx-muted)}
- .nx-dock .wide-only{display:none}
+ .nx-quick .wide-only{display:none}
  .nx-head{flex-direction:column;align-items:stretch;gap:12px}
  .nx-find{width:100%}
  .nx-cats-side{padding-bottom:4px}
@@ -292,7 +306,7 @@
  .nx-quick,.nx-dock{bottom:26px;gap:3px;padding:7px;height:54px}
  .nx-quick button,.nx-dock-edit,.nx-dock-pin-open{width:38px;height:38px;border-radius:12px}
  .nx-dock-sep{margin:0 2px}
- .nx-forecast{left:8px;right:8px;width:auto;bottom:96px}
+ .nx-forecast,.nx-root .calendar{left:8px;right:8px;width:auto;bottom:96px;transform:none}
 }
 
 /* ── компактное окно настроек ──────────────────────────────────

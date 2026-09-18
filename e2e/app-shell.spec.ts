@@ -296,8 +296,11 @@ test.describe('Nexus shell', () => {
     await expect(card).toBeVisible();
     await expect(card).toContainText(/\d{1,2}:\d{2}/);
     await expect(card.locator('.nx-mobile-weather')).toBeVisible();
-    await card.getByRole('button', { name: 'Открыть календарь' }).click();
+    // Same split as the side window: the date opens the calendar, the temperature the forecast.
+    await card.locator('[data-calendar-trigger]').click();
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeVisible();
+    await card.locator('[data-forecast-trigger]').click();
+    await expect(page.getByRole('dialog', { name: 'Прогноз погоды на 5 дней' })).toBeVisible();
   });
 
   test('mobile replaces the project panel with the sections sheet', async ({ page }, testInfo) => {

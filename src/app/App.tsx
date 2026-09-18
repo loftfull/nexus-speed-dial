@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
-  CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, Clock3, CloudSun, Droplets, Home, Layers3, LayoutGrid,
+  Check, ChevronDown, ChevronRight, ChevronUp, Clock3, CloudSun, Droplets, Home, Layers3, LayoutGrid,
   Briefcase, Cloud, CloudRain, GraduationCap, ShoppingBag, Snowflake, Sun,
   Moon, MoreHorizontal, Plus, RotateCw, Search, Settings as SettingsIcon, SlidersHorizontal,
   Star, StickyNote, Tag, Trash2, Wind, X,
@@ -517,9 +517,18 @@ export function App() {
           <div className="nx-mobile-top">
             <button type="button" className="nx-icon-btn" aria-label="Разделы" onClick={() => setMobileNav(true)}><Layers3 size={18} /></button>
             <div className="nx-mobile-card">
-              <span className="nx-mobile-time"><b>{time}</b><small>{dateLine}</small></span>
-              {ui.weather && <span className="nx-mobile-weather"><CloudSun size={20} aria-hidden="true" /><b>{weather.temp}</b></span>}
-              <button type="button" data-calendar-trigger className="nx-mobile-cal" aria-label="Открыть календарь" aria-expanded={calendarOpen} onClick={() => setCalendarOpen(value => !value)}><CalendarDays size={18} /></button>
+              <button type="button" data-calendar-trigger className="nx-mobile-time"
+                aria-expanded={calendarOpen} aria-label={`Открыть календарь, сегодня ${dateLine}`}
+                onClick={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}>
+                <b>{time}</b><small>{dateLine}</small>
+              </button>
+              {ui.weather && (
+                <button type="button" data-forecast-trigger className="nx-mobile-weather"
+                  aria-expanded={forecastOpen} aria-label={`Прогноз на пять дней, сейчас ${weather.temp}`}
+                  onClick={() => { setCalendarOpen(false); setForecastOpen(value => !value); }}>
+                  <CloudSun size={20} aria-hidden="true" /><b>{weather.temp}</b>
+                </button>
+              )}
             </div>
             <button type="button" className={'nx-icon-btn' + (quickOpen ? ' on' : '')} aria-expanded={quickOpen} aria-controls="nx-quick"
               aria-label={quickOpen ? 'Свернуть панель быстрого доступа' : 'Развернуть панель быстрого доступа'}
