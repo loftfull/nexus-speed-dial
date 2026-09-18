@@ -76,4 +76,22 @@ describe('SettingsPanel', () => {
     await user.keyboard('{Escape}');
     expect(props.onClose).toHaveBeenCalled();
   });
+
+  it('uses an in-app destructive dialog before clearing workspace data', async () => {
+    const user = userEvent.setup();
+    const props = setup();
+
+    await user.click(screen.getByRole('button', { name: 'Данные' }));
+    await user.click(screen.getByRole('button', { name: 'Очистить рабочие данные' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Очистить рабочие данные?' });
+    expect(dialog).toBeInTheDocument();
+    expect(props.setSites).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Очистить данные' }));
+    expect(props.setSites).toHaveBeenCalledWith([]);
+    expect(props.setProjects).toHaveBeenCalledWith([]);
+    expect(props.setSessions).toHaveBeenCalledWith([]);
+  });
+
 });
