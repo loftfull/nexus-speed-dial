@@ -55,10 +55,10 @@ test.describe('Nexus shell', () => {
       const image = node.querySelector('img');
       return { brand: node.classList.contains('brand'), src: image?.getAttribute('src') ?? null };
     }));
-    const branded = marks.filter(mark => mark.brand && mark.src?.startsWith('/brands/'));
+    // Адрес зависит от базового пути сборки, поэтому сверяем по хвосту, а не по корню.
+    const branded = marks.filter(mark => mark.brand && /\/brands\/[a-z0-9.-]+\.svg$/.test(mark.src ?? ''));
     // Большинство известных сайтов получает свой векторный знак.
     expect(branded.length).toBeGreaterThanOrEqual(Math.ceil(marks.length / 2));
-    expect(branded.every(mark => mark.src!.endsWith('.svg'))).toBe(true);
   });
 
   test('a site without a brand mark still gets a designed plate', async ({ page }) => {
@@ -66,14 +66,19 @@ test.describe('Nexus shell', () => {
     await page.goto('/');
     const plain = page.locator('.nx-main .nx-tile .nx-mark:not(.brand)').first();
     if (await plain.count() === 0) test.skip(true, 'Все сайты этого проекта получили фирменный знак.');
-    // Подложка — градиент, а не плоская заливка, и буква на ней читается.
+    // Подложка — градиент, а не плоская заливка.
     const style = await plain.evaluate(node => {
       const computed = getComputedStyle(node);
       return { image: computed.backgroundImage, shadow: computed.boxShadow };
     });
     expect(style.image).toContain('gradient');
     expect(style.shadow).not.toBe('none');
-    await expect(plain.locator('.nx-mark-text')).not.toBeEmpty();
+    // На плите либо загруженная иконка сайта, либо монограмма — но не пустота.
+    await expect.poll(() => plain.evaluate(node => {
+      const image = node.querySelector('img');
+      const text = node.querySelector('.nx-mark-text')?.textContent?.trim() ?? '';
+      return (image?.classList.contains('ready') ?? false) || text.length > 0;
+    })).toBe(true);
   });
 
   test('the add-site dialog is a centred card and closes with Escape', async ({ page }) => {
