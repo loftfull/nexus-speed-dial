@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
-  CalendarDays, Check, ChevronDown, ChevronUp, Clock3, CloudSun, Droplets, Home, Layers3, LayoutGrid,
-  Briefcase, GraduationCap, PanelLeftClose, PanelLeftOpen, ShoppingBag,
+  CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, Clock3, CloudSun, Droplets, Home, Layers3, LayoutGrid,
+  Briefcase, Cloud, CloudRain, GraduationCap, ShoppingBag, Snowflake, Sun,
   Moon, MoreHorizontal, Plus, RotateCw, Search, Settings as SettingsIcon, SlidersHorizontal,
-  Star, StickyNote, Sun, Tag, Trash2, Wind, X,
+  Star, StickyNote, Tag, Trash2, Wind, X,
 } from 'lucide-react';
 
 import '../styles.css';
@@ -44,12 +44,16 @@ export const DOCK_DRAG_TYPE = 'application/x-nexus-site';
 const WEATHER_PLACES: Record<string, [number, number]> = {
   'Москва': [55.75, 37.62], 'Санкт-Петербург': [59.93, 30.31], 'Берлин': [52.52, 13.4], 'Лондон': [51.51, -0.13],
 };
+const WEATHER_ICONS: Record<number, React.ComponentType<{ size?: number }>> = {
+  0: Sun, 1: Sun, 2: CloudSun, 3: Cloud, 61: CloudRain, 63: CloudRain, 71: Snowflake,
+};
 const WEATHER_LABELS: Record<number, string> = {
   0: 'Ясно', 1: 'Преимущественно ясно', 2: 'Переменная облачность', 3: 'Пасмурно',
   61: 'Небольшой дождь', 63: 'Дождь', 71: 'Снег',
 };
-type Weather = { temp: string; label: string; hi: string; lo: string; humidity: string; wind: string; ready: boolean };
-const WEATHER_EMPTY: Weather = { temp: '—', label: 'Загрузка погоды…', hi: '', lo: '', humidity: '', wind: '', ready: false };
+type ForecastDay = { key: string; label: string; code: number; hi: string; lo: string };
+type Weather = { temp: string; label: string; hi: string; lo: string; humidity: string; wind: string; ready: boolean; days: ForecastDay[] };
+const WEATHER_EMPTY: Weather = { temp: '—', label: 'Загрузка погоды…', hi: '', lo: '', humidity: '', wind: '', ready: false, days: [] };
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
@@ -81,9 +85,13 @@ export function App() {
   const [editing, setEditing] = useState<Site | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const [panelOpen, setPanelOpen] = useState(() => readStorage('nexus-panel-open', true));
-  const [dockOpen, setDockOpen] = useState(() => readStorage('nexus-dock-open', true));
+  const [dockOpen, setDockOpen] = useState(() => readStorage('nexus-dock-open', false));
   const [searchOpen, setSearchOpen] = useState(false);
-  const [whenOpen, setWhenOpen] = useState(false);
+  const [forecastOpen, setForecastOpen] = useState(false);
+  const [openProjects, setOpenProjects] = useState<string[]>(() => readStorage('nexus-open-projects', [] as string[]));
+  const [openCategories, setOpenCategories] = useState<string[]>(() => readStorage('nexus-open-categories', [] as string[]));
+  const [groupId, setGroupId] = useState<string | null>(() => readStorage('nexus-active-group', null as string | null));
+  const [quickOpen, setQuickOpen] = useState(() => readStorage('nexus-quick-open', true));
   const [pinned, setPinned] = useState<string[]>(() => readStorage('nexus-dock-pins', [] as string[]));
   const [pinEdit, setPinEdit] = useState(false);
   const [dragOverDock, setDragOverDock] = useState(false);
@@ -107,6 +115,10 @@ export function App() {
   useEffect(() => { writeStorage('nexus-view-mode', view); }, [view]);
   useEffect(() => { writeStorage('nexus-panel-open', panelOpen); }, [panelOpen]);
   useEffect(() => { writeStorage('nexus-dock-open', dockOpen); }, [dockOpen]);
+  useEffect(() => { writeStorage('nexus-quick-open', quickOpen); }, [quickOpen]);
+  useEffect(() => { writeStorage('nexus-open-projects', openProjects); }, [openProjects]);
+  useEffect(() => { writeStorage('nexus-open-categories', openCategories); }, [openCategories]);
+  useEffect(() => { writeStorage('nexus-active-group', groupId); }, [groupId]);
   useEffect(() => { writeStorage('nexus-dock-pins', pinned); }, [pinned]);
   useEffect(() => {
     setPinned(current => {
@@ -116,7 +128,7 @@ export function App() {
   }, [sites]);
   useEffect(() => { if (!pinned.length) setPinEdit(false); }, [pinned]);
   useEffect(() => { if (searchOpen) searchInput.current?.focus(); }, [searchOpen]);
-  useEffect(() => { if (!dockOpen) setSearchOpen(false); }, [dockOpen]);
+  useEffect(() => { if (!quickOpen) setSearchOpen(false); }, [quickOpen]);
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches);
   useEffect(() => {
     const media = window.matchMedia('(max-width: 900px)');
@@ -149,7 +161,7 @@ export function App() {
       setWeather(WEATHER_EMPTY);
       fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}`
         + `&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m`
-        + `&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto${unit}`)
+        + `&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=5&timezone=auto${unit}`)
         .then(response => { if (!response.ok) throw new Error('weather'); return response.json(); })
         .then(data => {
           if (cancelled) return;
@@ -163,6 +175,13 @@ export function App() {
             humidity: current.relative_humidity_2m != null ? `${Math.round(current.relative_humidity_2m)}%` : '',
             wind: current.wind_speed_10m != null ? `${Math.round(current.wind_speed_10m)} км/ч` : '',
             ready: true,
+            days: (data?.daily?.time ?? []).slice(0, 5).map((iso: string, index: number) => ({
+              key: iso,
+              label: index === 0 ? 'Сегодня' : capitalise(new Date(iso).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' }).replace('.', '')),
+              code: data.daily.weather_code?.[index] ?? 0,
+              hi: data.daily.temperature_2m_max?.[index] != null ? `${Math.round(data.daily.temperature_2m_max[index])}°` : '',
+              lo: data.daily.temperature_2m_min?.[index] != null ? `${Math.round(data.daily.temperature_2m_min[index])}°` : '',
+            })),
           });
         })
         .catch(() => { if (!cancelled) setWeather({ ...WEATHER_EMPTY, label: 'Погода недоступна' }); });
@@ -178,7 +197,7 @@ export function App() {
       if (event.ctrlKey && key === 'n') { event.preventDefault(); setAddOpen(true); }
       if (event.ctrlKey && key === ',') { event.preventDefault(); setSettingsOpen(true); }
       if (event.ctrlKey && key === 'b') { event.preventDefault(); setSection('favorites'); }
-      if (key === 'escape') { setCalendarOpen(false); setMobileNav(false); setSettingsOpen(false); }
+      if (key === 'escape') { setCalendarOpen(false); setMobileNav(false); setSettingsOpen(false); setForecastOpen(false); }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -212,7 +231,7 @@ export function App() {
     setToast(`«${site.title}» в корзине`);
   };
 
-  const selectProject = (id: string) => { setSection('sites'); setProjectId(id); setCategoryId(null); };
+  const selectProject = (id: string) => { setSection('sites'); setProjectId(id); setCategoryId(null); setGroupId(null); };
   const addProject = () => {
     const name = prompt('Название проекта')?.trim();
     if (!name) return;
@@ -241,8 +260,9 @@ export function App() {
     if (section === 'favorites') return sites.filter(site => site.favorite);
     const ids = new Set(projectCategories.map(item => item.id));
     const withinProject = activeProjectId ? sites.filter(site => ids.has(site.categoryId ?? '')) : sites;
-    return categoryId ? withinProject.filter(site => site.categoryId === categoryId) : withinProject;
-  }, [sites, section, projectCategories, activeProjectId, categoryId]);
+    const withinCategory = categoryId ? withinProject.filter(site => site.categoryId === categoryId) : withinProject;
+    return groupId ? withinCategory.filter(site => site.groupId === groupId) : withinCategory;
+  }, [sites, section, projectCategories, activeProjectId, categoryId, groupId]);
 
   const found = useMemo(
     () => (ui.searchLocal === false || !query ? scoped : filterSites(scoped, query, {}, 'Быстрый доступ', () => [])),
@@ -359,103 +379,131 @@ export function App() {
   }
 
   const showCategoryBar = section === 'sites';
-  const dockVisible = dockOpen || narrow;
+  const quickVisible = quickOpen && !dockOpen;
   const pinnedSites = pinned.map(id => sites.find(site => site.id === id)).filter(Boolean) as Site[];
 
   return (
     <div className={'nx-root' + (panelOpen ? '' : ' panel-collapsed')}>
       <aside className={'nx-panel' + (panelOpen ? '' : ' collapsed')}>
         <div className="nx-panel-scroll">
-        <div className="nx-panel-head">
-          <span className="nx-brand" aria-hidden="true">N</span>
-          {panelOpen && <div className="nx-panel-brand"><b>Nexus</b><span>Speed Dial</span></div>}
-          <button type="button" className="nx-icon-btn nx-panel-toggle" aria-expanded={panelOpen}
+          <button type="button" className="nx-panel-head" aria-expanded={panelOpen}
             aria-label={panelOpen ? 'Свернуть боковое окно' : 'Развернуть боковое окно'}
             title={panelOpen ? 'Свернуть боковое окно' : 'Развернуть боковое окно'}
             onClick={() => setPanelOpen(value => !value)}>
-            {panelOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+            <span className="nx-brand" aria-hidden="true">N</span>
+            {panelOpen && <span className="nx-panel-brand"><b>Nexus</b><span>Speed Dial</span></span>}
           </button>
-        </div>
 
-        <div className="nx-section">
-          {panelOpen
-            ? <span className="nx-label nx-label-row">Проекты<button type="button" aria-label="Добавить проект" title="Добавить проект" onClick={addProject}><Plus size={14} /></button></span>
-            : <button type="button" className="nx-link nx-link-ghost" aria-label="Добавить проект" title="Добавить проект" onClick={addProject}><Plus size={17} /></button>}
-          {projects.map((project, index) => {
-            const Glyph = PROJECT_GLYPHS[index % PROJECT_GLYPHS.length];
-            const current = section === 'sites' && activeProjectId === project.id;
-            return (
-              <button key={project.id} type="button" title={project.name}
-                aria-label={panelOpen ? undefined : `Проект «${project.name}»`} aria-current={current ? 'true' : undefined}
-                className={'nx-link' + (current ? ' on' : '')} onClick={() => selectProject(project.id)}>
-                <Glyph size={17} />
-                {panelOpen && <><span>{project.name}</span>{current && <i>{scoped.length}</i>}</>}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="nx-section">
-          {panelOpen && <span className="nx-label">Разделы</span>}
-          {SECTIONS.map(item => (
-            <button key={item.id} type="button" title={item.label} aria-label={panelOpen ? undefined : item.label}
-              className={'nx-link' + (section === item.id ? ' on' : '')} onClick={() => setSection(item.id)}>
-              <item.icon size={17} />
-              {panelOpen && <><span>{item.label}</span>{item.id === 'trash' && trash.length > 0 && <i>{trash.length}</i>}</>}
-            </button>
-          ))}
-        </div>
-
-        {section === 'sites' && panelGroups.length > 0 && (
           <div className="nx-section">
-            {panelOpen && <span className="nx-label">Группы</span>}
-            {panelGroups.map(({ group, count }) => (
-              <button key={group.id} type="button" className="nx-link" title={group.name} onClick={() => {
-                setCategoryId(group.categoryId);
-                setView('groups');
-                window.setTimeout(() => document.getElementById(`group-${group.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
-              }}>
-                <Layers3 size={17} />
-                {panelOpen && <><span>{group.name}</span><i>{count}</i></>}
-              </button>
-            ))}
+            {panelOpen
+              ? <span className="nx-label nx-label-row">Проекты<button type="button" aria-label="Добавить проект" title="Добавить проект" onClick={addProject}><Plus size={14} /></button></span>
+              : <button type="button" className="nx-link nx-link-ghost" aria-label="Добавить проект" title="Добавить проект" onClick={addProject}><Plus size={17} /></button>}
+
+            {projects.map((project, index) => {
+              const Glyph = PROJECT_GLYPHS[index % PROJECT_GLYPHS.length];
+              const current = activeProjectId === project.id;
+              const expanded = openProjects.includes(project.id);
+              const inside = categories.filter(item => item.projectId === project.id);
+              return (
+                <div className="nx-tree-node" key={project.id}>
+                  <button type="button" className={'nx-link nx-tree-row' + (current && section === 'sites' ? ' on' : '')}
+                    title={project.name} aria-label={panelOpen ? undefined : `Проект «${project.name}»`}
+                    aria-expanded={panelOpen ? expanded : undefined}
+                    onClick={() => {
+                      selectProject(project.id);
+                      setOpenProjects(open => {
+                        if (!open.includes(project.id)) return [...open, project.id];
+                        // A second press on the project folds the whole branch away.
+                        setOpenCategories(items => items.filter(id => !inside.some(category => category.id === id)));
+                        return open.filter(id => id !== project.id);
+                      });
+                    }}>
+                    {panelOpen && <ChevronRight size={14} className={'nx-tree-caret' + (expanded ? ' open' : '')} aria-hidden="true" />}
+                    <Glyph size={17} />
+                    {panelOpen && <span>{project.name}</span>}
+                  </button>
+
+                  {panelOpen && expanded && (
+                    <div className="nx-tree-children">
+                      {inside.length === 0 && <span className="nx-tree-empty">Категорий пока нет</span>}
+                      {inside.map(category => {
+                        const catOpen = openCategories.includes(category.id);
+                        const inner = groups.filter(group => group.categoryId === category.id);
+                        return (
+                          <div key={category.id}>
+                            <button type="button" className={'nx-link nx-tree-row' + (categoryId === category.id && !groupId ? ' on' : '')}
+                              aria-expanded={catOpen} onClick={() => {
+                                setSection('sites');
+                                setProjectId(project.id);
+                                setCategoryId(category.id);
+                                setGroupId(null);
+                                setOpenCategories(open => open.includes(category.id) ? open.filter(id => id !== category.id) : [...open, category.id]);
+                              }}>
+                              <ChevronRight size={13} className={'nx-tree-caret' + (catOpen ? ' open' : '')} aria-hidden="true" />
+                              <Tag size={15} />
+                              <span>{category.name}</span>
+                            </button>
+                            {catOpen && (
+                              <div className="nx-tree-children">
+                                {inner.length === 0 && <span className="nx-tree-empty">Групп пока нет</span>}
+                                {inner.map(group => (
+                                  <button type="button" key={group.id} className={'nx-link nx-tree-row' + (groupId === group.id ? ' on' : '')}
+                                    onClick={() => {
+                                      setSection('sites');
+                                      setProjectId(project.id);
+                                      setCategoryId(category.id);
+                                      setGroupId(current => (current === group.id ? null : group.id));
+                                    }}>
+                                    <span className="nx-tree-spacer" aria-hidden="true" />
+                                    <Layers3 size={15} />
+                                    <span>{group.name}</span>
+                                  </button>
+                                ))}
+                                <button type="button" className="nx-link nx-tree-row nx-link-ghost" onClick={() => addGroup(category.id)}>
+                                  <span className="nx-tree-spacer" aria-hidden="true" />
+                                  <Plus size={15} /><span>Группа</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <button type="button" className="nx-link nx-tree-row nx-link-ghost" onClick={() => { selectProject(project.id); addCategory(); }}>
+                        <span className="nx-tree-spacer" aria-hidden="true" />
+                        <Plus size={15} /><span>Категория</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        )}
-
-
         </div>
 
         <div className="nx-panel-foot">
-          <div className={'nx-when' + (whenOpen ? ' open' : '')}>
-            <div className="nx-when-row">
-              <button type="button" className="nx-when-main" aria-expanded={whenOpen}
-                aria-label={whenOpen ? 'Свернуть подробности' : 'Показать подробности о погоде и дате'}
-                onClick={() => setWhenOpen(value => !value)}>
-                <b>{time}</b>
-                {panelOpen && <span className="nx-when-date">{dateShort}</span>}
-                {ui.weather && <span className="nx-when-temp"><CloudSun size={16} aria-hidden="true" />{weather.temp}</span>}
-                {panelOpen && <ChevronDown size={14} className="nx-when-caret" aria-hidden="true" />}
+          <div className="nx-when">
+            <button type="button" data-calendar-trigger className="nx-when-date"
+              aria-expanded={calendarOpen} aria-label={`Открыть календарь, сегодня ${dateLine}`}
+              onClick={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}>
+              <b>{time}</b>
+              {panelOpen && <span>{dateShort}</span>}
+            </button>
+            {ui.weather && (
+              <button type="button" data-forecast-trigger className="nx-when-temp"
+                aria-expanded={forecastOpen} aria-label={`Прогноз на пять дней, сейчас ${weather.temp}`}
+                title="Прогноз на 5 дней"
+                onClick={() => { setCalendarOpen(false); setForecastOpen(value => !value); }}>
+                <CloudSun size={16} aria-hidden="true" />{weather.temp}
               </button>
-              <button type="button" data-calendar-trigger className="nx-when-cal" aria-expanded={calendarOpen}
-                aria-label="Открыть календарь" title="Открыть календарь" onClick={() => setCalendarOpen(value => !value)}>
-                <CalendarDays size={16} />
-              </button>
-            </div>
-            {whenOpen && (
-              <div className="nx-when-more">
-                <span className="nx-when-full">{dateLine}</span>
-                {ui.weather && <span className="nx-when-label">{weather.label}</span>}
-                {ui.weather && weather.ready && (weather.hi || weather.humidity) && (
-                  <div className="nx-weather-stats">
-                    {weather.hi && <span title="Максимум за сутки"><ChevronUp size={13} /> {weather.hi}</span>}
-                    {weather.lo && <span title="Минимум за сутки"><ChevronDown size={13} /> {weather.lo}</span>}
-                    {weather.humidity && <span title="Влажность"><Droplets size={13} /> {weather.humidity}</span>}
-                    {weather.wind && <span title="Ветер"><Wind size={13} /> {weather.wind}</span>}
-                  </div>
-                )}
-              </div>
             )}
           </div>
+
+          <button type="button" className={'nx-link' + (quickOpen ? ' on' : '')} aria-expanded={quickOpen} aria-controls="nx-quick"
+            title={quickOpen ? 'Свернуть панель быстрого доступа' : 'Развернуть панель быстрого доступа'}
+            aria-label={quickOpen ? 'Свернуть панель быстрого доступа' : 'Развернуть панель быстрого доступа'}
+            onClick={() => setQuickOpen(value => !value)}>
+            <LayoutGrid size={17} />{panelOpen && <span>Быстрый доступ</span>}
+          </button>
 
           <button type="button" className="nx-link" title="Настройки"
             aria-label={panelOpen ? undefined : 'Настройки'} onClick={() => setSettingsOpen(true)}>
@@ -473,16 +521,19 @@ export function App() {
               {ui.weather && <span className="nx-mobile-weather"><CloudSun size={20} aria-hidden="true" /><b>{weather.temp}</b></span>}
               <button type="button" data-calendar-trigger className="nx-mobile-cal" aria-label="Открыть календарь" aria-expanded={calendarOpen} onClick={() => setCalendarOpen(value => !value)}><CalendarDays size={18} /></button>
             </div>
+            <button type="button" className={'nx-icon-btn' + (quickOpen ? ' on' : '')} aria-expanded={quickOpen} aria-controls="nx-quick"
+              aria-label={quickOpen ? 'Свернуть панель быстрого доступа' : 'Развернуть панель быстрого доступа'}
+              onClick={() => setQuickOpen(value => !value)}><LayoutGrid size={18} /></button>
             <button type="button" className="nx-icon-btn" aria-label="Настройки" onClick={() => setSettingsOpen(true)}><SettingsIcon size={18} /></button>
           </div>
 
           {showCategoryBar && (
             <nav className="nx-cats" aria-label="Категории проекта">
               <div className="nx-cats-tabs" role="tablist" aria-label="Категории проекта">
-                <button type="button" role="tab" aria-selected={!categoryId} className={'nx-cat' + (categoryId ? '' : ' on')} onClick={() => setCategoryId(null)}>Все</button>
+                <button type="button" role="tab" aria-selected={!categoryId} className={'nx-cat' + (categoryId ? '' : ' on')} onClick={() => { setCategoryId(null); setGroupId(null); }}>Все</button>
                 {projectCategories.map(category => (
                   <button key={category.id} type="button" role="tab" aria-selected={categoryId === category.id}
-                    className={'nx-cat' + (categoryId === category.id ? ' on' : '')} onClick={() => setCategoryId(category.id)}>
+                    className={'nx-cat' + (categoryId === category.id ? ' on' : '')} onClick={() => { setCategoryId(category.id); setGroupId(null); }}>
                     {category.name}
                   </button>
                 ))}
@@ -510,29 +561,9 @@ export function App() {
           {body}
         </div>
 
-        <div className="nx-dock-wrap">
-          {!dockVisible && (
-            <button type="button" className="nx-dock-call" aria-expanded={false} aria-controls="nx-dock"
-              aria-label="Открыть панель быстрого доступа" title="Открыть панель быстрого доступа"
-              onClick={() => setDockOpen(true)}>
-              <ChevronUp size={16} /><span>Быстрый доступ</span>
-            </button>
-          )}
-          <div
-            className={'nx-dock' + (dockVisible ? ' open' : '') + (searchOpen ? ' searching' : '') + (dragOverDock ? ' drop' : '')}
-            id="nx-dock" role="toolbar" aria-label="Панель быстрого доступа" aria-hidden={!dockVisible}
-            onDragOver={event => { if (event.dataTransfer.types.includes(DOCK_DRAG_TYPE)) { event.preventDefault(); setDragOverDock(true); } }}
-            onDragLeave={() => setDragOverDock(false)}
-            onDrop={event => {
-              const id = event.dataTransfer.getData(DOCK_DRAG_TYPE);
-              setDragOverDock(false);
-              if (!id) return;
-              event.preventDefault();
-              if (pinned.includes(id)) { setToast('Этот сайт уже в панели'); return; }
-              setPinned(current => [...current, id]);
-              setToast(`«${sites.find(item => item.id === id)?.title ?? 'Сайт'}» закреплён в панели`);
-            }}
-          >
+        <div className="nx-bottom">
+          <div className={'nx-quick' + (quickVisible ? ' open' : '') + (searchOpen ? ' searching' : '')}
+            id="nx-quick" role="toolbar" aria-label="Панель быстрого доступа" aria-hidden={!quickVisible}>
             {searchOpen ? (
               <label className="nx-dock-search">
                 <Search size={18} />
@@ -556,15 +587,42 @@ export function App() {
                     <item.icon size={19} />
                   </button>
                 ))}
-                {pinnedSites.length > 0 && <span className="nx-dock-sep" />}
+                <span className="nx-dock-sep" />
+                <button type="button" className={query ? 'on' : ''} aria-label="Поиск по закладкам" title="Поиск по закладкам или адрес" aria-expanded={searchOpen} onClick={() => setSearchOpen(true)}><Search size={19} /></button>
+                <button type="button" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}><Plus size={19} /></button>
+                <button type="button" aria-label="Настройки" title="Настройки (Ctrl ,)" onClick={() => setSettingsOpen(true)}><SettingsIcon size={19} /></button>
+                <button type="button" aria-label="Свернуть панель быстрого доступа" title="Свернуть панель быстрого доступа" onClick={() => setQuickOpen(false)}><ChevronDown size={19} /></button>
+              </>
+            )}
+          </div>
+
+          <div
+            className={'nx-dock' + (dockOpen ? ' open' : '') + (dragOverDock ? ' drop' : '')}
+            id="nx-dock" role="toolbar" aria-label="Док-панель" aria-hidden={!dockOpen}
+            onDragOver={event => { if (event.dataTransfer.types.includes(DOCK_DRAG_TYPE)) { event.preventDefault(); setDragOverDock(true); } }}
+            onDragLeave={() => setDragOverDock(false)}
+            onDrop={event => {
+              const id = event.dataTransfer.getData(DOCK_DRAG_TYPE);
+              setDragOverDock(false);
+              if (!id) return;
+              event.preventDefault();
+              if (pinned.includes(id)) { setToast('Этот сайт уже в док-панели'); return; }
+              setPinned(current => [...current, id]);
+              setToast(`«${sites.find(item => item.id === id)?.title ?? 'Сайт'}» закреплён в док-панели`);
+            }}
+          >
+            {pinnedSites.length === 0 ? (
+              <span className="nx-dock-empty">Перетащите сюда плитку сайта</span>
+            ) : (
+              <>
                 {pinnedSites.map(site => (
                   <span className="nx-dock-pin" key={site.id}>
                     <button type="button" className="nx-dock-pin-open" title={site.title}
-                      aria-label={pinEdit ? `Убрать «${site.title}» из панели` : `Открыть «${site.title}»`}
+                      aria-label={pinEdit ? `Убрать «${site.title}» из док-панели` : `Открыть «${site.title}»`}
                       onClick={() => {
                         if (!pinEdit) { openSite(site); return; }
                         setPinned(current => current.filter(id => id !== site.id));
-                        setToast(`«${site.title}» убран из панели`);
+                        setToast(`«${site.title}» убран из док-панели`);
                       }}>
                       <PinMark site={site} useFavicons={useFavicons} />
                     </button>
@@ -572,28 +630,29 @@ export function App() {
                   </span>
                 ))}
                 <span className="nx-dock-sep" />
-                {pinnedSites.length > 0 && (
-                  <button type="button" className={pinEdit ? 'on' : ''} aria-pressed={pinEdit}
-                    aria-label={pinEdit ? 'Закончить удаление иконок' : 'Удалить иконку сайта из панели'}
-                    title={pinEdit ? 'Закончить удаление' : 'Удалить иконку сайта из панели'}
-                    onClick={() => setPinEdit(value => !value)}>
-                    {pinEdit ? <Check size={19} /> : <Trash2 size={19} />}
-                  </button>
-                )}
-                <button type="button" className={query ? 'on' : ''} aria-label="Поиск по закладкам" title="Поиск по закладкам или адрес" aria-expanded={searchOpen} onClick={() => setSearchOpen(true)}><Search size={19} /></button>
-                <button type="button" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}><Plus size={19} /></button>
-                <button type="button" aria-label="Настройки" title="Настройки (Ctrl ,)" onClick={() => setSettingsOpen(true)}><SettingsIcon size={19} /></button>
-                {!narrow && (
-                  <button type="button" aria-label="Свернуть панель быстрого доступа" title="Свернуть панель быстрого доступа" onClick={() => setDockOpen(false)}><ChevronDown size={19} /></button>
-                )}
+                <button type="button" className={'nx-dock-edit' + (pinEdit ? ' on' : '')} aria-pressed={pinEdit}
+                  aria-label={pinEdit ? 'Закончить удаление иконок' : 'Удалить иконку сайта из док-панели'}
+                  title={pinEdit ? 'Закончить удаление' : 'Удалить иконку сайта из док-панели'}
+                  onClick={() => setPinEdit(value => !value)}>
+                  {pinEdit ? <Check size={18} /> : <Trash2 size={18} />}
+                </button>
               </>
             )}
           </div>
+
+          <button type="button" className={'nx-dock-handle' + (dockOpen ? ' on' : '')}
+            aria-expanded={dockOpen} aria-controls="nx-dock"
+            aria-label={dockOpen ? 'Скрыть док-панель' : 'Показать док-панель'}
+            title={dockOpen ? 'Скрыть док-панель' : 'Показать док-панель'}
+            onClick={() => setDockOpen(value => { const next = !value; if (next) setQuickOpen(false); return next; })}>
+            <ChevronUp size={16} />
+          </button>
         </div>
       </main>
 
       {toast && <div className="nx-toast" role="status">{toast}</div>}
       {calendarOpen && <CalendarPopover onClose={() => setCalendarOpen(false)} />}
+      {forecastOpen && <ForecastPanel weather={weather} city={ui.weatherCity} onClose={() => setForecastOpen(false)} />}
       {mobileNav && (
         <MobileSections active={SECTION_TITLE[section]} setActive={() => {}} onClose={() => setMobileNav(false)}
           onSelect={label => {
@@ -623,6 +682,53 @@ export function App() {
           groups={groups} setGroups={setGroups} ui={ui} setUi={setUi} tile={tile} setTile={setTile}
           appearance={appearance} setAppearance={setAppearance} projects={projects} setProjects={setProjects}
           sessions={sessions} setSessions={setSessions} />
+      )}
+    </div>
+  );
+}
+
+function ForecastPanel({ weather, city, onClose }: { weather: Weather; city: string; onClose: () => void }) {
+  const holder = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const away = (event: PointerEvent) => {
+      const target = event.target as Node;
+      const element = target instanceof Element ? target : target.parentElement;
+      if (holder.current?.contains(target) || element?.closest('[data-forecast-trigger]')) return;
+      onClose();
+    };
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [onClose]);
+
+  return (
+    <div className="nx-forecast" ref={holder} role="dialog" aria-label="Прогноз погоды на 5 дней">
+      <header>
+        <div>
+          <span className="nx-label">{city}</span>
+          <b>{weather.temp}</b>
+          <span className="nx-forecast-label">{weather.label}</span>
+        </div>
+        <button type="button" className="nx-icon-btn" aria-label="Закрыть прогноз" onClick={onClose}><X size={16} /></button>
+      </header>
+      {weather.ready && (weather.humidity || weather.wind) && (
+        <div className="nx-weather-stats">
+          {weather.humidity && <span title="Влажность"><Droplets size={13} /> {weather.humidity}</span>}
+          {weather.wind && <span title="Ветер"><Wind size={13} /> {weather.wind}</span>}
+        </div>
+      )}
+      {weather.days.length > 0 ? (
+        <ul className="nx-forecast-days">
+          {weather.days.map(day => (
+            <li key={day.key}>
+              <span className="nx-forecast-day">{day.label}</span>
+              <span className="nx-forecast-icon" aria-hidden="true">{(() => { const Icon = WEATHER_ICONS[day.code] ?? CloudSun; return <Icon size={17} />; })()}</span>
+              <span className="nx-forecast-sky">{WEATHER_LABELS[day.code] ?? 'Переменная облачность'}</span>
+              <span className="nx-forecast-range"><b>{day.hi}</b>{day.lo && <i>{day.lo}</i>}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="nx-forecast-label">{weather.ready ? 'Прогноз недоступен' : weather.label}</p>
       )}
     </div>
   );

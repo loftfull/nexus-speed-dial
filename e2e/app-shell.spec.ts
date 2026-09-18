@@ -61,7 +61,7 @@ test.describe('Nexus shell', () => {
     expect(opened?.[1]).toBe('_blank');
     expect(opened?.[2]).toBe('noopener,noreferrer');
 
-    await page.locator('.nx-dock').getByRole('button', { name: 'Недавние' }).click();
+    await page.locator('.nx-quick').getByRole('button', { name: 'Недавние' }).click();
     await expect(page.locator('.nx-tile-name').filter({ hasText: title! }).first()).toBeVisible();
   });
 
@@ -76,15 +76,8 @@ test.describe('Nexus shell', () => {
     await first.getByRole('menuitem', { name: 'Удалить' }).click();
     await expect(page.locator('.nx-tile')).toHaveCount(before - 1);
 
-    await page.locator('.nx-dock').getByRole('button', { name: 'Быстрый доступ' }).click();
-    // The trash lives in the project panel on desktop and in the sections sheet on mobile.
-    const panelTrash = page.locator('.nx-panel').getByRole('button', { name: 'Корзина' });
-    if (await panelTrash.isVisible()) {
-      await panelTrash.click();
-    } else {
-      await page.getByRole('button', { name: 'Разделы' }).click();
-      await page.locator('.mobile-sections-card').getByRole('button', { name: 'Корзина', exact: true }).click();
-    }
+    // Sections live in the quick-access panel now.
+    await page.locator('.nx-quick').getByRole('button', { name: 'Корзина' }).click();
     await expect(page.locator('.nx-tile-name').filter({ hasText: title! }).first()).toBeVisible();
   });
 
@@ -98,7 +91,7 @@ test.describe('Nexus shell', () => {
 
   test('the compact settings panel applies changes on the page behind it', async ({ page }) => {
     await page.goto('/');
-    await page.locator('.nx-dock').getByRole('button', { name: 'Настройки' }).click();
+    await page.locator('.nx-quick').getByRole('button', { name: 'Настройки' }).click();
     const settings = page.locator('.nx-settings');
     await expect(settings).toBeVisible();
     // The panel is not modal: the grid stays visible and keeps working next to it.
@@ -127,13 +120,13 @@ test.describe('Nexus shell', () => {
       });
     });
     await page.goto('/');
-    await page.locator('.nx-dock').getByRole('button', { name: 'Настройки' }).click();
+    await page.locator('.nx-quick').getByRole('button', { name: 'Настройки' }).click();
     const settings = page.locator('.nx-settings');
     await settings.getByRole('button', { name: 'Поиск', exact: true }).click();
     await settings.getByLabel('Поисковая система').selectOption('Яндекс');
     await settings.getByRole('button', { name: 'Закрыть настройки' }).click();
 
-    await page.locator('.nx-dock').getByRole('button', { name: 'Поиск по закладкам' }).click();
+    await page.locator('.nx-quick').getByRole('button', { name: 'Поиск по закладкам' }).click();
     const field = page.getByLabel('Поиск по закладкам или адрес');
     await field.fill('Nexus Speed Dial');
     await field.press('Enter');
@@ -141,45 +134,51 @@ test.describe('Nexus shell', () => {
     expect(String(opened?.[0])).toContain('yandex');
   });
 
-  test('the bookmark search unfolds out of the quick-access dock', async ({ page }) => {
+  test('the bookmark search unfolds out of the quick-access panel', async ({ page }) => {
     await page.goto('/');
-    // No standing search field anywhere on the page: only the dock button.
+    // No standing search field anywhere on the page: only the panel button.
     await expect(page.getByLabel('Поиск по закладкам или адрес')).toHaveCount(0);
-    const dock = page.locator('.nx-dock');
-    await expect(dock.locator('input')).toHaveCount(0);
+    const quick = page.locator('.nx-quick');
+    await expect(quick.locator('input')).toHaveCount(0);
 
     const total = await page.locator('.nx-tile').count();
-    await dock.getByRole('button', { name: 'Поиск по закладкам' }).click();
-    const field = dock.getByLabel('Поиск по закладкам или адрес');
+    await quick.getByRole('button', { name: 'Поиск по закладкам' }).click();
+    const field = quick.getByLabel('Поиск по закладкам или адрес');
     await expect(field).toBeFocused();
     await field.fill('Telegram');
     await expect(page.locator('.nx-tile')).toHaveCount(1);
 
     await field.press('Escape');
-    await expect(dock.locator('input')).toHaveCount(0);
+    await expect(quick.locator('input')).toHaveCount(0);
     await expect(page.locator('.nx-tile')).toHaveCount(total);
   });
 
-  test('the dock folds away and is called back from the bottom of the screen', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'Below 900px the dock always stays out.');
+  test('the quick-access panel and the dock are separate and never share the bar', async ({ page }) => {
     await page.goto('/');
+    const quick = page.locator('.nx-quick');
     const dock = page.locator('.nx-dock');
-    await expect(dock).toHaveClass(/open/);
-
-    await page.getByRole('button', { name: 'Свернуть панель быстрого доступа' }).click();
+    await expect(quick).toHaveClass(/open/);
     await expect(dock).not.toHaveClass(/open/);
 
-    // The call button sits at the bottom centre of the screen.
-    const call = page.getByRole('button', { name: 'Открыть панель быстрого доступа' });
-    await expect(call).toBeVisible();
-    const callBox = (await call.boundingBox())!;
+    // The half-hidden handle at the bottom edge calls the dock and folds the quick panel away.
+    const handle = page.getByRole('button', { name: 'Показать док-панель' });
+    const handleBox = (await handle.boundingBox())!;
     const viewport = page.viewportSize()!;
-    const main = (await page.locator('.nx-main').boundingBox())!;
-    expect(Math.abs((callBox.x + callBox.width / 2) - (main.x + main.width / 2))).toBeLessThan(6);
-    expect(viewport.height - (callBox.y + callBox.height)).toBeLessThan(60);
+    expect(handleBox.y).toBeLessThan(viewport.height);
+    expect(handleBox.y + handleBox.height).toBeGreaterThan(viewport.height);
 
-    await call.click();
+    await handle.click();
     await expect(dock).toHaveClass(/open/);
+    await expect(quick).not.toHaveClass(/open/);
+    await page.getByRole('button', { name: 'Скрыть док-панель' }).click();
+    await expect(dock).not.toHaveClass(/open/);
+
+    // The quick-access panel has its own separate toggle: in the side window on
+    // desktop, in the compact header below 900px.
+    await page.getByRole('button', { name: 'Развернуть панель быстрого доступа' }).first().click();
+    await expect(quick).toHaveClass(/open/);
+    await quick.getByRole('button', { name: 'Свернуть панель быстрого доступа' }).click();
+    await expect(quick).not.toHaveClass(/open/);
   });
 
   test('the side panel collapses to icons and remembers it', async ({ page }, testInfo) => {
@@ -194,9 +193,9 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-root')).toHaveClass(/panel-collapsed/);
   });
 
-  test('a site is dragged onto the dock and removed from it again', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'Dragging is a pointer gesture.');
+  test('a site is dragged onto the dock and removed from it again', async ({ page }) => {
     await page.goto('/');
+    await page.getByRole('button', { name: 'Показать док-панель' }).click();
     const dock = page.locator('.nx-dock');
     await expect(dock.locator('.nx-dock-pin')).toHaveCount(0);
 
@@ -221,23 +220,64 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-dock').locator('.nx-dock-pin')).toHaveCount(1);
 
     // The delete button turns each pin into a remove target.
-    await page.getByRole('button', { name: 'Удалить иконку сайта из панели' }).click();
-    await page.getByRole('button', { name: `Убрать «${title}» из панели` }).click();
+    await page.getByRole('button', { name: 'Удалить иконку сайта из док-панели' }).click();
+    await page.getByRole('button', { name: `Убрать «${title}» из док-панели` }).click();
     await expect(page.locator('.nx-dock').locator('.nx-dock-pin')).toHaveCount(0);
   });
 
-  test('the clock, the date and the weather share one row and expand on demand', async ({ page }, testInfo) => {
+  test('the date opens the calendar and the temperature opens a five-day forecast', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'The compact card replaces the side panel below 900px.');
+    await page.route('https://api.open-meteo.com/**', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({
+        current: { temperature_2m: 18, weather_code: 2, relative_humidity_2m: 54, wind_speed_10m: 6 },
+        daily: {
+          time: ['2026-09-18', '2026-09-19', '2026-09-20', '2026-09-21', '2026-09-22'],
+          temperature_2m_max: [20, 17, 15, 19, 22], temperature_2m_min: [11, 9, 8, 10, 13],
+          weather_code: [2, 3, 61, 1, 0],
+        },
+      }),
+    }));
     await page.goto('/');
     const when = page.locator('.nx-when');
-    await expect(when.locator('.nx-when-row')).toContainText(/\d{1,2}:\d{2}/);
-    await expect(when.locator('.nx-when-more')).toHaveCount(0);
+    await expect(when).toContainText(/\d{1,2}:\d{2}/);
+    // The row carries no calendar icon of its own any more.
+    await expect(when.locator('[data-calendar-trigger]')).toHaveCount(1);
 
-    await page.getByRole('button', { name: 'Показать подробности о погоде и дате' }).click();
-    await expect(when.locator('.nx-when-more')).toBeVisible();
-
-    await when.getByRole('button', { name: 'Открыть календарь' }).click();
+    await when.locator('[data-calendar-trigger]').click();
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeVisible();
+
+    await when.locator('[data-forecast-trigger]').click();
+    await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeHidden();
+    const forecast = page.getByRole('dialog', { name: 'Прогноз погоды на 5 дней' });
+    await expect(forecast).toBeVisible();
+    await expect(forecast.locator('li')).toHaveCount(5);
+    await expect(forecast.locator('li').first()).toContainText('Сегодня');
+  });
+
+  test('the explorer tree opens a project, then its category, then folds back', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'The side panel is replaced by the sections sheet below 900px.');
+    await page.goto('/');
+    const tree = page.locator('.nx-panel');
+    // Collapsed: only project names are listed.
+    await expect(tree.locator('.nx-tree-children')).toHaveCount(0);
+
+    await tree.getByRole('button', { name: 'Дом' }).click();
+    await expect(tree.getByRole('button', { name: 'Соцсети' })).toBeVisible();
+
+    await tree.getByRole('button', { name: 'Соцсети' }).click();
+    await expect(tree.getByRole('button', { name: 'Чаты' })).toBeVisible();
+
+    // A group narrows the grid to its own sites.
+    const all = await page.locator('.nx-tile').count();
+    await tree.getByRole('button', { name: 'Чаты' }).click();
+    const scoped = await page.locator('.nx-tile').count();
+    expect(scoped).toBeGreaterThan(0);
+    expect(scoped).toBeLessThan(all);
+
+    // Pressing the project again folds the whole branch away.
+    await tree.getByRole('button', { name: 'Дом' }).click();
+    await expect(tree.locator('.nx-tree-children')).toHaveCount(0);
   });
 
   test('the page does not repeat the project name that the side panel already shows', async ({ page }) => {
