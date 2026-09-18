@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { SettingsPanel, type SettingsProps } from './SettingsPanel';
 import type { AppearanceState, TileState, UiState } from '../domain/appStore';
+import { DEFAULT_TILE_APPEARANCE } from '../domain/tileAppearance';
 
 const ui: UiState = {
   sidebar: true, weather: true, compact: false, animations: true, newTab: true,
@@ -10,7 +11,7 @@ const ui: UiState = {
   weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true,
   localOnly: true, saveHistory: true, analytics: false,
 };
-const tile: TileState = { mode: 'standard', preset: 'glass', radius: 20, iconSize: 40, hover: 'lift', shadow: 'soft', font: 'Manrope', size: 'M' };
+const tile: TileState = { ...DEFAULT_TILE_APPEARANCE };
 const appearance: AppearanceState = { theme: 'light', accent: '#2f6fe4', wallpaper: 'aurora' };
 
 function setup(overrides: Partial<SettingsProps> = {}) {
@@ -19,7 +20,6 @@ function setup(overrides: Partial<SettingsProps> = {}) {
     sites: [], setSites: vi.fn(), categories: [], setCategories: vi.fn(),
     groups: [], setGroups: vi.fn(), projects: [], setProjects: vi.fn(),
     sessions: [], setSessions: vi.fn(),
-    density: 20, setDensity: vi.fn(),
     ui, setUi: vi.fn(), tile, setTile: vi.fn(), appearance, setAppearance: vi.fn(),
     ...overrides,
   };
@@ -30,34 +30,51 @@ function setup(overrides: Partial<SettingsProps> = {}) {
 describe('SettingsPanel', () => {
   it('открывается на разделе оформления', () => {
     setup();
-    expect(screen.getByRole('heading', { name: 'Тема' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Оформление окна' })).toBeInTheDocument();
   });
 
   it('переключает тему', async () => {
     const user = userEvent.setup();
     const props = setup();
-    await user.click(screen.getByRole('button', { name: /Тёмная/ }));
+    await user.selectOptions(screen.getByLabelText('Тема'), 'dark');
     expect(props.setAppearance).toHaveBeenCalledWith(expect.objectContaining({ theme: 'dark' }));
   });
 
-  it('меняет размер плитки в разделе плиток', async () => {
+  it('применяет готовый вид целиком', async () => {
     const user = userEvent.setup();
     const props = setup();
     await user.click(screen.getByRole('button', { name: 'Плитки' }));
-    await user.click(screen.getByRole('button', { name: 'Крупно' }));
-    const update = (props.setTile as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: TileState) => TileState;
-    expect(update(tile).size).toBe('L');
+    await user.click(screen.getByRole('button', { name: 'Готовый вид «Неон»' }));
+    expect(props.setTile).toHaveBeenCalledWith(expect.objectContaining({ preset: 'neon', surface: 'contrast' }));
   });
 
-  it('выключает значки уведомлений', async () => {
+  it('включает категорию на плитке', async () => {
     const user = userEvent.setup();
     const props = setup();
     await user.click(screen.getByRole('button', { name: 'Плитки' }));
-    const toggle = screen.getByRole('switch', { name: 'Значки уведомлений' });
-    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    const toggle = screen.getByRole('switch', { name: 'Категория' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
     await user.click(toggle);
     const update = (props.setTile as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: TileState) => TileState;
-    expect(update(tile).showNotifications).toBe(false);
+    expect(update(tile).showCategory).toBe(true);
+  });
+
+  it('предлагает ровно девять готовых видов', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: 'Плитки' }));
+    expect(screen.getAllByRole('button', { name: /^Готовый вид «/ })).toHaveLength(9);
+  });
+
+  it('гасит контрол, который на текущей подложке ничего не изменит', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: 'Плитки' }));
+    // Плотная подложка перекрывает фон, поэтому размытие отключено и объясняет почему.
+    expect(screen.getByLabelText('Размытие фона')).toBeDisabled();
+    expect(screen.getByLabelText('Насыщенность')).toBeDisabled();
+    // Причина написана рядом с каждым из погашенных контролов.
+    expect(screen.getAllByText('Видно только на прозрачной подложке')).toHaveLength(2);
   });
 
   it('меняет поисковую систему', async () => {
@@ -126,7 +143,7 @@ describe('SettingsPanel', () => {
     const user = userEvent.setup();
     const props = setup();
     await user.click(screen.getByRole('button', { name: 'Плитки' }));
-    await user.click(screen.getByRole('button', { name: 'Список' }));
+    await user.selectOptions(screen.getByLabelText('Раскладка'), 'list');
     const update = (props.setTile as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: TileState) => TileState;
     expect(update(tile).mode).toBe('list');
   });
@@ -135,7 +152,7 @@ describe('SettingsPanel', () => {
     const user = userEvent.setup();
     const props = setup();
     await user.click(screen.getByRole('button', { name: 'Боковое окно' }));
-    await user.selectOptions(screen.getByLabelText('Ширина бокового окна'), '340px');
+    await user.selectOptions(screen.getByLabelText('Ширина окна'), '340px');
     const update = (props.setUi as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: UiState) => UiState;
     expect(update(ui).sidebarWidth).toBe('340px');
   });

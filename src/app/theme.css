@@ -18,6 +18,10 @@
  --nx-r-lg:20px;
  --nx-r-md:14px;
  --nx-r-sm:10px;
+ --nx-shade-rgb:20,28,45;
+ --nx-light-rgb:255,255,255;
+ --nx-line-rgb:189,199,214;
+ --nx-glow-rgb:47,124,246;
 }
 :root[data-theme="dark"]{
  --nx-canvas:#0e1217;
@@ -32,6 +36,10 @@
  --nx-shadow:0 1px 2px rgba(0,0,0,.45),0 12px 32px rgba(0,0,0,.5);
  --nx-shadow-sm:0 1px 2px rgba(0,0,0,.35),0 5px 16px rgba(0,0,0,.35);
  --nx-shadow-lg:0 2px 8px rgba(0,0,0,.5),0 28px 64px rgba(0,0,0,.6);
+ --nx-shade-rgb:0,0,0;
+ --nx-light-rgb:62,76,95;
+ --nx-line-rgb:70,84,104;
+ --nx-glow-rgb:138,184,255;
 }
 
 @layer nx-reset, nx-ui;
@@ -159,7 +167,7 @@
 .nx-head h1{font-size:23px;font-weight:700;letter-spacing:-.5px}
 .nx-head p{font-size:13px;color:var(--nx-muted);margin-top:4px}
 /* ── сетка плиток ─────────────────────────────────────────────── */
-.nx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--nx-tile,170px),1fr));gap:var(--nx-gap,16px)}
+.nx-grid{display:grid;grid-template-columns:var(--nx-tile-cols,repeat(auto-fill,minmax(170px,1fr)));gap:var(--nx-gap,16px)}
 .nx-groups{display:flex;flex-direction:column;gap:26px}
 .nx-group{display:flex;flex-direction:column;gap:12px}
 .nx-group-head{display:flex;align-items:center;gap:9px}
@@ -167,21 +175,41 @@
 .nx-group-mark{width:22px;height:22px;flex:none;display:grid;place-items:center;border-radius:7px;background:var(--nx-accent-soft);color:var(--nx-accent)}
 .nx-group-count{font-size:12px;color:var(--nx-muted);font-weight:500}
 
-.nx-tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;
- background:var(--nx-surface);border-radius:var(--nx-tile-radius,var(--nx-r-lg));box-shadow:var(--nx-shadow-sm);padding:24px 14px 20px;
- min-height:148px;text-align:center;font-family:var(--nx-tile-font,inherit);transition:box-shadow .18s,transform .18s}
-.nx-tile:hover{box-shadow:var(--nx-shadow);transform:translateY(-2px)}
-.nx-tile-face{width:100%;display:flex;flex-direction:column;align-items:center;gap:13px}
+.nx-tile{position:relative;display:flex;flex-direction:column;align-items:var(--nx-tile-align,center);justify-content:center;gap:13px;
+ background:var(--nx-tile-bg,var(--nx-surface));border:var(--nx-tile-border,0 solid transparent);
+ border-radius:var(--nx-tile-radius,var(--nx-r-lg));
+ box-shadow:var(--nx-tile-shadow,var(--nx-shadow-sm)),var(--nx-tile-highlight,inset 0 0 0 rgba(0,0,0,0));
+ backdrop-filter:var(--nx-tile-blur,none);-webkit-backdrop-filter:var(--nx-tile-blur,none);
+ padding:24px 14px 20px;min-height:var(--nx-tile-min-h,148px);color:var(--nx-tile-ink,var(--nx-text));
+ text-align:var(--nx-tile-text-align,center);font-family:var(--nx-tile-font,inherit);
+ animation-name:var(--nx-tile-load,none);animation-duration:var(--nx-tile-transition,180ms);
+ animation-timing-function:var(--nx-tile-easing,ease);animation-fill-mode:both;
+ transition:box-shadow var(--nx-tile-transition,180ms) var(--nx-tile-easing,ease),
+  transform var(--nx-tile-transition,180ms) var(--nx-tile-easing,ease),
+  opacity var(--nx-tile-transition,180ms) var(--nx-tile-easing,ease)}
+.nx-tile:hover,.nx-tile.is-hover{
+ transform:translateY(var(--nx-tile-lift,-2px)) scale(var(--nx-tile-hover-scale,1));
+ box-shadow:var(--nx-tile-shadow,var(--nx-shadow)),var(--nx-tile-glow,0 0 0 0 transparent),
+  var(--nx-tile-highlight,inset 0 0 0 rgba(0,0,0,0))}
+.nx-tile:active,.nx-tile.is-press{transform:scale(var(--nx-tile-press-scale,.98))}
+.nx-tile[draggable="true"]:active{opacity:var(--nx-tile-drag-opacity,1)}
+.nx-tile-face:focus-visible{outline:var(--nx-tile-focus-width,2px) solid var(--nx-accent);outline-offset:3px}
+@keyframes nx-tile-fade{from{opacity:0}to{opacity:1}}
+/* Анимация появления использует `translate`, а не `transform`: иначе её конечный
+   кадр с animation-fill-mode:both перебивал бы transform наведения и масштаб образца. */
+@keyframes nx-tile-rise{from{opacity:0;translate:0 8px}to{opacity:1;translate:none}}
+.nx-tile-face{width:100%;display:flex;flex-direction:column;align-items:var(--nx-tile-align,center);gap:13px}
 .nx-mark{width:calc(var(--nx-icon,40px) + 14px);height:calc(var(--nx-icon,40px) + 14px);flex:none;border-radius:16px;
  display:grid;place-items:center;overflow:hidden;font-size:21px;font-weight:700;color:#fff;letter-spacing:-.5px}
 .nx-mark img{width:calc(var(--nx-icon,40px) - 10px);height:calc(var(--nx-icon,40px) - 10px);object-fit:contain;display:block}
 .nx-mark img[hidden],.nx-dock-mark img[hidden]{display:none}
 .nx-mark.plain{background:var(--nx-sunken)}
-.nx-tile-name{font-size:13.5px;font-weight:600;color:var(--nx-text);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nx-tile-sub{font-size:12px;color:var(--nx-muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:-7px}
-.nx-tile-badge{position:absolute;top:12px;left:12px;min-width:20px;height:20px;padding:0 6px;border-radius:10px;
- background:#d32d43;color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
-.nx-tile-star{position:absolute;top:13px;left:13px;color:#e8a71c}
+.nx-tile-name{display:var(--nx-tile-title,block);font-size:13.5px;font-weight:600;color:var(--nx-tile-ink,var(--nx-text));max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-tile-sub{display:var(--nx-tile-domain,block);font-size:12px;color:var(--nx-tile-ink-soft,var(--nx-muted));max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:-7px}
+.nx-tile-star{display:var(--nx-tile-star,block);position:absolute;top:13px;left:13px;color:#e8a71c}
+.nx-tile-cat{display:var(--nx-tile-category,none);font-size:11px;font-weight:600;letter-spacing:.3px;
+ text-transform:uppercase;color:var(--nx-tile-ink-soft,var(--nx-muted));max-width:100%;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nx-tile-more{position:absolute;top:8px;right:8px;width:28px;height:28px;display:grid;place-items:center;border-radius:9px;
  color:var(--nx-muted);opacity:0;transition:opacity .15s,background .15s}
 .nx-tile:hover .nx-tile-more,.nx-tile-more:focus-visible,.nx-tile-more[aria-expanded="true"]{opacity:1}
@@ -315,7 +343,7 @@
    изменения видно на главной странице сразу. */
 .nx-settings{
  position:fixed;top:16px;right:16px;bottom:16px;z-index:50;
- width:min(380px,calc(100vw - 32px));display:flex;flex-direction:column;
+ width:min(468px,calc(100vw - 32px));display:flex;flex-direction:column;
  background:var(--nx-surface);border-radius:var(--nx-r-lg);box-shadow:var(--nx-shadow-lg);
  color:var(--nx-text);overflow:hidden;
  animation:nx-settings-in .22s cubic-bezier(.2,.85,.25,1)
@@ -513,10 +541,6 @@
 .nx-root.compact .nx-head h1{font-size:20px}
 .nx-root.still *,.nx-root.still *:before,.nx-root.still *:after{transition:none!important;animation:none!important}
 
-/* ── эффект наведения на плитку ───────────────────────────────── */
-.nx-root.hover-none .nx-tile:hover{transform:none;box-shadow:var(--nx-shadow-sm)}
-.nx-root.hover-float .nx-tile:hover{transform:translateY(-5px) scale(1.012);box-shadow:var(--nx-shadow-lg)}
-
 /* ── цветная иконка выбранного узла проводника ────────────────── */
 .nx-tree-row.on{background:color-mix(in srgb,var(--nx-node,var(--nx-accent)) 13%,transparent);color:var(--nx-text)}
 .nx-tree-row.on>svg:not(.nx-tree-caret){color:var(--nx-node,var(--nx-accent))}
@@ -544,8 +568,8 @@
 .nx-root.swapping .nx-cats-tabs{animation:nx-swap .32s cubic-bezier(.2,.85,.25,1)}
 
 /* ── раскладки сетки ──────────────────────────────────────────── */
-.nx-tile-desc{font-size:12px;line-height:1.35;color:var(--nx-muted);max-width:100%;
- display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;overflow:hidden}
+.nx-tile-desc{font-size:12px;line-height:1.35;color:var(--nx-tile-ink-soft,var(--nx-muted));max-width:100%;
+ display:var(--nx-tile-desc,-webkit-box);-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;overflow:hidden}
 .nx-tile-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;text-align:left}
 .nx-tile-text .nx-tile-name{max-width:100%}
 .nx-tile-text .nx-tile-sub{margin-top:0}
@@ -553,14 +577,14 @@
 .nx-grid.layout-icon{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
 .nx-tile-icon{min-height:104px;padding:16px 8px 14px;gap:9px}
 .nx-tile-icon .nx-tile-name{font-size:12.5px}
+.nx-tile-icon .nx-tile-cat{display:none}
 
 .nx-grid.layout-list,.nx-grid.layout-row{grid-template-columns:minmax(0,1fr)}
 .nx-tile-list,.nx-tile-row{min-height:0;padding:12px 44px 12px 14px;text-align:left;align-items:stretch}
 .nx-tile-list .nx-tile-face,.nx-tile-row .nx-tile-face{flex-direction:row;align-items:center;gap:13px}
 .nx-tile-list .nx-tile-desc,.nx-tile-row .nx-tile-desc{-webkit-line-clamp:2;line-clamp:2}
 .nx-tile-list .nx-tile-more,.nx-tile-row .nx-tile-more{top:50%;transform:translateY(-50%)}
-.nx-tile-list .nx-tile-star,.nx-tile-row .nx-tile-star,
-.nx-tile-list .nx-tile-badge,.nx-tile-row .nx-tile-badge{top:8px;left:auto;right:44px}
+.nx-tile-list .nx-tile-star,.nx-tile-row .nx-tile-star{top:8px;left:auto;right:44px}
 
 .nx-grid.layout-preview{grid-template-columns:repeat(auto-fill,minmax(232px,1fr))}
 .nx-tile-preview{min-height:176px}
@@ -592,6 +616,13 @@
  .nx-tile-icon .nx-mark img{width:calc(var(--nx-icon,40px) - 18px);height:calc(var(--nx-icon,40px) - 18px)}
  .nx-tile-icon .nx-tile-name{font-size:11px;font-weight:500}
  .nx-tile-icon .nx-tile-more{display:none}
+ /* Три мобильные раскладки заданы явно, поэтому внутри них состав подписи
+    определяет раскладка, а не переключатели раздела «Плитки». */
+ .nx-tile-row .nx-tile-desc{display:-webkit-box}
+ .nx-tile-row .nx-tile-sub{display:block}
+ .nx-tile-table .nx-tile-desc{display:-webkit-box}
+ .nx-tile-table .nx-tile-sub{display:none}
+ .nx-tile-icon .nx-tile-desc,.nx-tile-icon .nx-tile-sub{display:none}
  .nx-tile-row{padding:11px 40px 11px 12px}
  .nx-tile-row .nx-mark{width:40px;height:40px;border-radius:13px;font-size:15px}
  .nx-tile-row .nx-mark img{width:22px;height:22px}
@@ -621,3 +652,66 @@
 .nx-keys kbd{flex:none;min-width:74px;padding:4px 8px;border-radius:7px;background:var(--nx-surface);
  border:1px solid var(--nx-line);font:inherit;font-size:11.5px;font-weight:600;color:var(--nx-text);text-align:center}
 .nx-choice-block{display:flex;flex-direction:column;gap:7px}
+
+/* ── раздел настроек: сетка ровно в три столбца ────────────────── */
+.nx-triples{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.nx-cell{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;
+ padding:10px 8px 9px;border-radius:12px;background:var(--nx-surface);text-align:center;cursor:pointer}
+.nx-cell:hover{background:color-mix(in srgb,var(--nx-accent) 7%,var(--nx-surface))}
+.nx-cell-top{display:flex;align-items:center;gap:5px;color:var(--nx-muted);line-height:0}
+.nx-cell-value{font-size:11.5px;font-weight:700;color:var(--nx-accent);line-height:1}
+.nx-cell-label{font-size:11px;line-height:1.25;color:var(--nx-muted);overflow-wrap:anywhere}
+.nx-cell-why{font-size:10px;line-height:1.2;color:var(--nx-muted);opacity:.85}
+.nx-cell input[type="range"]{width:100%;accent-color:var(--nx-accent)}
+.nx-cell select{width:100%;max-width:100%;background:var(--nx-sunken);color:var(--nx-text);
+ border:1px solid var(--nx-line);border-radius:8px;padding:5px 6px;font-size:11.5px}
+.nx-cell.off{opacity:.45;cursor:not-allowed}
+.nx-cell.off input,.nx-cell.off select,.nx-cell.off .nx-switch{pointer-events:none}
+.nx-cell .nx-swatches{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.nx-cell .nx-swatches button{width:18px;height:18px;border-radius:50%;box-shadow:0 0 0 1px var(--nx-line)}
+.nx-cell .nx-swatches button.on{box-shadow:0 0 0 2px var(--nx-surface),0 0 0 3.5px var(--nx-accent)}
+.nx-cell-pick.on{background:var(--nx-accent-soft)}
+.nx-cell-pick.on .nx-cell-top,.nx-cell-pick.on .nx-cell-label{color:var(--nx-accent)}
+.nx-cell-art{display:grid;gap:3px;width:34px}
+.nx-cell-art i{border-radius:2px;background:color-mix(in srgb,var(--nx-muted) 40%,transparent)}
+/* Каждая миниатюра повторяет свою раскладку: два столбца, строки, четыре иконки. */
+.nx-cell-art.art-table{grid-template-columns:repeat(2,1fr)}
+.nx-cell-art.art-table i{height:7px}
+.nx-cell-art.art-rows{grid-template-columns:1fr}
+.nx-cell-art.art-rows i{height:3px}
+.nx-cell-art.art-rows i:last-child{display:none}
+.nx-cell-art.art-icons{grid-template-columns:repeat(4,1fr);gap:2px}
+.nx-cell-art.art-icons i{height:11px}
+.nx-cell-pick.on .nx-cell-art i{background:var(--nx-accent)}
+
+/* ── девять готовых видов плитки ───────────────────────────────── */
+.nx-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.nx-preset{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 6px 7px;
+ border-radius:12px;background:var(--nx-sunken);box-shadow:0 0 0 1px transparent}
+.nx-preset:hover{background:color-mix(in srgb,var(--nx-accent) 8%,var(--nx-sunken))}
+.nx-preset.on{background:var(--nx-accent-soft);box-shadow:0 0 0 1.5px var(--nx-accent)}
+.nx-preset b{font-size:11px;font-weight:600;color:var(--nx-muted)}
+.nx-preset.on b{color:var(--nx-accent)}
+/* Образец — настоящая плитка, уменьшенная до размера карточки. */
+.nx-preset-stage,.nx-sample-stage{display:block;height:62px;width:100%;overflow:hidden;position:relative}
+.nx-preset-stage .nx-tile,.nx-sample-stage .nx-tile{position:absolute;top:0;left:50%;width:170px;
+ transform-origin:top center;transform:translateX(-50%) scale(.38);pointer-events:none}
+.nx-preset-stage .nx-tile:hover,.nx-sample-stage .nx-tile:hover{transform:translateX(-50%) scale(.38)}
+.nx-preset-stage .nx-tile .nx-mark{width:54px;height:54px;font-size:21px}
+
+.nx-samples{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.nx-sample{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 6px;
+ border-radius:12px;background:var(--nx-sunken)}
+.nx-sample small{font-size:10.5px;color:var(--nx-muted)}
+.nx-sample-stage{height:74px}
+.nx-sample-stage .nx-tile{transform:translateX(-50%) scale(.42)}
+/* Принудительные состояния образца повторяют живые transform. */
+.nx-sample-stage .nx-tile.is-hover{
+ transform:translateX(-50%) translateY(var(--nx-tile-lift,-2px)) scale(calc(.42 * var(--nx-tile-hover-scale,1)))}
+.nx-sample-stage .nx-tile.is-press{transform:translateX(-50%) scale(calc(.42 * var(--nx-tile-press-scale,.98)))}
+
+@media (max-width:900px){
+ .nx-triples,.nx-presets,.nx-samples{gap:6px}
+ .nx-cell{padding:8px 5px 7px}
+ .nx-cell-label{font-size:10px}
+}

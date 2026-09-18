@@ -23,7 +23,7 @@ export type TileProps = {
   layout?: TileLayout;
   showDomain?: boolean;
   showDescription?: boolean;
-  showBadge?: boolean;
+  showCategory?: boolean;
   useFavicons?: boolean;
   onOpen: () => void;
   onFavorite: () => void;
@@ -33,7 +33,7 @@ export type TileProps = {
 
 export function Tile({
   site, dragType, layout = 'standard', showDomain = false, showDescription = false,
-  showBadge = true, useFavicons = true, onOpen, onFavorite, onEdit, onDelete,
+  showCategory = false, useFavicons = true, onOpen, onFavorite, onEdit, onDelete,
 }: TileProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   // The monogram stays on screen until the site's own icon has actually loaded:
@@ -60,6 +60,7 @@ export function Tile({
   const wantsDescription = layout === 'table' || layout === 'preview' || detailed || showDescription;
   const description = layout === 'icon' ? '' : (wantsDescription ? site.desc?.trim() ?? '' : '');
   const domain = layout === 'icon' ? '' : (detailed || showDomain ? site.domain : '');
+  const category = layout === 'icon' ? '' : (showCategory ? site.category : '');
 
   return (
     <div
@@ -84,17 +85,18 @@ export function Tile({
             <span className="nx-tile-name">{site.title}</span>
             {description && <span className="nx-tile-desc">{description}</span>}
             {domain && <span className="nx-tile-sub">{domain}</span>}
+            {category && <span className="nx-tile-cat">{category}</span>}
           </span>
         ) : (
           <>
             <span className="nx-tile-name">{site.title}</span>
             {description && <span className="nx-tile-desc">{description}</span>}
             {domain && <span className="nx-tile-sub">{domain}</span>}
+            {category && <span className="nx-tile-cat">{category}</span>}
           </>
         )}
       </button>
-      {site.favorite && !site.badge && <Star className="nx-tile-star" size={14} fill="currentColor" aria-label="В избранном" />}
-      {showBadge && site.badge && <span className="nx-tile-badge" aria-label={`Уведомлений: ${site.badge}`}>{site.badge}</span>}
+      {site.favorite && <Star className="nx-tile-star" size={14} fill="currentColor" aria-label="В избранном" />}
       <button
         type="button"
         ref={toggle}

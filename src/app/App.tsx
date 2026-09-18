@@ -18,6 +18,7 @@ import { buildWebSearchUrl } from '../domain/webSearch';
 import { recordSiteOpen, resolveHistoryTarget, resolveSiteUrl } from '../domain/siteOpen';
 import { filterSites } from '../domain/siteUtils';
 import { categoryColor, groupColor, projectColor } from '../domain/nodeColor';
+import { tileLayoutClass, toTileVars } from '../domain/tileAppearance';
 import { sites as countSites } from '../domain/plural';
 import type { Category, Project, SiteGroup, SiteRecord as Site } from '../domain/types';
 
@@ -79,7 +80,6 @@ export function App() {
   const setUi = (value: typeof ui | ((current: typeof ui) => typeof ui)) => dispatch({ type: 'ui/set', value });
   const setTile = (value: typeof tile | ((current: typeof tile) => typeof tile)) => dispatch({ type: 'tile/set', value });
   const setAppearance = (value: AppearanceState | ((current: AppearanceState) => AppearanceState)) => dispatch({ type: 'appearance/set', value });
-  const setDensity = (value: number) => dispatch({ type: 'density/set', value });
 
   const [section, setSection] = useState<SectionId>('sites');
   const [projectId, setProjectId] = useState<string | null>(() => readStorage('nexus-active-project', null as string | null));
@@ -368,8 +368,7 @@ export function App() {
   // A narrow screen follows its own three arrangements; a wide one follows the tile mode.
   const MOBILE_LAYOUT: Record<MobileMode, TileLayout> = { table: 'table', rows: 'row', icons: 'icon' };
   const layout: TileLayout = narrow ? MOBILE_LAYOUT[mobileView] : ((tile.mode ?? 'standard') as TileLayout);
-  const gridStyle = { '--nx-tile': tile.size === 'S' ? '140px' : tile.size === 'L' ? '200px' : tile.size === 'XL' ? '230px' : '170px', '--nx-gap': `${state.density}px` } as React.CSSProperties;
-  const gridClass = 'nx-grid layout-' + layout;
+  const gridClass = 'nx-grid ' + tileLayoutClass(layout as typeof tile.mode);
 
   const renderTile = (site: Site) => (
     <Tile
@@ -378,9 +377,9 @@ export function App() {
       dragType={DOCK_DRAG_TYPE}
       layout={layout}
       useFavicons={useFavicons}
-      showDomain={tile.showDomain === true}
-      showDescription={tile.showDescription === true}
-      showBadge={tile.showNotifications !== false}
+      showDomain={tile.showDomain}
+      showDescription={tile.showDescription}
+      showCategory={tile.showCategory}
       onOpen={() => openSite(site)}
       onFavorite={() => toggleFavorite(site)}
       onEdit={() => setEditing(site)}
@@ -404,13 +403,13 @@ export function App() {
               <h2 className="nx-label">{block.name}</h2>
               <span className="nx-group-count">{countSites(block.sites.length)}</span>
             </div>
-            <div className={gridClass} style={gridStyle}>{block.sites.map(renderTile)}</div>
+            <div className={gridClass}>{block.sites.map(renderTile)}</div>
           </section>
         ))}</div>
       : <Empty title="Здесь пока пусто" hint="Добавьте первый сайт в эту категорию" />)
     : (shown.length
       ? <>
-          <div className={gridClass} style={gridStyle}>{shown.map(renderTile)}</div>
+          <div className={gridClass}>{shown.map(renderTile)}</div>
           {found.length > shown.length && (
             <button type="button" className="nx-more" onClick={() => setLimit(value => value + PAGE)}>
               <MoreHorizontal size={16} /> Показать больше
@@ -423,7 +422,7 @@ export function App() {
   if (section === 'trash') {
     body = trash.length ? (
       <>
-        <div className={gridClass} style={gridStyle}>
+        <div className={gridClass}>
           {trash.map(site => (
             <div className="nx-tile" key={site.id}>
               <div className="nx-tile-face">
@@ -447,7 +446,7 @@ export function App() {
   } else if (section === 'recent') {
     const items = history.map(ref => sites.find(site => site.id === ref || site.domain === ref || site.title === ref)).filter(Boolean) as Site[];
     body = items.length
-      ? <div className={gridClass} style={gridStyle}>{items.map((site, index) => <React.Fragment key={`${site.id}-${index}`}>{renderTile(site)}</React.Fragment>)}</div>
+      ? <div className={gridClass}>{items.map((site, index) => <React.Fragment key={`${site.id}-${index}`}>{renderTile(site)}</React.Fragment>)}</div>
       : <Empty title="Пока ничего не открывали" hint="Открытые сайты появятся здесь" />;
   } else if (section === 'notes') {
     body = <NotesWorkspace sites={sites.filter(site => site.note)} onEdit={setEditing} />;
@@ -479,16 +478,12 @@ export function App() {
     panelOpen ? '' : 'panel-collapsed',
     ui.compact ? 'compact' : '',
     ui.animations === false ? 'still' : '',
-    'hover-' + (tile.hover ?? 'lift'),
     swapping ? 'swapping' : '',
   ].filter(Boolean).join(' ');
+  // Все параметры плитки доходят до экрана одним набором переменных.
   const rootStyle = {
     '--nx-panel-open-w': ui.sidebarWidth ?? '292px',
-    '--nx-tile-radius': `${tile.radius ?? 20}px`,
-    '--nx-icon': `${tile.iconSize ?? 40}px`,
-    '--nx-tile-font': (tile.font ?? 'Manrope') === 'Inter'
-      ? "Inter,Manrope,system-ui,sans-serif"
-      : "Manrope,system-ui,sans-serif",
+    ...toTileVars(tile),
   } as React.CSSProperties;
 
   return (
@@ -875,7 +870,7 @@ export function App() {
         />
       )}
       {settingsOpen && (
-        <SettingsPanel onClose={() => setSettingsOpen(false)} density={state.density} setDensity={setDensity}
+        <SettingsPanel onClose={() => setSettingsOpen(false)}
           sites={sites} setSites={setSites} categories={categories} setCategories={setCategories}
           groups={groups} setGroups={setGroups} ui={ui} setUi={setUi} tile={tile} setTile={setTile}
           appearance={appearance} setAppearance={setAppearance} projects={projects} setProjects={setProjects}

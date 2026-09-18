@@ -13,7 +13,6 @@ export type SiteRecord = {
   /** Optional group inside the category. */
   groupId?: string;
   favorite?: boolean;
-  badge?: string;
   note?: string;
   tags?: string[];
   lastOpened?: number;

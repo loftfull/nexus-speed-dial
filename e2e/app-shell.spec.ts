@@ -126,7 +126,7 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeHidden();
   });
 
-  test('the compact settings panel applies changes on the page behind it', async ({ page }) => {
+  test('the compact settings panel applies changes on the page behind it', async ({ page }, testInfo) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Настройки' }).first().click();
     const settings = page.locator('.nx-settings');
@@ -134,16 +134,20 @@ test.describe('Nexus shell', () => {
     // The panel is not modal: the grid stays visible and keeps working next to it.
     await expect(page.locator('.nx-tile').first()).toBeVisible();
 
-    await settings.getByRole('button', { name: /Тёмная/ }).click();
+    await settings.getByLabel('Тема').selectOption('dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
     await settings.getByRole('button', { name: 'Плитки' }).click();
-    await settings.getByRole('switch', { name: 'Адрес сайта' }).click();
-    await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
+    const address = settings.getByRole('switch', { name: 'Адрес' });
+    await address.click();
+    await expect(address).toHaveAttribute('aria-checked', 'true');
+    // На узком экране состав подписи задаёт мобильная раскладка, а не этот переключатель.
+    const wide = testInfo.project.name !== 'mobile';
+    if (wide) await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
 
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
+    if (wide) await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
   });
 
   test('search engine setting drives what the dock search opens', async ({ page }) => {
@@ -454,7 +458,7 @@ test.describe('Nexus shell', () => {
     const panel = page.locator('.nx-panel');
     const before = (await panel.boundingBox())!.width;
     await openSettings(page, 'Боковое окно');
-    await page.getByLabel('Ширина бокового окна').selectOption('340px');
+    await page.getByLabel('Ширина окна').selectOption('340px');
     await expect.poll(async () => (await panel.boundingBox())!.width).toBeGreaterThan(before);
   });
 
@@ -463,7 +467,7 @@ test.describe('Nexus shell', () => {
     const root = page.locator('.nx-root');
     const before = await root.evaluate(el => getComputedStyle(el).backgroundImage);
     await openSettings(page, 'Оформление');
-    await page.getByRole('button', { name: 'Мята' }).click();
+    await page.getByLabel('Фон').selectOption('mint');
     await expect(page.locator('html')).toHaveAttribute('data-wallpaper', 'mint');
     await expect.poll(() => root.evaluate(el => getComputedStyle(el).backgroundImage)).not.toBe(before);
   });
@@ -472,12 +476,14 @@ test.describe('Nexus shell', () => {
     test.skip(testInfo.project.name === 'mobile', 'A narrow screen follows its own three arrangements.');
     await page.goto('/');
     await openSettings(page, 'Плитки');
-    await page.getByRole('button', { name: 'Список', exact: true }).click();
+    await page.getByLabel('Раскладка').selectOption('list');
     await expect(page.locator('.nx-grid')).toHaveClass(/layout-list/);
-    // A list row puts the icon beside the text and spells the address out.
+    // A list row puts the icon beside the text; the address follows its own switch.
     const tile = page.locator('.nx-tile').first();
-    await expect(tile.locator('.nx-tile-sub')).toBeVisible();
     await expect(tile.locator('.nx-tile-face')).toHaveCSS('flex-direction', 'row');
+    await expect(tile.locator('.nx-tile-sub')).toBeHidden();
+    await page.getByRole('switch', { name: 'Адрес' }).click();
+    await expect(tile.locator('.nx-tile-sub')).toBeVisible();
   });
 
   test('resetting a section puts its controls back', async ({ page }) => {
@@ -579,11 +585,184 @@ test.describe('Nexus shell', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Настройки' }).last().click();
     await page.locator('.nx-fold-head', { hasText: /^Мобильная версия$/ }).click();
-    await page.locator('.nx-views').getByRole('button', { name: /^Иконки/ }).click();
+    await page.locator('.nx-cell-pick', { hasText: 'Иконки' }).click();
     await page.getByRole('button', { name: 'Закрыть настройки' }).click();
     await expect(page.locator('.nx-grid')).toHaveClass(/layout-icon/);
 
     await page.reload();
     await expect(page.locator('.nx-grid')).toHaveClass(/layout-icon/);
+  });
+
+  // ── раздел «Плитки»: ни одного контрола без видимого действия ──────────
+  /** Отпечаток того, как плитка выглядит прямо сейчас на главной странице. */
+  const tileFingerprint = (page: import('@playwright/test').Page) => page.evaluate(() => {
+    const root = document.querySelector('.nx-root') as HTMLElement;
+    const grid = document.querySelector('.nx-main .nx-grid') as HTMLElement;
+    const tile = document.querySelector('.nx-main .nx-tile') as HTMLElement;
+    // Значок и звезда есть не у каждого сайта, поэтому смотрим на всю сетку сразу,
+    // иначе проверка была бы слепа к этим переключателям.
+    const part = (selector: string) => {
+      const nodes = Array.from(document.querySelectorAll('.nx-main .nx-tile ' + selector));
+      if (!nodes.length) return 'нет';
+      return nodes.length + ':' + nodes.map(node => getComputedStyle(node).display + '|' + getComputedStyle(node).width).join(',');
+    };
+    const rootStyle = getComputedStyle(root);
+    // Параметры наведения и нажатия живут в переменных: их читают правила :hover/:active.
+    const vars = ['--nx-tile-lift', '--nx-tile-hover-scale', '--nx-tile-glow', '--nx-tile-press-scale',
+      '--nx-tile-focus-width', '--nx-tile-drag-opacity', '--nx-tile-easing', '--nx-tile-load']
+      .map(name => name + '=' + rootStyle.getPropertyValue(name).trim()).join(';');
+    const tileStyle = getComputedStyle(tile);
+    const gridStyle = getComputedStyle(grid);
+    return [
+      gridStyle.gridTemplateColumns, gridStyle.gap,
+      tileStyle.borderRadius, tileStyle.backgroundColor, tileStyle.backgroundImage,
+      tileStyle.boxShadow, tileStyle.minHeight, tileStyle.borderTopWidth, tileStyle.borderTopColor,
+      tileStyle.transitionDuration, tileStyle.fontFamily, tileStyle.backdropFilter,
+      tileStyle.animationName, tileStyle.textAlign, tileStyle.alignItems, tileStyle.color,
+      part('.nx-mark'), part('.nx-mark img'), part('.nx-tile-name'), part('.nx-tile-desc'), part('.nx-tile-sub'),
+      part('.nx-tile-cat'), part('.nx-tile-star'),
+      vars,
+    ].join(' // ');
+  });
+
+  const openTiles = async (page: import('@playwright/test').Page) => {
+    await page.getByRole('button', { name: 'Настройки' }).last().click();
+    const head = page.locator('.nx-fold-head', { hasText: /^Плитки$/ });
+    if (await head.getAttribute('aria-expanded') !== 'true') await head.click();
+    await expect(head).toHaveAttribute('aria-expanded', 'true');
+  };
+
+  test('каждый из девяти готовых видов даёт свою плитку', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
+    await page.goto('/');
+    await openTiles(page);
+    const presets = page.locator('.nx-preset');
+    await expect(presets).toHaveCount(9);
+
+    const seen = new Set<string>();
+    for (let index = 0; index < 9; index += 1) {
+      await presets.nth(index).click();
+      await page.waitForTimeout(60);
+      seen.add(await tileFingerprint(page));
+    }
+    // Девять разных отпечатков: ни один готовый вид не повторяет другой.
+    expect(seen.size).toBe(9);
+  });
+
+  test('ни один контрол раздела «Плитки» не остаётся без действия', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
+    test.slow();
+    await page.goto('/');
+    // Отмечаем сайт звездой: без звезды на экране переключатель нечем проверить.
+    const first = page.locator('.nx-main .nx-tile').first();
+    await first.getByRole('button', { name: /^Действия для/ }).click();
+    await page.getByRole('menuitem', { name: 'В избранное' }).click();
+    await expect(page.locator('.nx-main .nx-tile-star')).toHaveCount(1);
+
+    await openTiles(page);
+    const section = page.locator('.nx-settings .nx-fold.open .nx-fold-body');
+    const dead: string[] = [];
+
+    const sliders = section.locator('input[type="range"]:not([disabled])');
+    for (let index = 0; index < await sliders.count(); index += 1) {
+      const slider = sliders.nth(index);
+      const label = (await slider.getAttribute('aria-label'))!;
+      const before = await tileFingerprint(page);
+      const [min, max, value] = await slider.evaluate((el: HTMLInputElement) => [el.min, el.max, el.value]);
+      // Уводим ползунок к дальнему краю, чтобы изменение точно было заметным.
+      const target = Math.abs(Number(value) - Number(min)) > Math.abs(Number(value) - Number(max)) ? min : max;
+      await slider.fill(target);
+      await page.waitForTimeout(40);
+      if (await tileFingerprint(page) === before) dead.push(`ползунок «${label}»`);
+      await slider.fill(value);
+    }
+
+    const selects = section.locator('select:not([disabled])');
+    for (let index = 0; index < await selects.count(); index += 1) {
+      const select = selects.nth(index);
+      const label = (await select.getAttribute('aria-label'))!;
+      const before = await tileFingerprint(page);
+      const [current, options] = await select.evaluate((el: HTMLSelectElement) =>
+        [el.value, Array.from(el.options).map(option => option.value)] as const);
+      const other = options.find(option => option !== current)!;
+      await select.selectOption(other);
+      await page.waitForTimeout(40);
+      if (await tileFingerprint(page) === before) dead.push(`список «${label}»`);
+      await select.selectOption(current);
+    }
+
+    const switches = section.getByRole('switch');
+    for (let index = 0; index < await switches.count(); index += 1) {
+      const toggle = switches.nth(index);
+      const label = (await toggle.getAttribute('aria-label'))!;
+      const before = await tileFingerprint(page);
+      await toggle.click();
+      await page.waitForTimeout(40);
+      if (await tileFingerprint(page) === before) dead.push(`переключатель «${label}»`);
+      await toggle.click();
+    }
+
+    expect(dead, 'контролы без видимого действия').toEqual([]);
+    // И заодно: раздел действительно наполнен, а не пуст.
+    expect(await sliders.count() + await selects.count() + await switches.count()).toBeGreaterThan(24);
+  });
+
+  test('погашенный контрол объясняет, почему он сейчас ничего не изменит', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
+    await page.goto('/');
+    await openTiles(page);
+    const blur = page.getByLabel('Размытие фона');
+    await expect(blur).toBeDisabled();
+    await expect(page.locator('.nx-cell.off', { hasText: 'Размытие фона' })).toContainText('прозрачной подложке');
+
+    // Прозрачная подложка включает его обратно.
+    await page.getByLabel('Подложка').selectOption('translucent');
+    await expect(blur).toBeEnabled();
+  });
+
+  test('образцы показывают наведение и нажатие отдельно от обычного состояния', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
+    await page.goto('/');
+    await openTiles(page);
+    // Берём вид с заметной реакцией, чтобы состояния расходились наверняка.
+    await page.getByRole('button', { name: 'Готовый вид «Приподнятый»' }).click();
+
+    const transforms = await page.locator('.nx-sample-stage .nx-tile').evaluateAll(
+      nodes => nodes.map(node => getComputedStyle(node).transform));
+    expect(transforms).toHaveLength(3);
+    expect(new Set(transforms).size).toBe(3);
+  });
+
+  test('раздел «Плитки» выложен ровно в три столбца', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'На узком экране панель занимает всю ширину.');
+    await page.goto('/');
+    await openTiles(page);
+    const grids = page.locator('.nx-settings .nx-triples, .nx-settings .nx-presets, .nx-settings .nx-samples');
+    expect(await grids.count()).toBeGreaterThan(3);
+    for (let index = 0; index < await grids.count(); index += 1) {
+      const columns = await grids.nth(index).evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+      expect(columns).toBe(3);
+    }
+    // Число ячеек в каждой группе кратно трём, поэтому строки не рвутся.
+    const groups = page.locator('.nx-settings .nx-triples');
+    for (let index = 0; index < await groups.count(); index += 1) {
+      expect(await groups.nth(index).locator(':scope > *').count() % 3).toBe(0);
+    }
+  });
+
+  test('у каждого контрола настроек есть своя иконка', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Настройки' }).last().click();
+    for (const fold of ['Общие', 'Оформление', 'Боковое окно', 'Мобильная версия', 'Поиск', 'Погода', 'Приватность']) {
+      const head = page.locator('.nx-fold-head', { hasText: new RegExp(`^${fold}$`) });
+      if (await head.getAttribute('aria-expanded') !== 'true') await head.click();
+      const cells = page.locator('.nx-fold.open .nx-cell');
+      const count = await cells.count();
+      expect(count % 3, `${fold}: число ячеек кратно трём`).toBe(0);
+      for (let index = 0; index < count; index += 1) {
+        await expect(cells.nth(index).locator('.nx-cell-top svg')).toHaveCount(1);
+      }
+      await head.click();
+    }
   });
 });
