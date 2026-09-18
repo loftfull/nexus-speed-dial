@@ -73,7 +73,6 @@ export function App() {
   const [categoryId, setCategoryId] = useState<string | null>(() => readStorage('nexus-active-category', null as string | null));
   const [view, setView] = useState<'all' | 'groups'>(() => readStorage('nexus-view-mode', 'all' as 'all' | 'groups'));
   const [query, setQuery] = useState('');
-  const [omni, setOmni] = useState('');
   const [limit, setLimit] = useState(PAGE);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -352,27 +351,10 @@ export function App() {
 
   return (
     <div className={'nx-root' + (panelOpen ? '' : ' panel-collapsed')}>
-      <nav className="nx-rail" aria-label="Проекты">
-        <span className="nx-brand" aria-hidden="true">N</span>
-        {projects.map((project, index) => {
-          const Glyph = PROJECT_GLYPHS[index % PROJECT_GLYPHS.length];
-          const current = section === 'sites' && activeProjectId === project.id;
-          return (
-            <button key={project.id} type="button" title={project.name} aria-label={`Проект «${project.name}»`} aria-current={current ? 'true' : undefined}
-              className={'nx-rail-btn' + (current ? ' on' : '')} onClick={() => selectProject(project.id)}>
-              <Glyph size={19} />
-            </button>
-          );
-        })}
-        <button type="button" className="nx-rail-btn" aria-label="Добавить проект" title="Добавить проект" onClick={addProject}><Plus size={19} /></button>
-        <span className="nx-rail-spacer" />
-        <span className="nx-rail-sep" />
-        <button type="button" className="nx-rail-btn" aria-label="Настройки" title="Настройки" onClick={() => setSettingsOpen(true)}><SettingsIcon size={19} /></button>
-      </nav>
-
       <aside className={'nx-panel' + (panelOpen ? '' : ' collapsed')}>
         <div className="nx-panel-scroll">
         <div className="nx-panel-head">
+          <span className="nx-brand" aria-hidden="true">N</span>
           {panelOpen && <div className="nx-panel-brand"><b>Nexus</b><span>Speed Dial</span></div>}
           <button type="button" className="nx-icon-btn nx-panel-toggle" aria-expanded={panelOpen}
             aria-label={panelOpen ? 'Свернуть боковое окно' : 'Развернуть боковое окно'}
@@ -382,15 +364,34 @@ export function App() {
           </button>
         </div>
 
-        {activeProject && (
-          <div className="nx-section">
-            {panelOpen && <span className="nx-label">Проект</span>}
-            <div className="nx-project-name" title={activeProject.name}>
-              <Layers3 size={17} aria-hidden="true" />
-              {panelOpen && <><b>{activeProject.name}</b><em>{countSites(scoped.length)}</em></>}
-            </div>
-          </div>
-        )}
+        <div className="nx-section">
+          {panelOpen
+            ? <span className="nx-label nx-label-row">Проекты<button type="button" aria-label="Добавить проект" title="Добавить проект" onClick={addProject}><Plus size={14} /></button></span>
+            : <button type="button" className="nx-link nx-link-ghost" aria-label="Добавить проект" title="Добавить проект" onClick={addProject}><Plus size={17} /></button>}
+          {projects.map((project, index) => {
+            const Glyph = PROJECT_GLYPHS[index % PROJECT_GLYPHS.length];
+            const current = section === 'sites' && activeProjectId === project.id;
+            return (
+              <button key={project.id} type="button" title={project.name}
+                aria-label={panelOpen ? undefined : `Проект «${project.name}»`} aria-current={current ? 'true' : undefined}
+                className={'nx-link' + (current ? ' on' : '')} onClick={() => selectProject(project.id)}>
+                <Glyph size={17} />
+                {panelOpen && <><span>{project.name}</span>{current && <i>{scoped.length}</i>}</>}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="nx-section">
+          {panelOpen && <span className="nx-label">Разделы</span>}
+          {SECTIONS.map(item => (
+            <button key={item.id} type="button" title={item.label} aria-label={panelOpen ? undefined : item.label}
+              className={'nx-link' + (section === item.id ? ' on' : '')} onClick={() => setSection(item.id)}>
+              <item.icon size={17} />
+              {panelOpen && <><span>{item.label}</span>{item.id === 'trash' && trash.length > 0 && <i>{trash.length}</i>}</>}
+            </button>
+          ))}
+        </div>
 
         {section === 'sites' && panelGroups.length > 0 && (
           <div className="nx-section">
@@ -408,16 +409,6 @@ export function App() {
           </div>
         )}
 
-        <div className="nx-section">
-          {panelOpen && <span className="nx-label">Разделы</span>}
-          {SECTIONS.map(item => (
-            <button key={item.id} type="button" title={item.label} aria-label={panelOpen ? undefined : item.label}
-              className={'nx-link' + (section === item.id ? ' on' : '')} onClick={() => setSection(item.id)}>
-              <item.icon size={17} />
-              {panelOpen && <><span>{item.label}</span>{item.id === 'trash' && trash.length > 0 && <i>{trash.length}</i>}</>}
-            </button>
-          ))}
-        </div>
 
         </div>
 
@@ -455,6 +446,11 @@ export function App() {
             <span className="nx-weather-mini" title={`${weather.temp} · ${weather.label}`}><CloudSun size={19} aria-hidden="true" /><b>{weather.temp}</b></span>
           )}
 
+          <button type="button" className="nx-link" title="Настройки"
+            aria-label={panelOpen ? undefined : 'Настройки'} onClick={() => setSettingsOpen(true)}>
+            <SettingsIcon size={17} />{panelOpen && <span>Настройки</span>}
+          </button>
+
           <div className="nx-dock-launch">
             <button type="button" className={'nx-icon-btn nx-dock-toggle' + (dockOpen ? ' on' : '')}
               aria-expanded={dockOpen} aria-controls="nx-dock"
@@ -479,20 +475,6 @@ export function App() {
             </div>
             <button type="button" className="nx-icon-btn" aria-label="Настройки" onClick={() => setSettingsOpen(true)}><SettingsIcon size={18} /></button>
           </div>
-
-          <form className="nx-omni" onSubmit={event => {
-            event.preventDefault();
-            const value = omni.trim();
-            if (!value) return;
-            const looksLikeUrl = /^https?:\/\//i.test(value) || /^[\w-]+(\.[\w-]+)+(\/|$)/.test(value);
-            openUrl(looksLikeUrl ? (/^https?:\/\//i.test(value) ? value : `https://${value}`) : buildWebSearchUrl(ui.searchEngine, value));
-            setOmni('');
-          }}>
-            <Search size={18} />
-            <input value={omni} onChange={event => setOmni(event.target.value)} placeholder="Введите запрос или адрес" aria-label="Запрос или адрес" />
-            <button type="button" aria-label="Обновить панель" title="Обновить панель" onClick={() => window.location.reload()}><RotateCw size={16} /></button>
-            <button type="button" aria-label="Сохранить как закладку" title="Сохранить как закладку" onClick={() => setAddOpen(true)}><Star size={16} /></button>
-          </form>
 
           {showCategoryBar && (
             <nav className="nx-cats" aria-label="Категории проекта">
@@ -534,8 +516,16 @@ export function App() {
               <label className="nx-dock-search">
                 <Search size={18} />
                 <input ref={searchInput} value={query} onChange={event => setQuery(event.target.value)}
-                  placeholder="Поиск по закладкам" aria-label="Поиск по закладкам"
-                  onKeyDown={event => { if (event.key === 'Escape') { setQuery(''); setSearchOpen(false); } }} />
+                  placeholder="Закладки или адрес" aria-label="Поиск по закладкам или адрес"
+                  onKeyDown={event => {
+                    if (event.key === 'Escape') { setQuery(''); setSearchOpen(false); return; }
+                    if (event.key !== 'Enter') return;
+                    event.preventDefault();
+                    const value = query.trim();
+                    if (!value) return;
+                    const isUrl = /^https?:\/\//i.test(value) || /^[\w-]+(\.[\w-]+)+(\/|$)/.test(value);
+                    openUrl(isUrl ? (/^https?:\/\//i.test(value) ? value : `https://${value}`) : buildWebSearchUrl(ui.searchEngine, value));
+                  }} />
                 <button type="button" aria-label="Закрыть поиск" onClick={() => { setQuery(''); setSearchOpen(false); }}><X size={17} /></button>
               </label>
             ) : (
@@ -546,7 +536,7 @@ export function App() {
                   </button>
                 ))}
                 <span className="nx-dock-sep" />
-                <button type="button" className={query ? 'on' : ''} aria-label="Поиск по закладкам" title="Поиск по закладкам" aria-expanded={searchOpen} onClick={() => setSearchOpen(true)}><Search size={19} /></button>
+                <button type="button" className={query ? 'on' : ''} aria-label="Поиск по закладкам" title="Поиск по закладкам или адрес" aria-expanded={searchOpen} onClick={() => setSearchOpen(true)}><Search size={19} /></button>
                 <button type="button" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}><Plus size={19} /></button>
                 <button type="button" aria-label="Настройки" title="Настройки (Ctrl ,)" onClick={() => setSettingsOpen(true)}><SettingsIcon size={19} /></button>
               </>

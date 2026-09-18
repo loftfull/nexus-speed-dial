@@ -29,7 +29,7 @@ test.describe('Nexus visual baselines', () => {
     await prepareVisualPage(page);
     await page.goto('/');
     await page.getByRole('button', { name: 'Настройки' }).first().click();
-    await expect(page.getByRole('heading', { name: 'Настройки приложения' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Настройки' })).toBeVisible();
     await expect(page).toHaveScreenshot('desktop-settings.png', { ...screenshotOptions, fullPage: true });
   });
 
@@ -53,7 +53,7 @@ test.describe('Nexus visual baselines', () => {
     await prepareVisualPage(page);
     await page.goto('/');
     await page.getByRole('button', { name: 'Настройки' }).first().click();
-    await expect(page.getByRole('heading', { name: 'Настройки приложения' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Настройки' })).toBeVisible();
     await expect(page).toHaveScreenshot('mobile-settings.png', screenshotOptions);
   });
 });

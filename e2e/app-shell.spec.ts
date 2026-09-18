@@ -116,7 +116,7 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
   });
 
-  test('search engine setting drives what the omnibox opens', async ({ page }) => {
+  test('search engine setting drives what the dock search opens', async ({ page }) => {
     await page.addInitScript(() => {
       Object.defineProperty(window, 'open', {
         configurable: true, writable: true,
@@ -133,22 +133,24 @@ test.describe('Nexus shell', () => {
     await settings.getByLabel('Поисковая система').selectOption('Яндекс');
     await settings.getByRole('button', { name: 'Закрыть настройки' }).click();
 
-    await page.getByLabel('Запрос или адрес').fill('Nexus Speed Dial');
-    await page.getByLabel('Запрос или адрес').press('Enter');
+    await page.locator('.nx-dock').getByRole('button', { name: 'Поиск по закладкам' }).click();
+    const field = page.getByLabel('Поиск по закладкам или адрес');
+    await field.fill('Nexus Speed Dial');
+    await field.press('Enter');
     const opened = await page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen);
     expect(String(opened?.[0])).toContain('yandex');
   });
 
   test('the bookmark search unfolds out of the quick-access dock', async ({ page }) => {
     await page.goto('/');
-    // No standing search field anywhere on the page.
-    await expect(page.getByLabel('Поиск по закладкам')).toHaveCount(1);
+    // No standing search field anywhere on the page: only the dock button.
+    await expect(page.getByLabel('Поиск по закладкам или адрес')).toHaveCount(0);
     const dock = page.locator('.nx-dock');
     await expect(dock.locator('input')).toHaveCount(0);
 
     const total = await page.locator('.nx-tile').count();
     await dock.getByRole('button', { name: 'Поиск по закладкам' }).click();
-    const field = dock.getByLabel('Поиск по закладкам');
+    const field = dock.getByLabel('Поиск по закладкам или адрес');
     await expect(field).toBeFocused();
     await field.fill('Telegram');
     await expect(page.locator('.nx-tile')).toHaveCount(1);
