@@ -8,7 +8,10 @@ const screenshotOptions = { maxDiffPixels: 250 } as const;
  * от того, успела ли сеть.
  */
 async function settle(page: Page) {
-  await page.waitForSelector('.nx-tile, .nx-empty');
+  // .nx-board — раскладка «рабочий стол проектов», которая стала главной по
+  // умолчанию: плиток на ней нет, и ожидание .nx-tile висело до таймаута на
+  // каждом снимке домашнего экрана.
+  await page.waitForSelector('.nx-tile, .nx-empty, .nx-board');
   // `complete` истинно и для картинки, которая не загрузилась, поэтому ждём
   // не её, а состояния самого знака: готовая картинка получает класс `ready`,
   // а неудачная исчезает совсем и остаётся монограмма. Пока есть знак с
