@@ -10,7 +10,7 @@ import type { BrowserSession, Category, Project, SiteGroup, SiteRecord as Site, 
 import { TILE_PRESETS, normalizeTileAppearance } from '../domain/tileAppearance';
 import { TileSettings } from './TileSettings';
 import { Card, Cell, Group, Pick, Switch, type ControlIcon } from './SettingControls';
-import { createBackup, parseBackup } from '../domain/backup';
+import { createBackup, parseBackup, type NexusBackup } from '../domain/backup';
 import { createBookmarkHtml, parseBookmarkHtml, withoutExistingDomains } from '../domain/importUtils';
 import { SEARCH_ENGINES } from '../domain/webSearch';
 import { sites as countSites } from '../domain/plural';
@@ -63,6 +63,7 @@ export type SettingsProps = {
   ui: UiState; setUi: (value: UiState | ((current: UiState) => UiState)) => void;
   tile: TileState; setTile: (value: TileState | ((current: TileState) => TileState)) => void;
   appearance: AppearanceState; setAppearance: (value: AppearanceState | ((current: AppearanceState) => AppearanceState)) => void;
+  onApplyBackup: (backup: NexusBackup) => void;
 };
 
 export function SettingsPanel(props: SettingsProps) {
@@ -255,7 +256,7 @@ export function SettingsPanel(props: SettingsProps) {
 
 
 
-function DataSection({ sites, setSites, categories, setCategories, groups, setGroups, projects, setProjects, sessions, setSessions, ui, tile, appearance }: SettingsProps) {
+function DataSection({ sites, setSites, categories, groups, projects, sessions, ui, tile, appearance, onApplyBackup }: SettingsProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   const [clearOpen, setClearOpen] = useState(false);
@@ -277,19 +278,19 @@ function DataSection({ sites, setSites, categories, setCategories, groups, setGr
       try {
         const text = String(reader.result);
         const html = file.name.toLowerCase().endsWith('.html') || file.type === 'text/html';
-        const parsed = html ? { sites: parseBookmarkHtml(text) } as ReturnType<typeof parseBackup> : parseBackup(text);
-        const incoming = Array.isArray(parsed.sites) ? parsed.sites as Site[] : [];
+        if (!html) {
+          const parsed = parseBackup(text);
+          onApplyBackup(parsed);
+          setMessage(`Резервная копия применена: ${countSites(parsed.sites.length)}.`);
+          return;
+        }
+
+        const incoming = parseBookmarkHtml(text);
         const fresh = withoutExistingDomains(incoming, sites).map((site, index) => ({
           ...site,
           id: site.id || `site-${site.domain.replace(/[^a-z0-9]+/gi, '-')}-${Date.now()}-${index}`,
         }));
         if (fresh.length) setSites(current => [...fresh, ...current]);
-        if (!html) {
-          if (Array.isArray(parsed.projects)) setProjects(current => mergeById(parsed.projects as Project[], current));
-          if (Array.isArray(parsed.categories)) setCategories(current => mergeById(parsed.categories as Category[], current));
-          if (Array.isArray(parsed.groups)) setGroups(current => mergeById(parsed.groups as SiteGroup[], current));
-          if (Array.isArray(parsed.sessions)) setSessions(current => mergeById(parsed.sessions as BrowserSession[], current));
-        }
         const skipped = incoming.length - fresh.length;
         setMessage(fresh.length
           ? `Добавлено ${countSites(fresh.length)}${skipped ? `, пропущено дублей: ${skipped}` : ''}.`
@@ -344,6 +345,3 @@ function DataSection({ sites, setSites, categories, setCategories, groups, setGr
   );
 }
 
-function mergeById<T extends { id?: string }>(incoming: T[], current: T[]): T[] {
-  return [...incoming, ...current.filter(item => !incoming.some(next => next.id === item.id))];
-}
