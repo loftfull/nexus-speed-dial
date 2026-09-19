@@ -3,7 +3,10 @@ export type SiteRecord = {
   id?: string;
   title: string;
   desc: string;
+  /** Display hostname kept separate from the exact destination. */
   domain: string;
+  /** Exact http(s) destination. Legacy records may omit it and fall back to domain. */
+  url?: string;
   color: string;
   icon: string;
   /** Denormalised category name, kept for import/export round-trips. */
