@@ -1,4 +1,5 @@
 import type { SiteRecord } from './types';
+import { normalizeSiteAddress } from './siteUtils';
 
 const colors = ['#3988ee', '#8b63e8', '#2aa879', '#e5a43a'];
 
@@ -28,7 +29,8 @@ export function parseBookmarkHtml(text: string): SiteRecord[] {
       const tags = Array.from(new Set(['импорт', ...folders.slice(1), ...bookmarkTags]));
       return {
         title,
-        domain: url.hostname.replace(/^www\./, ''),
+        domain: url.host.replace(/^www\./i, ''),
+        url: url.toString(),
         desc: 'Импортированная закладка',
         color: colors[index % colors.length],
         icon: title[0].toUpperCase(),
@@ -42,14 +44,22 @@ function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] as string));
 }
 
+function siteDestination(site: SiteRecord): string {
+  return normalizeSiteAddress(site.url ?? site.domain)?.url ?? `https://${site.domain}`;
+}
+
 export function createBookmarkHtml(sites: SiteRecord[]) {
   const grouped = new Map<string, SiteRecord[]>();
   sites.forEach(site => { const category = site.category || 'Личное'; grouped.set(category, [...(grouped.get(category) ?? []), site]); });
-  const folders = Array.from(grouped, ([category, items]) => `<DT><H3>${escapeHtml(category)}</H3><DL><p>${items.map(site => `<DT><A HREF="https://${escapeHtml(site.domain)}" TAGS="${escapeHtml((site.tags ?? []).filter(tag => tag !== 'импорт').join(','))}">${escapeHtml(site.title)}</A>`).join('')}</DL>`).join('');
+  const folders = Array.from(grouped, ([category, items]) => `<DT><H3>${escapeHtml(category)}</H3><DL><p>${items.map(site => `<DT><A HREF="${escapeHtml(siteDestination(site))}" TAGS="${escapeHtml((site.tags ?? []).filter(tag => tag !== 'импорт').join(','))}">${escapeHtml(site.title)}</A>`).join('')}</DL>`).join('');
   return `<!DOCTYPE NETSCAPE-Bookmark-file-1><META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8"><TITLE>Nexus bookmarks</TITLE><H1>Nexus bookmarks</H1><DL><p>${folders}</DL>`;
 }
 
+/**
+ * Legacy export name kept for callers. Dedupe is now destination-based:
+ * two different pages on the same hostname are independent bookmarks.
+ */
 export function withoutExistingDomains(imported: SiteRecord[], existing: SiteRecord[]) {
-  const existingDomains = new Set(existing.map(site => site.domain));
-  return imported.filter(site => !existingDomains.has(site.domain));
+  const existingDestinations = new Set(existing.map(siteDestination));
+  return imported.filter(site => !existingDestinations.has(siteDestination(site)));
 }
