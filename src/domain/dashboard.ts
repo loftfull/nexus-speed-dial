@@ -20,8 +20,14 @@ export type BoardColumn = {
   total: number;
   /** Сколько поместилось в карточку. */
   sites: SiteRecord[];
-  /** Ветка, в которую уводит стрелка: категория или группа. */
-  kind: 'category' | 'group';
+  /**
+   * Чем колонка является на самом деле.
+   *
+   * 'loose' — не ветка, а остаток: сайты категории, не разложенные по
+   * группам. Собственного узла у них нет, поэтому углубиться в них нельзя,
+   * и стрелку такой колонке рисовать нечем.
+   */
+  kind: 'category' | 'group' | 'loose';
 };
 
 export type ProjectCard = { project: Project; total: number };
@@ -79,7 +85,7 @@ export function boardColumns(input: BoardInput): BoardColumn[] {
       }));
     const loose = inCategory.filter(site => !site.groupId);
     if (loose.length) {
-      columns.push({ id: `${categoryId}:loose`, name: 'Без группы', kind: 'category', ...take(loose) });
+      columns.push({ id: `${categoryId}:loose`, name: 'Без группы', kind: 'loose', ...take(loose) });
     }
     return columns;
   }

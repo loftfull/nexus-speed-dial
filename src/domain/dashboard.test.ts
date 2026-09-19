@@ -62,6 +62,15 @@ describe('boardColumns', () => {
     expect(columns[0].sites.map(s => s.id)).toEqual(['s1', 's2']);
   });
 
+  it('остаток «Без группы» не выдаёт себя за категорию', () => {
+    const columns = boardColumns({ categories, groups, sites, projectId: 'p', categoryId: 'к1' });
+    const loose = columns.find(c => c.name === 'Без группы');
+    // Своего узла у остатка нет: приняв его за категорию, интерфейс нарисовал
+    // бы стрелку «углубиться», которая ведёт в несуществующий раздел.
+    expect(loose?.kind).toBe('loose');
+    expect(columns.filter(c => c.kind === 'group').map(c => c.id)).toEqual(['г1', 'г2']);
+  });
+
   it('не теряет сайты категории, не разложенные по группам', () => {
     const columns = boardColumns({ categories, groups, sites, projectId: 'p', categoryId: 'к1' });
     const loose = columns.find(c => c.id === 'к1:loose');
