@@ -256,7 +256,7 @@ export function SettingsPanel(props: SettingsProps) {
 
 
 
-function DataSection({ sites, setSites, categories, groups, projects, sessions, ui, tile, appearance, onApplyBackup }: SettingsProps) {
+function DataSection({ sites, setSites, categories, groups, projects, setProjects, sessions, setSessions, ui, tile, appearance, onApplyBackup }: SettingsProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   const [clearOpen, setClearOpen] = useState(false);
