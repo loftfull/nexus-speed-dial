@@ -334,6 +334,23 @@ export function App() {
     [scoped, query, ui.searchLocal],
   );
 
+  // Недавние занимают пустоту под деревом проектов: раньше половина панели
+  // не несла ничего. Список берётся из истории и свёрнут до последних.
+  const panelRecent = useMemo(() => {
+    if (!panelOpen || ui.panelRecent === false) return [];
+    const limit = ui.panelRecentCount ?? 6;
+    const seen = new Set<string>();
+    const found: Site[] = [];
+    for (const ref of history) {
+      const site = sites.find(item => item.id === ref || item.domain === ref || item.title === ref);
+      if (!site || seen.has(site.id ?? site.domain)) continue;
+      seen.add(site.id ?? site.domain);
+      found.push(site);
+      if (found.length >= limit) break;
+    }
+    return found;
+  }, [history, sites, panelOpen, ui.panelRecent, ui.panelRecentCount]);
+
   // Избранное живёт над сеткой и одинаково в любом проекте — как ряд избранных
   // вкладок в Arc. На узком экране полосы нет: там дорог каждый пиксель высоты.
   const favoriteBar = useMemo(() => {
@@ -735,6 +752,22 @@ export function App() {
               );
             })}
           </div>
+          )}
+
+          {panelRecent.length > 0 && (
+            <section className="nx-section nx-recent-block" aria-label="Недавно открытые">
+              <span className="nx-label">Недавние</span>
+              <div className="nx-recent-list">
+                {panelRecent.map(site => (
+                  <button key={site.id ?? site.domain} type="button" className="nx-recent-row"
+                    title={`${site.title} · ${site.domain}`} onClick={() => openSite(site)}>
+                    <SiteIcon title={site.title} domain={site.domain} color={site.color}
+                      logos={ui.siteIcons !== false} className="nx-mark nx-recent-mark" />
+                    {ui.panelRecentLabels !== false && <span>{site.title}</span>}
+                  </button>
+                ))}
+              </div>
+            </section>
           )}
         </div>
 

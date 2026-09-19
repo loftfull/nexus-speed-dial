@@ -83,7 +83,7 @@ export function SettingsPanel(props: SettingsProps) {
       case 'general': patchUi({ compact: false, animations: true, newTab: true }); break;
       case 'look': setAppearance({ ...DEFAULT_APPEARANCE }); break;
       case 'tiles': setTile({ ...DEFAULT_TILE }); patchUi({ siteIcons: true }); break;
-      case 'panel': patchUi({ sidebarWidth: '292px', projects: true, weather: true, favoritesBar: true, favoritesCount: 8, favoritesLabels: true }); break;
+      case 'panel': patchUi({ sidebarWidth: '292px', projects: true, weather: true, favoritesBar: true, favoritesCount: 8, favoritesLabels: true, panelRecent: true, panelRecentCount: 6, panelRecentLabels: true }); break;
       case 'mobile': patchUi({ mobileMode: 'table' }); break;
       case 'search': patchUi({ searchEngine: 'Google', searchLocal: true, searchSuggestions: true }); break;
       case 'weather': patchUi({ weather: true, weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true }); break;
@@ -185,6 +185,19 @@ export function SettingsPanel(props: SettingsProps) {
               onChange={value => patchUi({ projects: value })} />
             <Switch icon={CloudSun} label="Погода и часы" value={ui.weather}
               onChange={value => patchUi({ weather: value })} />
+          </Group>
+        )}
+
+        {section === 'panel' && (
+          <Group title="Недавние в панели" hint="Занимают место под деревом проектов; список берётся из истории открытий.">
+            <Switch icon={History} label="Показывать недавние" value={ui.panelRecent !== false}
+              onChange={value => patchUi({ panelRecent: value })} />
+            <Pick icon={Columns3} label="Сколько недавних" options={[['4', '4'], ['6', '6'], ['8', '8']]}
+              value={String(ui.panelRecentCount ?? 6)} onChange={value => patchUi({ panelRecentCount: Number(value) })}
+              disabled={ui.panelRecent === false} why="Недавние выключены" />
+            <Switch icon={Type} label="Названия недавних" value={ui.panelRecentLabels !== false}
+              onChange={value => patchUi({ panelRecentLabels: value })}
+              disabled={ui.panelRecent === false} why="Недавние выключены" />
           </Group>
         )}
 

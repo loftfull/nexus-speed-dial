@@ -221,7 +221,7 @@ describe('размер под окно', () => {
   it('ширина колонки идёт от окна и не уходит дальше границ', () => {
     const vars = toTileVars({ ...base, width: 170, columns: 0 });
     expect(vars['--nx-tile-cols']).toBe('repeat(auto-fill,minmax(clamp(156px,14vw,255px),1fr))');
-    expect(vars['--nx-tile-min-h']).toBe('max(148px,10vw)');
+    expect(vars['--nx-tile-min-h']).toBe('max(120px,8vw)');
   });
 
   it('границы следуют за слайдером ширины', () => {

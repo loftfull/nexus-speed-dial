@@ -211,11 +211,12 @@
 .nx-group-mark{width:22px;height:22px;flex:none;display:grid;place-items:center;border-radius:var(--nx-r-sm);background:var(--nx-accent-soft);color:var(--nx-accent)}
 .nx-group-count{font-size:var(--nx-fs-2);color:var(--nx-muted);font-weight:600}
 
-.nx-tile{position:relative;display:flex;flex-direction:column;align-items:var(--nx-tile-align,center);justify-content:center;gap:13px;
+.nx-tile{position:relative;display:flex;flex-direction:column;align-items:var(--nx-tile-align,center);justify-content:center;gap:9px;
  background:var(--nx-tile-bg,var(--nx-surface));border:var(--nx-tile-border,0 solid transparent);
  border-radius:var(--nx-tile-radius,var(--nx-r-lg));
  box-shadow:var(--nx-tile-shadow,var(--nx-shadow-sm)),var(--nx-tile-highlight,inset 0 0 0 rgba(0,0,0,0));
- padding:24px 14px 20px;min-height:var(--nx-tile-min-h,148px);aspect-ratio:var(--nx-tile-ratio,auto);
+ /* Отступы минимальные: место отдано знаку сайта. */
+ padding:14px 10px 12px;min-height:var(--nx-tile-min-h,120px);aspect-ratio:var(--nx-tile-ratio,auto);
  -webkit-backdrop-filter:var(--nx-tile-blur,none);backdrop-filter:var(--nx-tile-blur,none);
  color:var(--nx-tile-ink,var(--nx-text));
  text-align:var(--nx-tile-text-align,center);font-family:var(--nx-tile-font,inherit);
@@ -956,3 +957,15 @@
 /* Крупная ступень набирается с отрицательным трекингом — так её набирают
    Linear и Vercel; без этого заголовок выглядит разреженным. */
 .nx-head h1,.nx-action-dialog h2,.site-form h2{letter-spacing:-.4px}
+
+/* Недавние в боковой панели: раньше под деревом проектов была пустота. */
+.nx-recent-block{gap:8px}
+.nx-recent-list{display:flex;flex-direction:column;gap:2px}
+.nx-recent-row{display:flex;align-items:center;gap:10px;min-height:34px;padding:4px 8px;
+ border-radius:var(--nx-r-sm);color:var(--nx-muted);font-size:var(--nx-fs-3);font-weight:600;
+ text-align:left;transition:background .14s,color .14s}
+.nx-recent-row:hover{background:var(--nx-sunken);color:var(--nx-text)}
+.nx-recent-row>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-recent-mark{width:22px;height:22px;border-radius:var(--nx-r-xs);font-size:var(--nx-fs-1)}
+.nx-recent-mark img{width:14px;height:14px}
+.nx-panel.collapsed .nx-recent-block{display:none}

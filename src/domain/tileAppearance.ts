@@ -136,7 +136,9 @@ const clamp = (value: number, key: TileNumberKey) => {
 /** База, от которой отличаются все девять готовых видов. */
 const BASE: TileAppearance = {
   preset: 'soft', mode: 'standard',
-  width: 170, minHeight: 148, gap: 20, radius: 20, iconSize: 40, columns: 0, markRadius: 16, ratio: 'auto', anchor: 'top',
+  // Знак сайта — главное на плитке, поэтому он крупный, а отступы вокруг
+  // минимальные: карточка должна обнимать содержание.
+  width: 170, minHeight: 120, gap: 20, radius: 20, iconSize: 52, columns: 0, markRadius: 16, ratio: 'auto', anchor: 'top',
   align: 'center', font: 'Inter',
   surface: 'solid', tint: 0,
   borderWidth: 0, borderOpacity: 0, innerHighlight: false,
@@ -436,7 +438,7 @@ export function toTileVars(tile: TileAppearance): TileVars {
     '--nx-tile': `${tile.width}px`,
     // Высота тоже идёт от окна: иначе на широком экране крупная плитка
     // выглядела бы вытянутой строкой. Значение слайдера — нижняя граница.
-    '--nx-tile-min-h': `max(${tile.minHeight}px,10vw)`,
+    '--nx-tile-min-h': `max(${tile.minHeight}px,8vw)`,
     '--nx-gap': `${tile.gap}px`,
     '--nx-tile-radius': `${tile.radius}px`,
     '--nx-icon': `${tile.iconSize}px`,
