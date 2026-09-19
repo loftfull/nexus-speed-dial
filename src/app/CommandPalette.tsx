@@ -1,5 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { FolderTree, Globe, Keyboard, LayoutGrid, Layers3, Search, Tag } from './icons.generated';
+import {
+  Clock3, ExternalLink, FolderTree, Globe, Home, Keyboard, Layers3, LayoutGrid, ListFilter,
+  PanelLeft, Plus, Search, Settings as SettingsIcon, Star, StickyNote, Tag, Trash2, X,
+} from './icons.generated';
 import type { ControlIcon } from './SettingControls';
 import { SiteIcon } from './SiteIcon';
 import { rankPaletteItems } from '../domain/palette';
@@ -8,6 +11,13 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 
 const KIND_ICON: Record<Exclude<PaletteKind, 'site'>, ControlIcon> = {
   command: Keyboard, section: LayoutGrid, project: Layers3, category: Tag, group: FolderTree, web: Globe,
+};
+
+/** Своя иконка у каждой команды и раздела: одинаковые строки не читаются. */
+const NAMED_ICON: Record<string, ControlIcon> = {
+  plus: Plus, project: Layers3, category: Tag, settings: SettingsIcon, panel: PanelLeft,
+  dock: LayoutGrid, trash: Trash2, filter: ListFilter, clear: X, home: Home, star: Star,
+  clock: Clock3, note: StickyNote, search: Search, open: ExternalLink,
 };
 
 /** Подсветка попаданий в название. Диапазоны режут строку по границам символов. */
@@ -120,7 +130,7 @@ export function CommandPalette({
         <div className="nx-palette-list" id={listId} role="listbox" aria-label="Результаты" ref={listRef}>
           {visible.map((item, index) => {
             const selected = item === current;
-            const Icon = item.kind === 'site' ? null : KIND_ICON[item.kind];
+            const Icon = item.kind === 'site' ? null : (item.icon && NAMED_ICON[item.icon]) || KIND_ICON[item.kind];
             return (
               <div
                 key={item.id}

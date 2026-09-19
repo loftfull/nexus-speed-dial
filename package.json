@@ -9,7 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "qa:unit": "npm run test && npm run build",
+    "qa:unit": "npm run scale && npm run test && npm run build",
     "qa:e2e": "playwright test e2e/app-shell.spec.ts e2e/extension-bridge.spec.ts",
     "qa:e2e:bridge": "playwright test e2e/extension-bridge.spec.ts --project=desktop",
     "test:visual": "playwright test e2e/visual.spec.ts",
@@ -20,7 +20,8 @@
     "prebuild": "npm run brands",
     "predev": "npm run brands",
     "prepreview": "npm run brands",
-    "icons": "node scripts/build-icons.mjs"
+    "icons": "node scripts/build-icons.mjs",
+    "scale": "node scripts/check-scale.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.1.1",

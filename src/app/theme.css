@@ -66,7 +66,11 @@
  font:400 14px/1.45 Manrope,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
  -webkit-font-smoothing:antialiased;overflow:hidden;
 }
+/* Обводка фокуса — для кнопок и ссылок. У полей ввода свой знак фокуса
+   (рамка и мягкое кольцо), и вторая обводка поверх выглядела двойной. */
 .nx-root :focus-visible{outline:2px solid var(--nx-accent);outline-offset:2px}
+.site-form input:focus-visible,.site-form select:focus-visible,
+.nx-action-field input:focus-visible,.nx-palette-field input:focus-visible{outline:none}
 .nx-root.panel-collapsed{--nx-panel-w:76px}
 .nx-label{font-size:var(--nx-fs-1);font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--nx-muted)}
 
@@ -818,6 +822,8 @@
  border-bottom:1px solid var(--nx-line);color:var(--nx-muted);flex:none}
 .nx-palette-field input{flex:1;min-width:0;height:100%;border:0;background:none;color:var(--nx-text);
  font-size:var(--nx-fs-5);outline:none}
+/* Поле палитры — вся её шапка, поэтому знак фокуса несёт сама шапка. */
+.nx-palette-field:focus-within{border-bottom-color:color-mix(in srgb,var(--nx-accent) 58%,var(--nx-line))}
 .nx-palette-field input::placeholder{color:var(--nx-muted)}
 .nx-palette-list{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:2px}
 .nx-palette-row{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:var(--nx-r-md);

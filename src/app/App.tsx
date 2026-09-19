@@ -51,6 +51,10 @@ const SECTIONS: { id: SectionId; label: string; icon: ControlIcon }[] = [
   { id: 'trash', label: 'Корзина', icon: Trash2 },
 ];
 const SECTION_TITLE = Object.fromEntries(SECTIONS.map(s => [s.id, s.label])) as Record<SectionId, string>;
+/** Ключи иконок для палитры: сам домен остаётся без React-компонентов. */
+const SECTION_PALETTE_ICON: Record<SectionId, string> = {
+  sites: 'home', favorites: 'star', recent: 'clock', notes: 'note', trash: 'trash',
+};
 const PROJECT_GLYPHS = [Home, Briefcase, GraduationCap, Star, Layers3, ShoppingBag];
 const PAGE = 24;
 export const DOCK_DRAG_TYPE = 'application/x-nexus-site';
@@ -343,21 +347,24 @@ export function App() {
   // текущему разделу: сайт находится, даже когда неизвестно, в каком он проекте.
   const paletteCommands = useMemo(() => {
     const list = [
-      { id: 'add-site', title: 'Добавить сайт', hint: 'Новая закладка', shortcut: 'Ctrl N', keywords: 'создать закладку новый' },
-      { id: 'add-project', title: 'Новый проект', hint: 'Отдельное пространство', keywords: 'создать проект' },
-      { id: 'add-category', title: 'Новая категория', hint: 'Внутри текущего проекта', keywords: 'создать категорию' },
-      { id: 'settings', title: 'Настройки', hint: 'Оформление, панели, данные', shortcut: 'Ctrl ,', keywords: 'параметры опции' },
-      { id: 'toggle-panel', title: panelOpen ? 'Скрыть проводник' : 'Показать проводник', hint: 'Боковая панель', keywords: 'сайдбар панель дерево' },
-      { id: 'toggle-dock', title: dockOpen ? 'Скрыть док-панель' : 'Показать док-панель', hint: 'Закреплённые сайты', keywords: 'док закреплённые' },
-      { id: 'empty-trash', title: 'Очистить корзину', hint: `${trash.length} ${countSites(trash.length)}`, keywords: 'удалить корзину' },
+      { id: 'add-site', title: 'Добавить сайт', hint: 'Новая закладка', shortcut: 'Ctrl N', keywords: 'создать закладку новый', icon: 'plus' },
+      { id: 'add-project', title: 'Новый проект', hint: 'Отдельное пространство', keywords: 'создать проект', icon: 'project' },
+      { id: 'add-category', title: 'Новая категория', hint: 'Внутри текущего проекта', keywords: 'создать категорию', icon: 'category' },
+      { id: 'settings', title: 'Настройки', hint: 'Оформление, панели, данные', shortcut: 'Ctrl ,', keywords: 'параметры опции', icon: 'settings' },
+      { id: 'toggle-panel', title: panelOpen ? 'Скрыть проводник' : 'Показать проводник', hint: 'Боковая панель', keywords: 'сайдбар панель дерево', icon: 'panel' },
+      { id: 'toggle-dock', title: dockOpen ? 'Скрыть док-панель' : 'Показать док-панель', hint: 'Закреплённые сайты', keywords: 'док закреплённые', icon: 'dock' },
+      { id: 'empty-trash', title: 'Очистить корзину', hint: `В корзине ${countSites(trash.length)}`, keywords: 'удалить корзину', icon: 'trash' },
     ];
-    if (query) list.unshift({ id: 'clear-filter', title: 'Сбросить фильтр сетки', hint: `Сейчас: «${query}»`, keywords: 'очистить фильтр' });
+    if (query) list.unshift({ id: 'clear-filter', title: 'Сбросить фильтр сетки', hint: `Сейчас: «${query}»`, keywords: 'очистить фильтр', icon: 'clear' });
     return list;
   }, [panelOpen, dockOpen, trash.length, query]);
 
   const paletteItems = useMemo(() => buildPaletteItems({
     sites, projects, categories, groups,
-    sections: SECTIONS.map(item => ({ id: item.id, label: item.label, shortcut: item.id === 'favorites' ? 'Ctrl B' : undefined })),
+    sections: SECTIONS.map(item => ({
+      id: item.id, label: item.label, icon: SECTION_PALETTE_ICON[item.id],
+      shortcut: item.id === 'favorites' ? 'Ctrl B' : undefined,
+    })),
     commands: paletteCommands,
     includeSites: ui.searchLocal !== false,
     colorOf: (kind, id) => {
@@ -376,12 +383,12 @@ export function App() {
     // иначе кнопка ничего бы не делала.
     if (ui.searchLocal !== false) {
       tail.push({ id: 'command:filter', kind: 'command', ref: 'filter', title: `Отфильтровать сетку: «${text}»`,
-        hint: 'Оставить в текущем разделе только совпадения', keywords: '' });
+        hint: 'Оставить в текущем разделе только совпадения', keywords: '', icon: 'filter' });
     }
     tail.push(looksLikeUrl(text)
-      ? { id: 'web:open', kind: 'web', ref: 'open', title: `Открыть ${text}`, hint: 'Адрес', keywords: '',
+      ? { id: 'web:open', kind: 'web', ref: 'open', title: `Открыть ${text}`, hint: 'Адрес', keywords: '', icon: 'open',
           url: /^https?:\/\//i.test(text) ? text : `https://${text}` }
-      : { id: 'web:search', kind: 'web', ref: 'search', title: `Искать «${text}»`, hint: `Поиск в ${ui.searchEngine}`, keywords: '' });
+      : { id: 'web:search', kind: 'web', ref: 'search', title: `Искать «${text}»`, hint: `Поиск в ${ui.searchEngine}`, keywords: '', icon: 'search' });
     return tail;
   }, [ui.searchLocal, ui.searchEngine]);
 

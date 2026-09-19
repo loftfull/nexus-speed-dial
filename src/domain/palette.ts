@@ -20,6 +20,11 @@ export type PaletteItem = {
   keywords: string;
   /** Показывается справа и учит горячей клавише. */
   shortcut?: string;
+  /**
+   * Ключ иконки строки. Домен остаётся без React: сопоставление ключа
+   * с компонентом живёт в палитре.
+   */
+  icon?: string;
   /** Цвет узла — для кружка слева у проектов, категорий и групп. */
   color?: string;
   /** Для сайтов: чем рисовать знак и куда идти. */
@@ -100,9 +105,9 @@ export function rankPaletteItems(items: PaletteItem[], query: string, limit = 24
   return ranked.sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
-export type PaletteCommand = { id: string; title: string; hint: string; shortcut?: string; keywords?: string };
+export type PaletteCommand = { id: string; title: string; hint: string; shortcut?: string; keywords?: string; icon?: string };
 
-export type PaletteSection = { id: string; label: string; shortcut?: string };
+export type PaletteSection = { id: string; label: string; shortcut?: string; icon?: string };
 
 export type PaletteInput = {
   sites: SiteRecord[];
@@ -160,7 +165,7 @@ export function buildPaletteItems(input: PaletteInput): PaletteItem[] {
   for (const command of commands) {
     items.push({
       id: `command:${command.id}`, kind: 'command', ref: command.id,
-      title: command.title, hint: command.hint, shortcut: command.shortcut,
+      title: command.title, hint: command.hint, shortcut: command.shortcut, icon: command.icon,
       keywords: [command.keywords, 'команда'].filter(Boolean).join(' '),
     });
   }
@@ -168,7 +173,7 @@ export function buildPaletteItems(input: PaletteInput): PaletteItem[] {
   for (const section of sections) {
     items.push({
       id: `section:${section.id}`, kind: 'section', ref: section.id,
-      title: section.label, hint: 'Раздел', keywords: 'раздел перейти', shortcut: section.shortcut,
+      title: section.label, hint: 'Раздел', keywords: 'раздел перейти', shortcut: section.shortcut, icon: section.icon,
     });
   }
 
