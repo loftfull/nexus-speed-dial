@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { SettingsPanel, type SettingsProps } from './SettingsPanel';
@@ -125,7 +125,8 @@ describe('SettingsPanel', () => {
       new File([backup], 'nexus-backup.json', { type: 'application/json' }),
     );
 
-    expect(onApplyBackup).toHaveBeenCalledTimes(1);
+    // FileReader отдаёт текст асинхронно: ждём, пока onload доедет до колбэка.
+    await waitFor(() => expect(onApplyBackup).toHaveBeenCalledTimes(1));
     expect(onApplyBackup).toHaveBeenCalledWith(expect.objectContaining({
       sites: [expect.objectContaining({ id: 'site-backup', url: 'https://backup.test/docs' })],
       settings: expect.objectContaining({ ui: expect.objectContaining({ compact: true }) }),
