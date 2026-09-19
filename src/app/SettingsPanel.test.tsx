@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SettingsPanel, type SettingsProps } from './SettingsPanel';
 import type { AppearanceState, TileState, UiState } from '../domain/appStore';
 import { DEFAULT_TILE_APPEARANCE } from '../domain/tileAppearance';
+import { createBackup } from '../domain/backup';
 
 const ui: UiState = {
   sidebar: true, weather: true, compact: false, animations: true, newTab: true,
@@ -96,6 +97,39 @@ describe('SettingsPanel', () => {
     screen.getByRole('button', { name: 'Оформление' }).focus();
     await user.keyboard('{Escape}');
     expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it('hands a JSON backup to one atomic restore callback instead of mutating slices separately', async () => {
+    const user = userEvent.setup();
+    const onApplyBackup = vi.fn();
+    const props = setup({ onApplyBackup } as any);
+
+    await user.click(screen.getByRole('button', { name: 'Данные' }));
+    const backup = createBackup({
+      sites: [{ id: 'site-backup', title: 'Backup', domain: 'backup.test', url: 'https://backup.test/docs', desc: '', color: '#111', icon: 'B', category: 'Работа' }],
+      projects: [], categories: [], groups: [], sessions: [],
+      settings: {
+        ui: { compact: true, searchEngine: 'Яндекс' },
+        tile: { preset: 'flat', mode: 'list' },
+        appearance: { theme: 'dark', accent: '#c9364f', wallpaper: 'plain' },
+      },
+    }, '2026-09-19T00:00:00.000Z');
+
+    await user.upload(
+      screen.getByLabelText('Файл для импорта'),
+      new File([backup], 'nexus-backup.json', { type: 'application/json' }),
+    );
+
+    expect(onApplyBackup).toHaveBeenCalledTimes(1);
+    expect(onApplyBackup).toHaveBeenCalledWith(expect.objectContaining({
+      sites: [expect.objectContaining({ id: 'site-backup', url: 'https://backup.test/docs' })],
+      settings: expect.objectContaining({ ui: expect.objectContaining({ compact: true }) }),
+    }));
+    expect(props.setSites).not.toHaveBeenCalled();
+    expect(props.setProjects).not.toHaveBeenCalled();
+    expect(props.setCategories).not.toHaveBeenCalled();
+    expect(props.setGroups).not.toHaveBeenCalled();
+    expect(props.setSessions).not.toHaveBeenCalled();
   });
 
   it('uses an in-app destructive dialog before clearing workspace data', async () => {
