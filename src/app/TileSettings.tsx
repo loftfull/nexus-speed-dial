@@ -24,10 +24,12 @@ export type TileSettingsProps = {
 };
 
 const SURFACES: [TileAppearance['surface'], string][] = [
-  ['solid', 'Плотная'], ['tinted', 'Подложка'], ['gradient', 'Градиент'], ['contrast', 'Тёмная'],
+  ['solid', 'Плотная'], ['tinted', 'Подложка'], ['gradient', 'Градиент'],
+  ['contrast', 'Тёмная'], ['glass', 'Стекло'],
 ];
 const SHADOWS: [TileAppearance['shadowStyle'], string][] = [
   ['none', 'Нет'], ['drop', 'Обычная'], ['soft', 'Мягкая'],
+  ['neumorph', 'Рельеф'], ['material', 'Material'],
 ];
 const MODES: [TileAppearance['mode'], string, Icon][] = [
   ['standard', 'Плитки', LayoutGrid], ['icon', 'Иконки', Grid2X2], ['list', 'Список', Rows3], ['preview', 'Превью', PanelTop],
@@ -136,6 +138,14 @@ export function TileSettings({ tile, patch, applyPreset, siteIcons, setSiteIcons
           disabled={tile.shadowStyle === 'none'} why="Тень выключена" />
         <Slider icon={Droplet} label="Плотность тени" field="shadowOpacity" tile={tile} patch={patch} unit="%"
           disabled={tile.shadowStyle === 'none'} why="Тень выключена" />
+      </Group>
+
+      <Group title="Материалы" hint="Стекло размывает то, что за плиткой; слой состояния — приём Material 3: цвет содержимого поверх подложки.">
+        <Slider icon={Blend} label="Размытие" field="blur" tile={tile} patch={patch} unit=" px"
+          disabled={tile.surface !== 'glass'} why="Работает только на стеклянной подложке" />
+        <Slider icon={Contrast} label="Плотность стекла" field="fillOpacity" tile={tile} patch={patch} unit="%"
+          disabled={tile.surface !== 'glass'} why="Работает только на стеклянной подложке" />
+        <Slider icon={MousePointerClick} label="Слой состояния" field="stateLayer" tile={tile} patch={patch} unit="%" />
       </Group>
 
       <Group title="Реакция на взаимодействие">

@@ -23,6 +23,8 @@ const WEIGHTS = new Set(['400', '600', '700']);
 const RADII = new Set([
   'var(--nx-r-xs)', 'var(--nx-r-sm)', 'var(--nx-r-md)', 'var(--nx-r-lg)',
   '0', '50%', '999px',
+  // Слой состояния повторяет форму плитки, а не задаёт свою.
+  'inherit',
   // Пользовательские: их задаёт сам пользователь в разделе «Плитки».
   'var(--nx-tile-radius,var(--nx-r-lg))', 'var(--nx-mark-radius,16px)',
   // Те же ступени, записанные по углам.

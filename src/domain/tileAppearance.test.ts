@@ -26,29 +26,41 @@ const OTHER: { [K in keyof TileAppearance]: (current: TileAppearance[K]) => Tile
   showFavorite: current => !current,
   width: () => 210, minHeight: () => 200, gap: () => 8, radius: () => 4, iconSize: () => 64,
   columns: () => 4, markRadius: () => 4, tint: () => 40,
+  blur: () => 14, fillOpacity: () => 30, stateLayer: () => 10,
   borderWidth: () => 2, borderOpacity: () => 80, shadowDepth: () => 18, shadowSoftness: () => 40,
   shadowOpacity: () => 25, hoverLift: () => 10, hoverScale: () => 106, hoverShadow: () => 200,
   pressedScale: () => 92, transitionMs: () => 400,
 };
 
+/**
+ * Часть параметров работает только внутри своего материала: размытие и
+ * непрозрачность — под стеклом. Такой параметр и проверяется на своём
+ * материале, а не на плотной подложке по умолчанию.
+ */
+const BASE_FOR: Partial<Record<keyof TileAppearance, TileAppearance>> = {
+  blur: TILE_PRESETS.glass,
+  fillOpacity: TILE_PRESETS.glass,
+};
+
 describe('tileAppearance', () => {
-  it('содержит ровно девять готовых видов', () => {
-    expect(PRESET_ORDER).toHaveLength(9);
-    expect(new Set(PRESET_ORDER).size).toBe(9);
+  it('содержит ровно двенадцать готовых видов', () => {
+    expect(PRESET_ORDER).toHaveLength(12);
+    expect(new Set(PRESET_ORDER).size).toBe(12);
     PRESET_ORDER.forEach(id => expect(TILE_PRESETS[id].preset).toBe(id));
   });
 
   it('каждый готовый вид действительно отличается от остальных на экране', () => {
     const rendered = PRESET_ORDER.map(id => JSON.stringify(toTileVars(TILE_PRESETS[id])));
-    expect(new Set(rendered).size).toBe(9);
+    expect(new Set(rendered).size).toBe(12);
   });
 
   // Главная гарантия: в разделе нет ни одного контрола без видимого действия.
   it.each(Object.keys(DEFAULT_TILE_APPEARANCE) as (keyof TileAppearance)[])(
     'параметр «%s» меняет стиль плитки',
     key => {
-      const before = toTileVars(DEFAULT_TILE_APPEARANCE);
-      const changed = { ...DEFAULT_TILE_APPEARANCE, [key]: (OTHER[key] as (value: unknown) => unknown)(DEFAULT_TILE_APPEARANCE[key]) };
+      const base = BASE_FOR[key] ?? DEFAULT_TILE_APPEARANCE;
+      const before = toTileVars(base);
+      const changed = { ...base, [key]: (OTHER[key] as (value: unknown) => unknown)(base[key]) };
       if (key === 'preset') {
         // Пресет не переменная, а набор значений: он меняет плитку через них.
         expect(JSON.stringify(toTileVars(TILE_PRESETS.contrast))).not.toBe(JSON.stringify(before));
@@ -105,14 +117,40 @@ describe('tileAppearance', () => {
     expect(shown['--nx-tile-category']).toBe('block');
   });
 
-  // Пользователь попросил убрать неон, размытие и устаревшие приёмы целиком.
-  it('нигде не осталось размытия, свечения и неонового вида', () => {
+  // Стекло и рельеф вернулись как отдельные готовые виды, но вид по
+  // умолчанию остаётся плотным: ни размытия, ни слоя состояния в нём нет.
+  it('вид по умолчанию не включает ни размытия, ни слоя состояния', () => {
+    expect(DEFAULT_TILE_APPEARANCE.surface).toBe('solid');
+    expect(DEFAULT_TILE_APPEARANCE.blur).toBe(0);
+    expect(DEFAULT_TILE_APPEARANCE.stateLayer).toBe(0);
+    const vars = toTileVars(DEFAULT_TILE_APPEARANCE);
+    expect(vars['--nx-tile-blur']).toBe('none');
+    expect(vars['--nx-tile-state']).toBe('transparent');
+  });
+
+  it('размытие остаётся в пределах, на которых оно не роняет кадры', () => {
+    const [min, max] = TILE_BOUNDS.blur;
+    expect(min).toBe(0);
+    expect(max).toBe(20);
+    expect(normalizeTileAppearance({ blur: 60 }).blur).toBe(20);
+    // У готового вида «Стекло» размытие в рекомендованной полосе 8–16 px.
+    expect(TILE_PRESETS.glass.blur).toBeGreaterThanOrEqual(8);
+    expect(TILE_PRESETS.glass.blur).toBeLessThanOrEqual(16);
+  });
+
+  it('мягкий рельеф не красит плитку, чтобы совпасть с фоном под ней', () => {
+    const vars = toTileVars(TILE_PRESETS.neumorph);
+    expect(vars['--nx-tile-bg']).toBe('transparent');
+    // Две тени: сдвиги одной зеркальны другой.
+    expect(vars['--nx-tile-shadow']).toMatch(/^9px 9px 18px .+, -9px -9px 18px /);
+  });
+
+  it('свечения и неона по-прежнему нет ни в одном виде', () => {
     const everything = JSON.stringify([
       DEFAULT_TILE_APPEARANCE,
       ...PRESET_ORDER.map(id => [TILE_PRESETS[id], toTileVars(TILE_PRESETS[id])]),
     ]);
-    for (const forbidden of ['blur', 'saturate', 'neon', 'glass', 'translucent',
-      'neumorphic', 'layered', 'elevated', 'glow']) {
+    for (const forbidden of ['neon', 'saturate', 'glow', 'translucent']) {
       expect(everything).not.toContain(forbidden);
     }
   });
@@ -126,7 +164,12 @@ describe('tileAppearance', () => {
     expect(old.preset).toBe(DEFAULT_TILE_APPEARANCE.preset);
     expect(old.surface).toBe(DEFAULT_TILE_APPEARANCE.surface);
     expect(old.shadowStyle).toBe(DEFAULT_TILE_APPEARANCE.shadowStyle);
-    expect(JSON.stringify(old)).not.toContain('blur');
+    // Число из прежнего профиля переживает переезд и подрезается границами,
+    // но остаётся бездействующим: подложка откатилась к плотной, а размывать
+    // под ней нечего.
+    expect(old.blur).toBe(18);
+    expect(old.stateLayer).toBe(DEFAULT_TILE_APPEARANCE.stateLayer);
+    expect(toTileVars(old)['--nx-tile-blur']).toBe('none');
   });
 
   it('усиливает тень под курсором ровно на заданную долю', () => {

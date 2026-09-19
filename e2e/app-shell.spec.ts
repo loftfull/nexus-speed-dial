@@ -974,7 +974,9 @@ test.describe('Nexus shell', () => {
     const rootStyle = getComputedStyle(root);
     // Параметры наведения и нажатия живут в переменных: их читают правила :hover/:active.
     const vars = ['--nx-tile-lift', '--nx-tile-hover-scale', '--nx-tile-shadow-hover', '--nx-tile-press-scale',
-      '--nx-tile-focus-width', '--nx-tile-drag-opacity', '--nx-tile-easing', '--nx-tile-load']
+      '--nx-tile-focus-width', '--nx-tile-drag-opacity', '--nx-tile-easing', '--nx-tile-load',
+      // Материалы: размытие видно только под стеклом, слой состояния — под курсором.
+      '--nx-tile-blur', '--nx-tile-state', '--nx-tile-state-press']
       .map(name => name + '=' + rootStyle.getPropertyValue(name).trim()).join(';');
     const tileStyle = getComputedStyle(tile);
     const gridStyle = getComputedStyle(grid);
@@ -1001,21 +1003,71 @@ test.describe('Nexus shell', () => {
     await expect(head).toHaveAttribute('aria-expanded', 'true');
   };
 
-  test('каждый из девяти готовых видов даёт свою плитку', async ({ page }, testInfo) => {
+  test('каждый из двенадцати готовых видов даёт свою плитку', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
     await page.goto('/');
     await openTiles(page);
     const presets = page.locator('.nx-preset');
-    await expect(presets).toHaveCount(9);
+    await expect(presets).toHaveCount(12);
 
     const seen = new Set<string>();
-    for (let index = 0; index < 9; index += 1) {
+    for (let index = 0; index < 12; index += 1) {
       await presets.nth(index).click();
       await page.waitForTimeout(60);
       seen.add(await tileFingerprint(page));
     }
-    // Девять разных отпечатков: ни один готовый вид не повторяет другой.
-    expect(seen.size).toBe(9);
+    // Двенадцать разных отпечатков: ни один готовый вид не повторяет другой.
+    expect(seen.size).toBe(12);
+  });
+
+  test('стекло, рельеф и Material доходят до экрана, а не только до настроек', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
+    await page.goto('/');
+    await openTiles(page);
+    const pick = (label: string) => page.locator('.nx-preset', { hasText: label }).first().click();
+    const tile = page.locator('.nx-main .nx-tile').first();
+
+    // Стекло: размытие того, что за плиткой, в рекомендованной полосе 8–16 px.
+    await pick('Стекло');
+    await page.waitForTimeout(80);
+    const glass = await tile.evaluate(el => {
+      const style = getComputedStyle(el);
+      const prefixed = (style as unknown as Record<string, string>).webkitBackdropFilter;
+      const blur = style.backdropFilter && style.backdropFilter !== 'none' ? style.backdropFilter : prefixed;
+      return { blur, bg: style.backgroundColor };
+    });
+    expect(glass.blur).toMatch(/blur\((8|9|1[0-6])px\)/);
+    // Подложка полупрозрачная, иначе размывать было бы нечего.
+    expect(glass.bg).toMatch(/rgba|\/\s*0?\.\d+/);
+
+    // Рельеф: две зеркальные тени — сдвиги одной противоположны другой.
+    await pick('Рельеф');
+    await page.waitForTimeout(80);
+    const relief = await tile.evaluate(el => getComputedStyle(el).boxShadow);
+    const offsets = [...relief.matchAll(/(-?\d+(?:\.\d+)?)px (-?\d+(?:\.\d+)?)px/g)].map(m => [Number(m[1]), Number(m[2])]);
+    expect(offsets.length).toBeGreaterThanOrEqual(2);
+    expect(offsets.some(([x, y]) => x > 0 && y > 0)).toBe(true);
+    expect(offsets.some(([x, y]) => x < 0 && y < 0)).toBe(true);
+
+    // Material: слой состояния появляется под курсором — цвет содержимого
+    // с прозрачностью 8 %, как в спецификации, и 10 % при нажатии.
+    await pick('Material');
+    await page.waitForTimeout(80);
+    const layer = () => tile.evaluate(el => getComputedStyle(el, '::after').backgroundColor);
+    const alpha = (value: string) => {
+      const parts = value.match(/[\d.]+/g) ?? [];
+      return parts.length >= 4 ? Number(parts[3]) : 0;
+    };
+    const rest = await layer();
+    expect(alpha(rest)).toBe(0);
+    await tile.hover();
+    await page.waitForTimeout(220);
+    expect(alpha(await layer())).toBeCloseTo(0.08, 2);
+    await page.mouse.down();
+    await page.waitForTimeout(220);
+    const pressed = alpha(await layer());
+    await page.mouse.up();
+    expect(pressed).toBeCloseTo(0.1, 2);
   });
 
   test('ни один контрол раздела «Плитки» не остаётся без действия', async ({ page }, testInfo) => {

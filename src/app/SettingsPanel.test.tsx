@@ -61,11 +61,15 @@ describe('SettingsPanel', () => {
     expect(update(tile).showCategory).toBe(true);
   });
 
-  it('предлагает ровно девять готовых видов', async () => {
+  it('предлагает двенадцать готовых видов, включая три по чужим спецификациям', async () => {
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByRole('button', { name: 'Плитки' }));
-    expect(screen.getAllByRole('button', { name: /^Готовый вид «/ })).toHaveLength(9);
+    const presets = screen.getAllByRole('button', { name: /^Готовый вид «/ });
+    expect(presets).toHaveLength(12);
+    for (const label of ['Стекло', 'Рельеф', 'Material']) {
+      expect(screen.getByRole('button', { name: `Готовый вид «${label}»` })).toBeTruthy();
+    }
   });
 
   it('гасит контрол, который при текущих значениях ничего не изменит', async () => {

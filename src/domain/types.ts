@@ -24,17 +24,19 @@ export type SiteRecord = {
 
 export type TileMode = 'standard' | 'icon' | 'list' | 'preview' | 'screenshot' | 'mobile';
 /**
- * Готовые виды плитки. Прежний набор включал неон, стекло с размытием,
- * неоморфизм и слоистые тени — приёмы, которые устарели; они убраны
- * вместе со всей механикой размытия.
+ * Готовые виды плитки. Первые девять — собственный набор приложения;
+ * последние три собраны по опубликованным спецификациям чужих систем
+ * (см. docs/design-styles.md) и включаются только выбором пользователя.
  */
 export type VisualPreset =
   | 'soft' | 'compact' | 'flat' | 'outline' | 'floating'
-  | 'aurora' | 'sand' | 'contrast' | 'accent';
+  | 'aurora' | 'sand' | 'contrast' | 'accent'
+  | 'glass' | 'neumorph' | 'material';
 
 export const TILE_MODES: TileMode[] = ['standard', 'icon', 'list', 'preview', 'screenshot', 'mobile'];
 export const VISUAL_PRESETS: VisualPreset[] = [
   'soft', 'compact', 'flat', 'outline', 'floating', 'aurora', 'sand', 'contrast', 'accent',
+  'glass', 'neumorph', 'material',
 ];
 
 /** Workspace → Category → Group is the navigation hierarchy. */

@@ -30,17 +30,36 @@ export type TileAppearance = {
   font: 'Manrope' | 'Inter';
 
   /* ── поверхность ──────────────────────────────────────────── */
-  surface: 'solid' | 'tinted' | 'gradient' | 'contrast';
+  /**
+   * `glass` — полупрозрачная подложка с размытием того, что за ней
+   * (glassmorphism). Включается только выбором пользователя: по умолчанию
+   * подложка плотная.
+   */
+  surface: 'solid' | 'tinted' | 'gradient' | 'contrast' | 'glass';
   /** Доля акцентного цвета в подложке, %. */
   tint: number;
   borderWidth: number;
   borderOpacity: number;
   innerHighlight: boolean;
-  /** `soft` — мягкая многослойная тень; кольцевого свечения больше нет. */
-  shadowStyle: 'none' | 'drop' | 'soft';
+  /**
+   * `soft` — мягкая многослойная тень;
+   * `neumorph` — две зеркальные тени, тёмная вниз-вправо и светлая
+   * вверх-влево, размытие вдвое больше сдвига (мягкий рельеф);
+   * `material` — пара «ключевая + окружающая» по уровням Material 3.
+   */
+  shadowStyle: 'none' | 'drop' | 'soft' | 'neumorph' | 'material';
   shadowDepth: number;
   shadowSoftness: number;
   shadowOpacity: number;
+  /** Размытие фона под стеклом, px. 0 — стекло без размытия. */
+  blur: number;
+  /** Непрозрачность стеклянной подложки, %. */
+  fillOpacity: number;
+  /**
+   * Слой состояния Material 3: цвет содержимого поверх подложки. 0 — выключен.
+   * При нажатии слой на два пункта плотнее, как 8 % и 10 % в спецификации.
+   */
+  stateLayer: number;
 
   /* ── реакция на взаимодействие ────────────────────────────── */
   hoverLift: number;
@@ -75,6 +94,10 @@ export const TILE_BOUNDS = {
   borderWidth: [0, 3, 1],
   borderOpacity: [0, 100, 5],
   shadowDepth: [0, 24, 1],
+  // Выше 20 px размытие роняет кадры на телефонах, поэтому это и потолок.
+  blur: [0, 20, 1],
+  fillOpacity: [4, 40, 1],
+  stateLayer: [0, 16, 1],
   shadowSoftness: [0, 60, 2],
   shadowOpacity: [0, 40, 1],
   hoverLift: [0, 14, 1],
@@ -99,6 +122,7 @@ const BASE: TileAppearance = {
   surface: 'solid', tint: 0,
   borderWidth: 0, borderOpacity: 0, innerHighlight: false,
   shadowStyle: 'drop', shadowDepth: 6, shadowSoftness: 18, shadowOpacity: 6,
+  blur: 0, fillOpacity: 18, stateLayer: 0,
   hoverLift: 2, hoverScale: 100, hoverShadow: 140, pressedScale: 98,
   transitionMs: 180, easing: 'standard', focusRing: 'standard',
   loadAnimation: 'fade', dragFeedback: true,
@@ -157,15 +181,54 @@ export const TILE_PRESETS: Record<VisualPreset, TileAppearance> = {
     shadowStyle: 'soft', shadowDepth: 8, shadowSoftness: 24, shadowOpacity: 9,
     hoverLift: 3, hoverScale: 101, hoverShadow: 160, easing: 'soft',
   },
+
+  /*
+   * Три вида ниже собраны по опубликованным спецификациям чужих систем.
+   * Числа и источники разобраны в docs/design-styles.md.
+   */
+
+  // Glassmorphism: полупрозрачная подложка, размытие фона 8–16 px,
+  // тонкая светлая рамка сверху.
+  glass: {
+    ...BASE, preset: 'glass',
+    radius: 20, surface: 'glass', tint: 0, fillOpacity: 18, blur: 12,
+    borderWidth: 1, borderOpacity: 45, innerHighlight: true,
+    shadowStyle: 'soft', shadowDepth: 10, shadowSoftness: 30, shadowOpacity: 10,
+    hoverLift: 2, hoverShadow: 150, easing: 'soft',
+  },
+
+  // Soft UI: плитка того же цвета, что полотно, и две зеркальные тени,
+  // размытие вдвое больше сдвига.
+  neumorph: {
+    ...BASE, preset: 'neumorph',
+    radius: 20, surface: 'solid', tint: 0,
+    borderWidth: 0, borderOpacity: 0, innerHighlight: false,
+    shadowStyle: 'neumorph', shadowDepth: 9, shadowSoftness: 18, shadowOpacity: 8,
+    // Рельеф плохо показывает нажатие тенью, поэтому его берёт на себя масштаб.
+    hoverLift: 0, hoverShadow: 100, pressedScale: 97, transitionMs: 200, easing: 'soft',
+  },
+
+  // Material 3: уровни высоты вместо произвольной тени и слой состояния
+  // цветом содержимого — 8 % под курсором и 10 % при нажатии.
+  material: {
+    ...BASE, preset: 'material',
+    radius: 12, surface: 'solid', tint: 0,
+    shadowStyle: 'material', shadowDepth: 5, shadowSoftness: 12, shadowOpacity: 14,
+    stateLayer: 8,
+    hoverLift: 0, hoverScale: 100, hoverShadow: 140, pressedScale: 100,
+    transitionMs: 200, easing: 'standard',
+  },
 };
 
 export const PRESET_ORDER: VisualPreset[] = [
   'soft', 'compact', 'flat', 'outline', 'floating', 'aurora', 'sand', 'contrast', 'accent',
+  'glass', 'neumorph', 'material',
 ];
 
 export const PRESET_LABELS: Record<VisualPreset, string> = {
   soft: 'Мягкий', compact: 'Плотный', flat: 'Плоский', outline: 'Контур', floating: 'Парящий',
   aurora: 'Аврора', sand: 'Песочный', contrast: 'Тёмный', accent: 'Акцент',
+  glass: 'Стекло', neumorph: 'Рельеф', material: 'Material',
 };
 
 export const DEFAULT_TILE_APPEARANCE: TileAppearance = { ...TILE_PRESETS.soft };
@@ -190,8 +253,8 @@ export function normalizeTileAppearance(value: unknown): TileAppearance {
     anchor: ONE_OF(raw.anchor, ['top', 'center'] as const, DEFAULT_TILE_APPEARANCE.anchor),
     align: ONE_OF(raw.align, ['left', 'center'] as const, DEFAULT_TILE_APPEARANCE.align),
     font: ONE_OF(raw.font, ['Manrope', 'Inter'] as const, DEFAULT_TILE_APPEARANCE.font),
-    surface: ONE_OF(raw.surface, ['solid', 'tinted', 'gradient', 'contrast'] as const, DEFAULT_TILE_APPEARANCE.surface),
-    shadowStyle: ONE_OF(raw.shadowStyle, ['none', 'drop', 'soft'] as const, DEFAULT_TILE_APPEARANCE.shadowStyle),
+    surface: ONE_OF(raw.surface, ['solid', 'tinted', 'gradient', 'contrast', 'glass'] as const, DEFAULT_TILE_APPEARANCE.surface),
+    shadowStyle: ONE_OF(raw.shadowStyle, ['none', 'drop', 'soft', 'neumorph', 'material'] as const, DEFAULT_TILE_APPEARANCE.shadowStyle),
     easing: ONE_OF(raw.easing, ['standard', 'soft', 'snappy'] as const, DEFAULT_TILE_APPEARANCE.easing),
     focusRing: ONE_OF(raw.focusRing, ['minimal', 'standard', 'strong'] as const, DEFAULT_TILE_APPEARANCE.focusRing),
     loadAnimation: ONE_OF(raw.loadAnimation, ['none', 'fade', 'rise'] as const, DEFAULT_TILE_APPEARANCE.loadAnimation),
@@ -215,6 +278,13 @@ const LOAD_NAME: Record<TileAppearance['loadAnimation'], string> = { none: 'none
 
 /** Подложка плитки. `contrast` даёт тёмную поверхность, `gradient` — переливы. */
 function background(tile: TileAppearance): string {
+  // Мягкий рельеф требует, чтобы плитка была того же цвета, что и фон под
+  // ней. Фон у нас — обои с градиентом, поэтому плитка не красится вовсе:
+  // так совпадение точное, а рельеф создают две зеркальные тени.
+  if (tile.shadowStyle === 'neumorph') return 'transparent';
+  if (tile.surface === 'glass') {
+    return `color-mix(in srgb, var(--nx-surface) ${tile.fillOpacity}%, transparent)`;
+  }
   if (tile.surface === 'contrast') {
     return `color-mix(in srgb, var(--nx-accent) ${tile.tint}%, #10151d)`;
   }
@@ -237,6 +307,26 @@ function shadow(tile: TileAppearance, boost = 1): string {
   const soft = Math.round(tile.shadowSoftness * boost);
   const layer = (offset: number, blurRadius: number, weight: number) =>
     `0 ${offset}px ${blurRadius}px rgba(var(--nx-shade-rgb), ${(alpha * weight).toFixed(3)})`;
+  if (tile.shadowStyle === 'neumorph') {
+    // Две зеркальные тени: тёмная вниз-вправо, светлая вверх-влево,
+    // размытие вдвое больше сдвига. Цвета берутся от полотна, поэтому
+    // рельеф работает и в тёмной теме.
+    const offset = Math.max(1, depth);
+    const spread = offset * 2;
+    const mix = Math.max(40, 100 - Math.round(alpha * 100 * 4));
+    return `${offset}px ${offset}px ${spread}px color-mix(in srgb, var(--nx-canvas) ${mix}%, #000),`
+      + ` -${offset}px -${offset}px ${spread}px color-mix(in srgb, var(--nx-canvas) ${mix}%, #fff)`;
+  }
+  if (tile.shadowStyle === 'material') {
+    // Уровни 0…5 как в Material 3; на каждом уровне пара слоёв —
+    // ключевая тень и окружающая. Сами значения прозрачности наши.
+    const level = Math.min(5, Math.round(depth / 5));
+    if (level === 0) return 'none';
+    const key = layer(level, level + 1, 1.6);
+    const ambient = `0 ${level * 2}px ${level * 3 + 2}px ${level}px`
+      + ` rgba(var(--nx-shade-rgb), ${(alpha * 0.8).toFixed(3)})`;
+    return `${key}, ${ambient}`;
+  }
   if (tile.shadowStyle === 'soft') {
     return [layer(Math.round(depth / 4), Math.round(soft / 3), 0.5), layer(depth, soft, 0.7),
       layer(Math.round(depth * 1.8), Math.round(soft * 1.8), 0.4)].join(', ');
@@ -274,8 +364,19 @@ export function toTileVars(tile: TileAppearance): TileVars {
     '--nx-tile-text-align': tile.align,
     '--nx-tile-font': tile.font === 'Inter' ? 'Inter,Manrope,system-ui,sans-serif' : 'Manrope,system-ui,sans-serif',
     '--nx-tile-bg': background(tile),
+    // Запасная подложка: когда размытие недоступно или его просит отключить
+    // сама система, стекло становится плотным — иначе текст поплывёт.
+    '--nx-tile-bg-solid': tile.surface === 'glass' ? 'var(--nx-surface)' : background(tile),
     '--nx-tile-border': `${tile.borderWidth}px solid rgba(var(--nx-line-rgb), ${(tile.borderOpacity / 100).toFixed(2)})`,
     '--nx-tile-highlight': tile.innerHighlight ? 'inset 0 1px 0 rgba(255,255,255,.72)' : 'inset 0 0 0 rgba(0,0,0,0)',
+    // Размытие работает только под стеклом: на плотной подложке размывать нечего.
+    '--nx-tile-blur': tile.surface === 'glass' && tile.blur > 0 ? `blur(${tile.blur}px)` : 'none',
+    // Слой состояния Material 3: цвет содержимого поверх подложки,
+    // при нажатии на два пункта плотнее.
+    '--nx-tile-state': tile.stateLayer > 0
+      ? `color-mix(in srgb, currentColor ${tile.stateLayer}%, transparent)` : 'transparent',
+    '--nx-tile-state-press': tile.stateLayer > 0
+      ? `color-mix(in srgb, currentColor ${Math.min(100, tile.stateLayer + 2)}%, transparent)` : 'transparent',
     '--nx-tile-shadow': shadow(tile),
     '--nx-tile-shadow-hover': shadow(tile, tile.hoverShadow / 100),
     '--nx-tile-ink': tile.surface === 'contrast' ? '#f2f6fc' : 'var(--nx-text)',
