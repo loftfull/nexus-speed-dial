@@ -40,7 +40,7 @@ export function MobileSections({
 
   return (
     <div className="overlay mobile-sheet">
-      <section className="mobile-sections-card glass" role="dialog" aria-label="Разделы и проекты">
+      <section className="mobile-sections-card" role="dialog" aria-label="Разделы и проекты">
         <header>
           <b>Разделы и проекты</b>
           <button aria-label="Закрыть разделы" onClick={onClose}><X /></button>

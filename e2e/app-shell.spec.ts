@@ -232,7 +232,7 @@ test.describe('Nexus shell', () => {
     if (wide) await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
   });
 
-  test('search engine setting drives what the dock search opens', async ({ page }) => {
+  test('search engine setting drives what the palette opens', async ({ page }) => {
     await page.addInitScript(() => {
       Object.defineProperty(window, 'open', {
         configurable: true, writable: true,
@@ -249,30 +249,73 @@ test.describe('Nexus shell', () => {
     await settings.getByLabel('Поисковая система').selectOption('Яндекс');
     await settings.getByRole('button', { name: 'Закрыть настройки' }).click();
 
-    await page.locator('.nx-quick').getByRole('button', { name: 'Поиск по закладкам' }).click();
-    const field = page.getByLabel('Поиск по закладкам или адрес');
-    await field.fill('Nexus Speed Dial');
-    await field.press('Enter');
+    await page.locator('.nx-quick').getByRole('button', { name: 'Поиск и команды' }).click();
+    const field = page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' });
+    await field.fill('как сверстать сетку');
+    await page.getByRole('option', { name: /Искать/ }).click();
     const opened = await page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen);
     expect(String(opened?.[0])).toContain('yandex');
   });
 
-  test('the bookmark search unfolds out of the quick-access panel', async ({ page }) => {
+  test('the search window exists only on call: Ctrl K and the panel button', async ({ page }) => {
     await page.goto('/');
-    // No standing search field anywhere on the page: only the panel button.
-    await expect(page.getByLabel('Поиск по закладкам или адрес')).toHaveCount(0);
-    const quick = page.locator('.nx-quick');
-    await expect(quick.locator('input')).toHaveCount(0);
+    // Нигде на странице нет постоянного поля поиска — только вызов.
+    await expect(page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' })).toHaveCount(0);
+    await expect(page.locator('.nx-quick input')).toHaveCount(0);
+    await expect(page.locator('.nx-palette')).toHaveCount(0);
 
-    const total = await page.locator('.nx-tile').count();
-    await quick.getByRole('button', { name: 'Поиск по закладкам' }).click();
-    const field = quick.getByLabel('Поиск по закладкам или адрес');
+    await page.keyboard.press('Control+k');
+    const field = page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' });
     await expect(field).toBeFocused();
-    await field.fill('Telegram');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.nx-palette')).toHaveCount(0);
+
+    await page.locator('.nx-quick').getByRole('button', { name: 'Поиск и команды' }).click();
+    await expect(field).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.nx-palette')).toHaveCount(0);
+  });
+
+  test('the palette finds a site outside the open project and opens it', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'open', {
+        configurable: true, writable: true,
+        value: (...args: unknown[]) => {
+          (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen = args;
+          return null;
+        },
+      });
+    });
+    await page.goto('/');
+    // Стартовый проект — «Дом», Wildberries лежит в «Покупках» и на странице не виден.
+    await expect(page.locator('.nx-tile', { hasText: 'Wildberries' })).toHaveCount(0);
+
+    await page.keyboard.press('Control+k');
+    await page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' }).fill('wildberries');
+    const first = page.getByRole('option').first();
+    await expect(first).toContainText('Wildberries');
+    await expect(first).toContainText('Покупки → Магазины');
+    await page.keyboard.press('Enter');
+
+    const opened = await page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen);
+    expect(String(opened?.[0])).toContain('wildberries.ru');
+    await expect(page.locator('.nx-palette')).toHaveCount(0);
+  });
+
+  test('the palette filters the grid only when asked to', async ({ page }) => {
+    await page.goto('/');
+    const total = await page.locator('.nx-tile').count();
+    expect(total).toBeGreaterThan(1);
+
+    await page.keyboard.press('Control+k');
+    await page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' }).fill('Telegram');
+    // Набор текста сам по себе сетку не трогает.
+    await expect(page.locator('.nx-tile')).toHaveCount(total);
+    await page.getByRole('option', { name: /Отфильтровать сетку/ }).click();
     await expect(page.locator('.nx-tile')).toHaveCount(1);
 
-    await field.press('Escape');
-    await expect(quick.locator('input')).toHaveCount(0);
+    await page.keyboard.press('Control+k');
+    await page.getByRole('option', { name: 'Сбросить фильтр сетки Сейчас: «Telegram»' }).click();
     await expect(page.locator('.nx-tile')).toHaveCount(total);
   });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   Check, ChevronDown, ChevronRight, ChevronUp, Clock3, CloudSun, Droplets, Home, Layers3, LayoutGrid,
   Briefcase, Cloud, CloudRain, GraduationCap, ShoppingBag, Snowflake, Sun,
@@ -16,6 +16,8 @@ import { makeCategoryId, makeGroupId } from '../domain/hierarchy';
 import { buildWebSearchUrl } from '../domain/webSearch';
 import { recordSiteOpen, resolveHistoryTarget, resolveSiteUrl } from '../domain/siteOpen';
 import { filterSites } from '../domain/siteUtils';
+import { buildPaletteItems, looksLikeUrl } from '../domain/palette';
+import type { PaletteItem } from '../domain/palette';
 import { categoryColor, groupColor, projectColor } from '../domain/nodeColor';
 import { tileLayoutClass, toTileVars } from '../domain/tileAppearance';
 import { sites as countSites } from '../domain/plural';
@@ -30,6 +32,7 @@ import { CalendarPopover } from '../components/CalendarPopover';
 import { MobileSections } from '../components/MobileSections';
 import { SettingsPanel } from './SettingsPanel';
 import { ActionDialog } from './ActionDialog';
+import { CommandPalette } from './CommandPalette';
 import { NotesWorkspace } from '../components/NotesWorkspace';
 
 type SectionId = 'sites' | 'favorites' | 'trash' | 'recent' | 'notes';
@@ -96,7 +99,7 @@ export function App() {
   const [mobileNav, setMobileNav] = useState(false);
   const [panelOpen, setPanelOpen] = useState(() => readStorage('nexus-panel-open', true));
   const [dockOpen, setDockOpen] = useState(() => readStorage('nexus-dock-open', false));
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [forecastOpen, setForecastOpen] = useState(false);
   const [openProjects, setOpenProjects] = useState<string[]>(() => readStorage('nexus-open-projects', [] as string[]));
   const [openCategories, setOpenCategories] = useState<string[]>(() => readStorage('nexus-open-categories', [] as string[]));
@@ -105,7 +108,6 @@ export function App() {
   const [pinned, setPinned] = useState<string[]>(() => readStorage('nexus-dock-pins', [] as string[]));
   const [pinEdit, setPinEdit] = useState(false);
   const [dragOverDock, setDragOverDock] = useState(false);
-  const searchInput = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState('');
   const [now, setNow] = useState(() => new Date());
   const [weather, setWeather] = useState<Weather>(WEATHER_EMPTY);
@@ -144,8 +146,6 @@ export function App() {
     });
   }, [sites]);
   useEffect(() => { if (!pinned.length) setPinEdit(false); }, [pinned]);
-  useEffect(() => { if (searchOpen) searchInput.current?.focus(); }, [searchOpen]);
-  useEffect(() => { if (!quickOpen) setSearchOpen(false); }, [quickOpen]);
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches);
   useEffect(() => {
     const media = window.matchMedia('(max-width: 900px)');
@@ -215,7 +215,10 @@ export function App() {
       if (event.ctrlKey && key === 'n') { event.preventDefault(); setAddOpen(true); }
       if (event.ctrlKey && key === ',') { event.preventDefault(); setSettingsOpen(true); }
       if (event.ctrlKey && key === 'b') { event.preventDefault(); setSection('favorites'); }
-      if (key === 'escape') { setCalendarOpen(false); setMobileNav(false); setSettingsOpen(false); setForecastOpen(false); setAddOpen(false); setEditing(null); setActionDialog(null); }
+      // Окно поиска существует только по вызову: ⌘/Ctrl K открывает и закрывает его.
+      if ((event.ctrlKey || event.metaKey) && key === 'k') { event.preventDefault(); setPaletteOpen(open => !open); }
+      if (key === 'escape') {
+        setPaletteOpen(false); setCalendarOpen(false); setMobileNav(false); setSettingsOpen(false); setForecastOpen(false); setAddOpen(false); setEditing(null); setActionDialog(null); }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -325,6 +328,92 @@ export function App() {
     () => (ui.searchLocal === false || !query ? scoped : filterSites(scoped, query, {}, 'Быстрый доступ', () => [])),
     [scoped, query, ui.searchLocal],
   );
+
+  // ─── Палитра ──────────────────────────────────────────────────────────────
+  // Окно поиска открывается только по вызову и ищет по всему хранилищу, а не по
+  // текущему разделу: сайт находится, даже когда неизвестно, в каком он проекте.
+  const paletteCommands = useMemo(() => {
+    const list = [
+      { id: 'add-site', title: 'Добавить сайт', hint: 'Новая закладка', shortcut: 'Ctrl N', keywords: 'создать закладку новый' },
+      { id: 'add-project', title: 'Новый проект', hint: 'Отдельное пространство', keywords: 'создать проект' },
+      { id: 'add-category', title: 'Новая категория', hint: 'Внутри текущего проекта', keywords: 'создать категорию' },
+      { id: 'settings', title: 'Настройки', hint: 'Оформление, панели, данные', shortcut: 'Ctrl ,', keywords: 'параметры опции' },
+      { id: 'toggle-panel', title: panelOpen ? 'Скрыть проводник' : 'Показать проводник', hint: 'Боковая панель', keywords: 'сайдбар панель дерево' },
+      { id: 'toggle-dock', title: dockOpen ? 'Скрыть док-панель' : 'Показать док-панель', hint: 'Закреплённые сайты', keywords: 'док закреплённые' },
+      { id: 'empty-trash', title: 'Очистить корзину', hint: `${trash.length} ${countSites(trash.length)}`, keywords: 'удалить корзину' },
+    ];
+    if (query) list.unshift({ id: 'clear-filter', title: 'Сбросить фильтр сетки', hint: `Сейчас: «${query}»`, keywords: 'очистить фильтр' });
+    return list;
+  }, [panelOpen, dockOpen, trash.length, query]);
+
+  const paletteItems = useMemo(() => buildPaletteItems({
+    sites, projects, categories, groups,
+    sections: SECTIONS.map(item => ({ id: item.id, label: item.label, shortcut: item.id === 'favorites' ? 'Ctrl B' : undefined })),
+    commands: paletteCommands,
+    includeSites: ui.searchLocal !== false,
+    colorOf: (kind, id) => {
+      if (kind === 'project') { const found = projects.find(item => item.id === id); return found ? projectColor(found) : undefined; }
+      if (kind === 'category') return categoryColor({ id });
+      return groupColor({ id });
+    },
+  }), [sites, projects, categories, groups, paletteCommands, ui.searchLocal]);
+
+  // Хвост списка: то, что зависит от набранного текста и потому не хранится в модели.
+  const paletteTail = useCallback((value: string): PaletteItem[] => {
+    const text = value.trim();
+    if (!text) return [];
+    const tail: PaletteItem[] = [];
+    // Фильтр сетки предлагаем, только когда поиск по закладкам включён, —
+    // иначе кнопка ничего бы не делала.
+    if (ui.searchLocal !== false) {
+      tail.push({ id: 'command:filter', kind: 'command', ref: 'filter', title: `Отфильтровать сетку: «${text}»`,
+        hint: 'Оставить в текущем разделе только совпадения', keywords: '' });
+    }
+    tail.push(looksLikeUrl(text)
+      ? { id: 'web:open', kind: 'web', ref: 'open', title: `Открыть ${text}`, hint: 'Адрес', keywords: '',
+          url: /^https?:\/\//i.test(text) ? text : `https://${text}` }
+      : { id: 'web:search', kind: 'web', ref: 'search', title: `Искать «${text}»`, hint: `Поиск в ${ui.searchEngine}`, keywords: '' });
+    return tail;
+  }, [ui.searchLocal, ui.searchEngine]);
+
+  const runPaletteItem = (item: PaletteItem, value: string) => {
+    setPaletteOpen(false);
+    if (item.kind === 'site') {
+      const site = sites.find(entry => (entry.id ?? entry.domain) === item.ref);
+      if (site) openSite(site);
+      return;
+    }
+    if (item.kind === 'project') { selectProject(item.ref); return; }
+    if (item.kind === 'category') {
+      const category = categories.find(entry => entry.id === item.ref);
+      if (!category) return;
+      setSection('sites'); setProjectId(category.projectId); setCategoryId(category.id); setGroupId(null);
+      return;
+    }
+    if (item.kind === 'group') {
+      const group = groups.find(entry => entry.id === item.ref);
+      const category = group ? categories.find(entry => entry.id === group.categoryId) : undefined;
+      if (!group || !category) return;
+      setSection('sites'); setProjectId(category.projectId); setCategoryId(category.id); setGroupId(group.id);
+      return;
+    }
+    if (item.kind === 'section') { setSection(item.ref as SectionId); return; }
+    if (item.kind === 'web') {
+      openUrl(item.ref === 'open' && item.url ? item.url : buildWebSearchUrl(ui.searchEngine, value));
+      return;
+    }
+    switch (item.ref) {
+      case 'add-site': setAddOpen(true); break;
+      case 'add-project': addProject(); break;
+      case 'add-category': addCategory(); break;
+      case 'settings': setSettingsOpen(true); break;
+      case 'toggle-panel': setPanelOpen(open => !open); break;
+      case 'toggle-dock': setDockOpen(open => !open); break;
+      case 'empty-trash': setActionDialog({ kind: 'empty-trash' }); break;
+      case 'filter': setQuery(value.trim()); break;
+      case 'clear-filter': setQuery(''); break;
+    }
+  };
 
   const grouped = useMemo(() => {
     const scopeCategories = categoryId ? projectCategories.filter(item => item.id === categoryId) : projectCategories;
@@ -707,43 +796,19 @@ export function App() {
         </div>
 
         <div className="nx-bottom">
-          <div className={'nx-quick' + (quickVisible ? ' open' : '') + (searchOpen ? ' searching' : '')}
+          <div className={'nx-quick' + (quickVisible ? ' open' : '')}
             id="nx-quick" role="toolbar" aria-label="Панель быстрого доступа" aria-hidden={!quickVisible}>
-            {searchOpen ? (
-              <label className="nx-dock-search">
-                <Search size={18} />
-                <input ref={searchInput} value={query} onChange={event => setQuery(event.target.value)}
-                  placeholder="Закладки или адрес" aria-label="Поиск по закладкам или адрес"
-                  list={ui.searchSuggestions !== false ? 'nx-search-hints' : undefined}
-                  onKeyDown={event => {
-                    if (event.key === 'Escape') { setQuery(''); setSearchOpen(false); return; }
-                    if (event.key !== 'Enter') return;
-                    event.preventDefault();
-                    const value = query.trim();
-                    if (!value) return;
-                    const isUrl = /^https?:\/\//i.test(value) || /^[\w-]+(\.[\w-]+)+(\/|$)/.test(value);
-                    openUrl(isUrl ? (/^https?:\/\//i.test(value) ? value : `https://${value}`) : buildWebSearchUrl(ui.searchEngine, value));
-                  }} />
-                <button type="button" aria-label="Закрыть поиск" onClick={() => { setQuery(''); setSearchOpen(false); }}><X size={17} /></button>
-                {ui.searchSuggestions !== false && (
-                  <datalist id="nx-search-hints">
-                    {sites.slice(0, 40).map(site => <option key={site.id ?? site.domain} value={site.title} />)}
-                  </datalist>
-                )}
-              </label>
-            ) : (
-              <>
-                {SECTIONS.map(item => (
-                  <button key={item.id} type="button" className={section === item.id ? 'on' : ''} aria-label={item.label} title={item.label} onClick={() => setSection(item.id)}>
-                    <item.icon size={19} />
-                  </button>
-                ))}
-                <span className="nx-dock-sep" />
-                <button type="button" className={query ? 'on' : ''} aria-label="Поиск по закладкам" title="Поиск по закладкам или адрес" aria-expanded={searchOpen} onClick={() => setSearchOpen(true)}><Search size={19} /></button>
-                <button type="button" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}><Plus size={19} /></button>
-                <button type="button" className="wide-only" aria-label="Свернуть панель быстрого доступа" title="Свернуть панель быстрого доступа" onClick={() => setQuickOpen(false)}><ChevronDown size={19} /></button>
-              </>
-            )}
+            {SECTIONS.map(item => (
+              <button key={item.id} type="button" className={section === item.id ? 'on' : ''} aria-label={item.label} title={item.label} onClick={() => setSection(item.id)}>
+                <item.icon size={19} />
+              </button>
+            ))}
+            <span className="nx-dock-sep" />
+            <button type="button" className={query ? 'on' : ''} aria-label="Поиск и команды"
+              title="Поиск и команды (Ctrl K)" aria-haspopup="dialog" aria-expanded={paletteOpen}
+              onClick={() => setPaletteOpen(true)}><Search size={19} /></button>
+            <button type="button" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}><Plus size={19} /></button>
+            <button type="button" className="wide-only" aria-label="Свернуть панель быстрого доступа" title="Свернуть панель быстрого доступа" onClick={() => setQuickOpen(false)}><ChevronDown size={19} /></button>
           </div>
 
           <div
@@ -801,6 +866,16 @@ export function App() {
         </div>
       </main>
 
+      {paletteOpen && (
+        <CommandPalette
+          items={paletteItems}
+          tail={paletteTail}
+          initialQuery={query}
+          suggestions={ui.searchSuggestions !== false}
+          logos={ui.siteIcons !== false}
+          onRun={runPaletteItem}
+          onClose={() => setPaletteOpen(false)} />
+      )}
       {toast && <div className="nx-toast" role="status">{toast}</div>}
       {calendarOpen && <CalendarPopover onClose={() => setCalendarOpen(false)} />}
       {forecastOpen && <ForecastPanel weather={weather} city={ui.weatherCity} onClose={() => setForecastOpen(false)} />}

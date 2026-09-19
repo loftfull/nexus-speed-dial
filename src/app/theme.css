@@ -279,7 +279,6 @@
 .nx-quick.open,.nx-dock.open{transform:translate(-50%,0) scale(1);opacity:1;pointer-events:auto}
 .nx-quick>*,.nx-dock>*{transition:opacity .16s ease .06s}
 .nx-quick:not(.open)>*,.nx-dock:not(.open)>*{opacity:0}
-.nx-quick.searching{width:min(520px,calc(100vw - 48px))}
 .nx-quick button,.nx-dock-edit{width:44px;height:44px;flex:none;display:grid;place-items:center;border-radius:14px;
  color:var(--nx-muted);transition:background .15s,color .15s}
 .nx-quick button:hover,.nx-dock-edit:hover{background:var(--nx-sunken);color:var(--nx-text)}
@@ -301,11 +300,6 @@
 .nx-dock-handle:hover{bottom:-14px;color:var(--nx-accent)}
 .nx-dock-handle.on{color:var(--nx-accent)}
 .nx-dock-handle.on svg{transform:rotate(180deg)}
-.nx-dock-search{display:flex;align-items:center;gap:10px;flex:1;min-width:0;height:44px;padding:0 6px 0 12px}
-.nx-dock-search>svg{color:var(--nx-muted);flex:none}
-.nx-dock-search input{flex:1;font-size:14px;border-radius:10px}
-.nx-dock-search input::placeholder{color:var(--nx-muted)}
-.nx-dock-search button{width:32px;height:32px}
 
 .nx-root .calendar{position:fixed;left:calc(var(--nx-panel-w,272px) + 14px);bottom:104px;top:auto;z-index:40;
  width:284px;padding:15px;border-radius:var(--nx-r-lg);background:var(--nx-surface);border:0;
@@ -776,4 +770,44 @@
 .site-form,.mobile-sections-card{animation:nx-panel-in .26s cubic-bezier(.22,1,.36,1) both}
 @media(prefers-reduced-motion:reduce){
  .site-form,.mobile-sections-card,.nx-settings{animation:none!important}
+}
+
+/* ─── Палитра ────────────────────────────────────────────────────────────────
+   Единственное окно поиска: открывается по Ctrl/⌘ K или по кнопке с лупой и
+   ищет по всему хранилищу, а не по текущему разделу. Список — combobox с
+   listbox: фокус остаётся в поле, строки выбираются стрелками, поэтому в
+   палитре нет лишних остановок табуляции. */
+.nx-palette-layer{position:fixed;inset:0;z-index:130;display:grid;justify-items:center;
+ align-items:start;padding:12vh 20px 20px;background:rgba(19,27,40,.42)}
+.nx-palette{width:min(620px,100%);max-height:min(68vh,560px);display:flex;flex-direction:column;
+ border:1px solid color-mix(in srgb,var(--nx-surface) 74%,var(--nx-line));border-radius:18px;
+ background:var(--nx-surface);color:var(--nx-text);overflow:hidden;
+ box-shadow:0 2px 5px rgba(20,28,45,.08),0 30px 90px rgba(20,28,45,.22)}
+.nx-palette-field{display:flex;align-items:center;gap:11px;padding:0 16px;height:58px;
+ border-bottom:1px solid var(--nx-line);color:var(--nx-muted);flex:none}
+.nx-palette-field input{flex:1;min-width:0;height:100%;border:0;background:none;color:var(--nx-text);
+ font-size:16px;outline:none}
+.nx-palette-field input::placeholder{color:var(--nx-muted)}
+.nx-palette-list{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:2px}
+.nx-palette-row{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:12px;
+ cursor:pointer;min-height:48px}
+.nx-palette-row.on{background:var(--nx-accent-soft)}
+.nx-palette-mark{display:grid;place-items:center;width:32px;height:32px;flex:none;color:var(--nx-muted)}
+.nx-palette-row.on .nx-palette-mark{color:var(--nx-accent)}
+.nx-palette-site{width:32px;height:32px;border-radius:10px;font-size:13px}
+.nx-palette-site img{width:19px;height:19px}
+.nx-palette-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.nx-palette-text b{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-palette-text span{font-size:12px;color:var(--nx-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-palette-hit{background:none;color:var(--nx-accent);font-weight:700}
+.nx-palette-kbd{font:inherit;font-size:11px;font-weight:600;color:var(--nx-muted);flex:none;
+ padding:3px 7px;border:1px solid var(--nx-line);border-radius:7px;background:var(--nx-sunken)}
+.nx-palette-empty{padding:26px 12px;text-align:center;font-size:13px;color:var(--nx-muted)}
+.nx-palette-foot{display:flex;gap:16px;align-items:center;flex:none;padding:9px 16px;
+ border-top:1px solid var(--nx-line);background:var(--nx-sunken);font-size:12px;color:var(--nx-muted)}
+.nx-palette-foot span{display:flex;align-items:center;gap:5px}
+@media (max-width:760px){
+ .nx-palette-layer{padding:0}
+ .nx-palette{width:100%;max-height:100%;height:100%;border-radius:0;border:0}
+ .nx-palette-foot{display:none}
 }
