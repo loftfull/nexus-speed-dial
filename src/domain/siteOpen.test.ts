@@ -26,6 +26,8 @@ describe('siteOpen domain action', () => {
   it('normalizes domains to https without corrupting an existing protocol', () => {
     expect(resolveSiteUrl(github)).toBe('https://github.com');
     expect(resolveSiteUrl(legacyHttp)).toBe('http://example.com/archive');
+    expect(resolveSiteUrl({ ...github, url: 'https://github.com/openai/openai/issues/123' }))
+      .toBe('https://github.com/openai/openai/issues/123');
   });
 
   it('records lastOpened and stable site id at the front of history', () => {
