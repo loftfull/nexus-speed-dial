@@ -36,7 +36,9 @@ describe('site utilities', () => {
   });
 
   it('creates valid sites and rejects empty input', () => {
-    expect(createSite({ title: ' Linear ', domain: 'https://linear.app' }).domain).toBe('linear.app');
+    const linear = createSite({ title: ' Linear ', domain: 'https://linear.app/projects?view=active' });
+    expect(linear.domain).toBe('linear.app');
+    expect(linear.url).toBe('https://linear.app/projects?view=active');
     expect(() => createSite({ title: '', domain: 'linear.app' })).toThrow();
   });
 
