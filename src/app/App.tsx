@@ -505,7 +505,8 @@ export function App() {
             <TileGrid className={gridClass}>{block.sites.map(renderTile)}</TileGrid>
           </section>
         ))}</div>
-      : <Empty title="Здесь пока пусто" hint="Добавьте первый сайт в эту категорию" />)
+      : <Empty icon={LayoutGrid} title="Здесь пока пусто" hint="Добавьте первый сайт в эту категорию"
+          action={{ label: 'Добавить сайт', icon: Plus, onClick: () => setAddOpen(true) }} />)
     : (shown.length
       ? <>
           <TileGrid className={gridClass}>{shown.map(renderTile)}</TileGrid>
@@ -515,7 +516,11 @@ export function App() {
             </button>
           )}
         </>
-      : <Empty title={query ? 'Ничего не найдено' : 'Здесь пока пусто'} hint={query ? 'Попробуйте изменить запрос' : 'Добавьте первый сайт'} />);
+      : (query
+        ? <Empty icon={Search} title="Ничего не найдено" hint={`В этом разделе нет совпадений с «${query}»`}
+            action={{ label: 'Сбросить фильтр', icon: X, onClick: () => setQuery('') }} />
+        : <Empty icon={LayoutGrid} title="Здесь пока пусто" hint="Добавьте первый сайт"
+            action={{ label: 'Добавить сайт', icon: Plus, onClick: () => setAddOpen(true) }} />));
 
   let body: React.ReactNode;
   if (section === 'trash') {
@@ -529,7 +534,7 @@ export function App() {
                 <span className="nx-tile-name">{site.title}</span>
                 <span className="nx-tile-sub">{site.domain}</span>
               </div>
-              <button type="button" className="nx-more" style={{ padding: '7px 14px', fontSize: 12.5 }} onClick={() => {
+              <button type="button" className="nx-more nx-restore" onClick={() => {
                 setSites(current => [site, ...current]);
                 setTrash(current => current.filter(item => item.id !== site.id));
                 setToast('Сайт восстановлен');
@@ -541,12 +546,14 @@ export function App() {
           <Trash2 size={15} /> Очистить корзину
         </button>
       </>
-    ) : <Empty title="Корзина пуста" hint="Удалённые сайты можно восстановить отсюда" />;
+    ) : <Empty icon={Trash2} title="Корзина пуста" hint="Удалённые сайты можно восстановить отсюда"
+          action={{ label: 'К сайтам', icon: Home, onClick: () => setSection('sites') }} />;
   } else if (section === 'recent') {
     const items = history.map(ref => sites.find(site => site.id === ref || site.domain === ref || site.title === ref)).filter(Boolean) as Site[];
     body = items.length
       ? <TileGrid className={gridClass}>{items.map((site, index) => <React.Fragment key={`${site.id}-${index}`}>{renderTile(site)}</React.Fragment>)}</TileGrid>
-      : <Empty title="Пока ничего не открывали" hint="Открытые сайты появятся здесь" />;
+      : <Empty icon={Clock3} title="Пока ничего не открывали" hint="Открытые сайты появятся здесь"
+          action={{ label: 'К сайтам', icon: Home, onClick: () => setSection('sites') }} />;
   } else if (section === 'notes') {
     body = <NotesWorkspace sites={sites.filter(site => site.note)} onEdit={setEditing} />;
   } else {
@@ -1051,12 +1058,27 @@ function ForecastPanel({ weather, city, onClose }: { weather: Weather; city: str
 }
 
 
-function Empty({ title, hint }: { title: string; hint: string }) {
+/**
+ * Пустое состояние всегда объясняет, куда попал пользователь, и предлагает
+ * следующий шаг. Иконка у каждого своя: одна лупа на все случаи, включая
+ * пустую корзину, вводила в заблуждение.
+ */
+function Empty({ icon: Icon, title, hint, action }: {
+  icon: ControlIcon;
+  title: string;
+  hint: string;
+  action?: { label: string; icon: ControlIcon; onClick: () => void };
+}) {
   return (
     <div className="nx-empty">
-      <Search size={26} aria-hidden="true" />
+      <Icon size={26} aria-hidden="true" />
       <b>{title}</b>
       <span>{hint}</span>
+      {action && (
+        <button type="button" className="nx-empty-action" onClick={action.onClick}>
+          <action.icon size={15} aria-hidden="true" />{action.label}
+        </button>
+      )}
     </div>
   );
 }

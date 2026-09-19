@@ -462,6 +462,53 @@ test.describe('Nexus shell', () => {
     expect(index).toBe(survivors - 1);
   });
 
+  test('every empty state carries its own icon and a next step', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Путь по разделам на узком экране другой, состояния те же.');
+    await page.goto('/');
+    await page.waitForSelector('.nx-grid');
+
+    const shape = () => page.evaluate(() => {
+      const empty = document.querySelector('.nx-empty');
+      if (!empty) return null;
+      const icon = empty.querySelector('svg');
+      const action = empty.querySelector('.nx-empty-action');
+      return {
+        title: empty.querySelector('b')?.textContent ?? '',
+        // Иконки собраны из одинаковой разметки, поэтому различаем их по пути.
+        path: icon?.querySelector('path')?.getAttribute('d')?.slice(0, 40) ?? '',
+        action: action?.textContent?.trim() ?? '',
+      };
+    });
+
+    await page.locator('.nx-quick').getByRole('button', { name: 'Корзина' }).click();
+    const trash = (await shape())!;
+    expect(trash.title).toBe('Корзина пуста');
+    expect(trash.action).toBe('К сайтам');
+
+    await page.locator('.nx-quick').getByRole('button', { name: 'Недавние' }).click();
+    const recent = (await shape())!;
+    expect(recent.title).toBe('Пока ничего не открывали');
+    expect(recent.action).toBe('К сайтам');
+    // Иконка у каждого состояния своя, а не одна лупа на все.
+    expect(recent.path).not.toBe(trash.path);
+
+    // Кнопка возвращает в «Быстрый доступ», а не просто нарисована.
+    await page.locator('.nx-empty-action').click();
+    await expect(page.locator('.nx-main .nx-tile').first()).toBeVisible();
+
+    // Пустой поиск по сетке: своя иконка, и кнопка действительно снимает фильтр.
+    await page.keyboard.press('Control+k');
+    await page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' }).fill('щщщ');
+    await page.getByRole('option', { name: /Отфильтровать сетку/ }).click();
+    const missing = (await shape())!;
+    expect(missing.title).toBe('Ничего не найдено');
+    expect(missing.path).not.toBe(trash.path);
+    expect(missing.path).not.toBe(recent.path);
+    expect(missing.action).toBe('Сбросить фильтр');
+    await page.locator('.nx-empty-action').click();
+    await expect(page.locator('.nx-main .nx-tile').first()).toBeVisible();
+  });
+
   test('the favourites strip stays the same in every project and opens a site', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'На узком экране полосы нет: там дорога высота.');
     await page.addInitScript(() => {
