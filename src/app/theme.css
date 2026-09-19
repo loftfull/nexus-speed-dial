@@ -841,3 +841,12 @@
  box-shadow:0 4px 12px rgba(20,28,45,.1);transform:translateY(-1px)}
 .nx-favchip-mark{width:32px;height:32px;border-radius:10px;font-size:13px}
 .nx-favchip-mark img{width:19px;height:19px}
+
+/* Ссылка «Перейти к сайтам»: не видна, пока её не выберут с клавиатуры. */
+.nx-skip{position:fixed;top:10px;left:10px;z-index:140;padding:10px 16px;border-radius:12px;
+ border:1px solid var(--nx-line);background:var(--nx-surface);color:var(--nx-text);
+ font-size:13px;font-weight:600;box-shadow:0 10px 30px rgba(20,28,45,.18);
+ transform:translateY(-160%);transition:transform .16s ease}
+ /* Ссылка доступна только с клавиатуры, поэтому показываем её на любом
+    фокусе, а не только на :focus-visible. */
+.nx-skip:focus{transform:none}

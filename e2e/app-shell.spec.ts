@@ -373,6 +373,95 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('heading', { name: 'Корзина' })).toBeVisible();
   });
 
+  test('the grid is one tab stop and the arrows walk it', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('.nx-grid');
+
+    const focus = () => page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      const tiles = [...document.querySelectorAll('.nx-main .nx-grid .nx-tile')];
+      const tile = el?.closest('.nx-tile');
+      return {
+        label: el?.getAttribute('aria-label') ?? '',
+        index: tile ? tiles.indexOf(tile) : -1,
+        tabbable: document.querySelectorAll('.nx-main .nx-grid [tabindex="0"]').length,
+        scrollTop: Math.round(document.querySelector('.nx-main-scroll')!.scrollTop),
+      };
+    });
+
+    // Первая остановка табуляции — ссылка к сайтам, и она показывается.
+    await page.keyboard.press('Tab');
+    const skip = page.locator('.nx-skip');
+    await expect(skip).toBeFocused();
+    await expect(skip).toHaveText('Перейти к сайтам');
+    await expect.poll(async () => Math.round((await skip.boundingBox())!.y)).toBeGreaterThan(0);
+
+    await page.keyboard.press('Enter');
+    const first = await focus();
+    expect(first.index).toBe(0);
+    // Вся сетка — одна остановка: открыть и меню активной плитки, не больше.
+    expect(first.tabbable).toBe(2);
+
+    await page.keyboard.press('ArrowRight');
+    expect((await focus()).index).toBe(1);
+    await page.keyboard.press('ArrowLeft');
+    expect((await focus()).index).toBe(0);
+
+    // Шаг вниз — ровно на строку, сколько бы колонок ни вышло при этой ширине.
+    const columns = await page.evaluate(() => {
+      const tiles = [...document.querySelectorAll('.nx-main .nx-grid .nx-tile')];
+      const top = Math.round(tiles[0].getBoundingClientRect().top);
+      return tiles.filter(t => Math.round(t.getBoundingClientRect().top) === top).length;
+    });
+    await page.keyboard.press('ArrowDown');
+    expect((await focus()).index).toBe(columns);
+    await page.keyboard.press('ArrowUp');
+    expect((await focus()).index).toBe(0);
+
+    const total = await page.locator('.nx-main .nx-grid .nx-tile').count();
+    await page.keyboard.press('End');
+    expect((await focus()).index).toBe(total - 1);
+    await page.keyboard.press('Home');
+    const back = await focus();
+    expect(back.index).toBe(0);
+    // Стрелка в край не прокручивает страницу вместо перехода.
+    const before = back.scrollTop;
+    await page.keyboard.press('ArrowUp');
+    const stayed = await focus();
+    expect(stayed.index).toBe(0);
+    expect(stayed.scrollTop).toBe(before);
+
+    // Tab из плитки ведёт к её меню, следующий Tab уводит из сетки.
+    await page.keyboard.press('Tab');
+    expect((await focus()).label).toContain('Действия для');
+    await page.keyboard.press('Tab');
+    expect((await focus()).index).toBe(-1);
+  });
+
+  test('the grid keeps a single tab stop after the list changes', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Вкладки категорий на узком экране в отдельной строке, шаги те же.');
+    await page.goto('/');
+    await page.waitForSelector('.nx-grid');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('End');
+    const last = await page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
+    expect(last).toContain('Открыть');
+
+    // Сужаем список: бегущий фокус должен переехать на существующую плитку.
+    await page.locator('.nx-cats-tabs .nx-cat').nth(1).click();
+    await expect.poll(() => page.locator('.nx-main .nx-grid [tabindex="0"]').count()).toBe(2);
+    const survivors = await page.locator('.nx-main .nx-grid .nx-tile').count();
+    expect(survivors).toBeGreaterThan(0);
+    await page.locator('.nx-main .nx-grid .nx-tile button.nx-tile-face').first().focus();
+    await page.keyboard.press('End');
+    const index = await page.evaluate(() => {
+      const tiles = [...document.querySelectorAll('.nx-main .nx-grid .nx-tile')];
+      return tiles.indexOf(document.activeElement!.closest('.nx-tile')!);
+    });
+    expect(index).toBe(survivors - 1);
+  });
+
   test('the favourites strip stays the same in every project and opens a site', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'На узком экране полосы нет: там дорога высота.');
     await page.addInitScript(() => {

@@ -33,6 +33,7 @@ import { MobileSections } from '../components/MobileSections';
 import { SettingsPanel } from './SettingsPanel';
 import { ActionDialog } from './ActionDialog';
 import { CommandPalette } from './CommandPalette';
+import { TileGrid, focusableInTile } from './TileGrid';
 import { NotesWorkspace } from '../components/NotesWorkspace';
 
 type SectionId = 'sites' | 'favorites' | 'trash' | 'recent' | 'notes';
@@ -501,13 +502,13 @@ export function App() {
               <h2 className="nx-label">{block.name}</h2>
               <span className="nx-group-count">{countSites(block.sites.length)}</span>
             </div>
-            <div className={gridClass}>{block.sites.map(renderTile)}</div>
+            <TileGrid className={gridClass}>{block.sites.map(renderTile)}</TileGrid>
           </section>
         ))}</div>
       : <Empty title="Здесь пока пусто" hint="Добавьте первый сайт в эту категорию" />)
     : (shown.length
       ? <>
-          <div className={gridClass}>{shown.map(renderTile)}</div>
+          <TileGrid className={gridClass}>{shown.map(renderTile)}</TileGrid>
           {found.length > shown.length && (
             <button type="button" className="nx-more" onClick={() => setLimit(value => value + PAGE)}>
               <MoreHorizontal size={16} /> Показать больше
@@ -544,13 +545,23 @@ export function App() {
   } else if (section === 'recent') {
     const items = history.map(ref => sites.find(site => site.id === ref || site.domain === ref || site.title === ref)).filter(Boolean) as Site[];
     body = items.length
-      ? <div className={gridClass}>{items.map((site, index) => <React.Fragment key={`${site.id}-${index}`}>{renderTile(site)}</React.Fragment>)}</div>
+      ? <TileGrid className={gridClass}>{items.map((site, index) => <React.Fragment key={`${site.id}-${index}`}>{renderTile(site)}</React.Fragment>)}</TileGrid>
       : <Empty title="Пока ничего не открывали" hint="Открытые сайты появятся здесь" />;
   } else if (section === 'notes') {
     body = <NotesWorkspace sites={sites.filter(site => site.note)} onEdit={setEditing} />;
   } else {
     body = grid;
   }
+
+  // Ссылка в начале страницы ведёт прямо к плиткам — к той, что держит
+  // бегущий tabindex, а если сетка пуста, к первому, что в разделе есть.
+  const focusGrid = () => {
+    const grid = document.querySelector('.nx-main .nx-grid');
+    const target = grid?.querySelector<HTMLElement>('.nx-tile button.nx-tile-face[tabindex="0"]')
+      ?? grid?.querySelector<HTMLElement>('.nx-tile button.nx-tile-face')
+      ?? document.querySelector<HTMLElement>('.nx-main-scroll button, .nx-main-scroll a');
+    target?.focus();
+  };
 
   const showCategoryBar = section === 'sites';
   // Переключатель раскладки на узком экране стоит в одной строке с кнопкой
@@ -600,6 +611,8 @@ export function App() {
 
   return (
     <div className={rootClass} style={rootStyle}>
+      {/* Первая остановка табуляции: до сетки иначе двадцать нажатий Tab. */}
+      <button type="button" className="nx-skip" onClick={focusGrid}>Перейти к сайтам</button>
       <aside className={'nx-panel' + (panelOpen ? '' : ' collapsed')}>
         <div className="nx-panel-scroll">
           <button type="button" className="nx-panel-head" aria-expanded={panelOpen}
