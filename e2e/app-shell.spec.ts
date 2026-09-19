@@ -13,6 +13,38 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
   });
 
+  test('keeps the exact destination after add, reload and open', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Exact destination persistence is covered once in Chromium desktop.');
+
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'open', {
+        configurable: true,
+        writable: true,
+        value: (...args: unknown[]) => {
+          (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen = args;
+          return null;
+        },
+      });
+    });
+
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Добавить сайт' }).first().click();
+    await page.getByLabel('Название').fill('GitHub issue 123');
+    await page.getByLabel('Адрес сайта').fill('https://github.com/openai/openai/issues/123?tab=readme#top');
+    await page.getByRole('button', { name: 'Добавить сайт' }).click();
+
+    const destination = 'https://github.com/openai/openai/issues/123?tab=readme#top';
+    await expect.poll(() => page.evaluate(title => {
+      const sites = JSON.parse(localStorage.getItem('nexus-sites') || '[]') as Array<{ title?: string; url?: string }>;
+      return sites.find(site => site.title === title)?.url;
+    }, 'GitHub issue 123')).toBe(destination);
+
+    await page.reload();
+    await page.getByRole('button', { name: 'Открыть «GitHub issue 123»' }).click();
+    const opened = await page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen);
+    expect(opened?.[0]).toBe(destination);
+  });
+
   test('a pending site icon is invisible but still loads', async ({ page }) => {
     await page.goto('/');
     const mark = page.locator('.nx-mark').first();
