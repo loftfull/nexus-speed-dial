@@ -20,6 +20,12 @@ export type TileAppearance = {
   iconSize: number;
   /** 0 — подбирать число колонок по ширине окна. */
   columns: number;
+  /** Скругление знака сайта на плитке. */
+  markRadius: number;
+  /** Пропорция плитки. `auto` — высоту задаёт содержимое и нижняя граница. */
+  ratio: 'auto' | '4/3' | '1/1' | '3/4';
+  /** Куда прижать сетку, когда она короче окна. */
+  anchor: 'top' | 'center';
   align: 'left' | 'center';
   font: 'Manrope' | 'Inter';
 
@@ -63,6 +69,7 @@ export const TILE_BOUNDS = {
   gap: [4, 36, 2],
   radius: [0, 34, 1],
   iconSize: [24, 76, 2],
+  markRadius: [0, 26, 1],
   columns: [0, 8, 1],
   tint: [0, 60, 2],
   borderWidth: [0, 3, 1],
@@ -87,7 +94,7 @@ const clamp = (value: number, key: TileNumberKey) => {
 /** База, от которой отличаются все девять готовых видов. */
 const BASE: TileAppearance = {
   preset: 'soft', mode: 'standard',
-  width: 170, minHeight: 148, gap: 20, radius: 20, iconSize: 40, columns: 0,
+  width: 170, minHeight: 148, gap: 20, radius: 20, iconSize: 40, columns: 0, markRadius: 16, ratio: 'auto', anchor: 'top',
   align: 'center', font: 'Manrope',
   surface: 'solid', tint: 0,
   borderWidth: 0, borderOpacity: 0, innerHighlight: false,
@@ -179,6 +186,8 @@ export function normalizeTileAppearance(value: unknown): TileAppearance {
     ...numbers,
     preset: ONE_OF(raw.preset, PRESET_ORDER, DEFAULT_TILE_APPEARANCE.preset),
     mode: ONE_OF(raw.mode, ['standard', 'icon', 'list', 'preview'] as const, DEFAULT_TILE_APPEARANCE.mode),
+    ratio: ONE_OF(raw.ratio, ['auto', '4/3', '1/1', '3/4'] as const, DEFAULT_TILE_APPEARANCE.ratio),
+    anchor: ONE_OF(raw.anchor, ['top', 'center'] as const, DEFAULT_TILE_APPEARANCE.anchor),
     align: ONE_OF(raw.align, ['left', 'center'] as const, DEFAULT_TILE_APPEARANCE.align),
     font: ONE_OF(raw.font, ['Manrope', 'Inter'] as const, DEFAULT_TILE_APPEARANCE.font),
     surface: ONE_OF(raw.surface, ['solid', 'tinted', 'gradient', 'contrast'] as const, DEFAULT_TILE_APPEARANCE.surface),
@@ -246,13 +255,21 @@ export type TileVars = Record<string, string>;
 export function toTileVars(tile: TileAppearance): TileVars {
   return {
     '--nx-tile': `${tile.width}px`,
-    '--nx-tile-min-h': `${tile.minHeight}px`,
+    // Высота тоже идёт от окна: иначе на широком экране крупная плитка
+    // выглядела бы вытянутой строкой. Значение слайдера — нижняя граница.
+    '--nx-tile-min-h': `max(${tile.minHeight}px,10vw)`,
     '--nx-gap': `${tile.gap}px`,
     '--nx-tile-radius': `${tile.radius}px`,
     '--nx-icon': `${tile.iconSize}px`,
+    '--nx-mark-radius': `${tile.markRadius}px`,
+    // Ширина колонки идёт от окна, но не уходит дальше чем на 8 % вниз и в
+    // полтора раза вверх от заданной: слайдер «Ширина» остаётся главным.
+    // «Ширина» и раньше была нижней границей — колонка всё равно тянется на 1fr.
     '--nx-tile-cols': tile.columns > 0
       ? `repeat(${tile.columns},minmax(0,1fr))`
-      : `repeat(auto-fill,minmax(${tile.width}px,1fr))`,
+      : `repeat(auto-fill,minmax(clamp(${Math.round(tile.width * 0.92)}px,14vw,${Math.round(tile.width * 1.5)}px),1fr))`,
+    '--nx-tile-ratio': tile.ratio,
+    '--nx-grid-anchor': tile.anchor === 'center' ? 'center' : 'start',
     '--nx-tile-align': tile.align === 'left' ? 'flex-start' : 'center',
     '--nx-tile-text-align': tile.align,
     '--nx-tile-font': tile.font === 'Inter' ? 'Inter,Manrope,system-ui,sans-serif' : 'Manrope,system-ui,sans-serif',

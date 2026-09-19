@@ -163,7 +163,7 @@ describe('SettingsPanel', () => {
 
   it('показывает все разделы прежней панели настроек', () => {
     setup();
-    for (const label of ['Общие', 'Оформление', 'Плитки', 'Боковое окно', 'Мобильная версия',
+    for (const label of ['Общие', 'Оформление', 'Плитки', 'Панели', 'Мобильная версия',
       'Поиск', 'Погода', 'Приватность', 'Горячие клавиши', 'Данные']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
     }
@@ -190,7 +190,7 @@ describe('SettingsPanel', () => {
   it('меняет ширину бокового окна', async () => {
     const user = userEvent.setup();
     const props = setup();
-    await user.click(screen.getByRole('button', { name: 'Боковое окно' }));
+    await user.click(screen.getByRole('button', { name: 'Панели' }));
     await user.selectOptions(screen.getByLabelText('Ширина окна'), '340px');
     const update = (props.setUi as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: UiState) => UiState;
     expect(update(ui).sidebarWidth).toBe('340px');

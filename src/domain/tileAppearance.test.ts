@@ -8,6 +8,8 @@ import {
 const OTHER: { [K in keyof TileAppearance]: (current: TileAppearance[K]) => TileAppearance[K] } = {
   preset: current => (current === 'soft' ? 'contrast' : 'soft'),
   mode: current => (current === 'standard' ? 'list' : 'standard'),
+  ratio: current => (current === 'auto' ? '4/3' : 'auto'),
+  anchor: current => (current === 'top' ? 'center' : 'top'),
   align: current => (current === 'center' ? 'left' : 'center'),
   font: current => (current === 'Manrope' ? 'Inter' : 'Manrope'),
   surface: current => (current === 'solid' ? 'contrast' : 'solid'),
@@ -23,7 +25,7 @@ const OTHER: { [K in keyof TileAppearance]: (current: TileAppearance[K]) => Tile
   showCategory: current => !current,
   showFavorite: current => !current,
   width: () => 210, minHeight: () => 200, gap: () => 8, radius: () => 4, iconSize: () => 64,
-  columns: () => 4, tint: () => 40,
+  columns: () => 4, markRadius: () => 4, tint: () => 40,
   borderWidth: () => 2, borderOpacity: () => 80, shadowDepth: () => 18, shadowSoftness: () => 40,
   shadowOpacity: () => 25, hoverLift: () => 10, hoverScale: () => 106, hoverShadow: () => 200,
   pressedScale: () => 92, transitionMs: () => 400,
@@ -134,5 +136,47 @@ describe('tileAppearance', () => {
     expect(strong['--nx-tile-shadow-hover']).not.toBe(strong['--nx-tile-shadow']);
     // Выключенная тень остаётся выключенной и под курсором.
     expect(toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'none' })['--nx-tile-shadow-hover']).toBe('none');
+  });
+});
+
+describe('размер под окно', () => {
+  const base = DEFAULT_TILE_APPEARANCE;
+
+  it('ширина колонки идёт от окна и не уходит дальше границ', () => {
+    const vars = toTileVars({ ...base, width: 170, columns: 0 });
+    expect(vars['--nx-tile-cols']).toBe('repeat(auto-fill,minmax(clamp(156px,14vw,255px),1fr))');
+    expect(vars['--nx-tile-min-h']).toBe('max(148px,10vw)');
+  });
+
+  it('границы следуют за слайдером ширины', () => {
+    expect(toTileVars({ ...base, width: 240, columns: 0 })['--nx-tile-cols'])
+      .toContain('clamp(221px,14vw,360px)');
+  });
+
+  it('заданное число колонок сильнее подбора по окну', () => {
+    expect(toTileVars({ ...base, columns: 4 })['--nx-tile-cols']).toBe('repeat(4,minmax(0,1fr))');
+  });
+});
+
+describe('пропорция и прижатие сетки', () => {
+  it('пропорция доходит до плитки, а прижатие — до сетки', () => {
+    const square = toTileVars({ ...DEFAULT_TILE_APPEARANCE, ratio: '1/1', anchor: 'center' });
+    expect(square['--nx-tile-ratio']).toBe('1/1');
+    expect(square['--nx-grid-anchor']).toBe('center');
+    const auto = toTileVars({ ...DEFAULT_TILE_APPEARANCE, ratio: 'auto', anchor: 'top' });
+    expect(auto['--nx-tile-ratio']).toBe('auto');
+    expect(auto['--nx-grid-anchor']).toBe('start');
+  });
+
+  it('по умолчанию ничего не навязывает: авто и верх', () => {
+    expect(DEFAULT_TILE_APPEARANCE.ratio).toBe('auto');
+    expect(DEFAULT_TILE_APPEARANCE.anchor).toBe('top');
+  });
+
+  it('чужие значения из хранилища приводятся к допустимым', () => {
+    const restored = normalizeTileAppearance({ ratio: '16/9', anchor: 'bottom', markRadius: 999 });
+    expect(restored.ratio).toBe('auto');
+    expect(restored.anchor).toBe('top');
+    expect(restored.markRadius).toBe(26);
   });
 });

@@ -14,7 +14,7 @@ export type AppearanceState = { theme: string; accent: string; wallpaper: string
 export type MobileMode = 'table' | 'rows' | 'icons';
 export const MOBILE_MODES: MobileMode[] = ['table', 'rows', 'icons'];
 
-export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; remotePreviews?: boolean; siteIcons?: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: MobileMode };
+export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; remotePreviews?: boolean; siteIcons?: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: MobileMode; favoritesBar?: boolean; favoritesCount?: number; favoritesLabels?: boolean };
 
 export type AppState = {
   sites: SiteRecord[];
@@ -77,7 +77,7 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
   });
   const storedSessions = readStorage<BrowserSession[]>('nexus-sessions', []).map(session => ({ ...session, siteIds: session.siteIds.map(resolveSiteRef), noteSiteIds: session.noteSiteIds?.map(resolveSiteRef) }));
   const storedUi = readStorage('nexus-ui', null as UiState | null);
-  const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, remotePreviews: false, siteIcons: true, projects: true, sidebarWidth: '292px', mobileMode: 'table' };
+  const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, remotePreviews: false, siteIcons: true, projects: true, sidebarWidth: '292px', mobileMode: 'table', favoritesBar: true, favoritesCount: 8, favoritesLabels: true };
   return {
     sites: hierarchy.sites,
     trash: readStorage<SiteRecord[]>('nexus-trash', []),

@@ -319,6 +319,53 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-tile')).toHaveCount(total);
   });
 
+  test('the favourites strip stays the same in every project and opens a site', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'На узком экране полосы нет: там дорога высота.');
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'open', {
+        configurable: true, writable: true,
+        value: (...args: unknown[]) => {
+          (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen = args;
+          return null;
+        },
+      });
+    });
+    await page.goto('/');
+    const bar = page.getByRole('region', { name: 'Избранное во всех проектах' });
+    // Figma и Notion отмечены звездой и лежат в «Работе», а открыт проект «Дом».
+    await expect(bar.getByRole('button', { name: /Figma/ })).toBeVisible();
+    await expect(page.locator('.nx-tile', { hasText: 'Figma' })).toHaveCount(0);
+
+    // Полоса не зависит от того, какое дерево открыто.
+    await page.getByRole('button', { name: 'Проект «Покупки»' }).first().click();
+    await expect(bar.getByRole('button', { name: /Figma/ })).toBeVisible();
+
+    await bar.getByRole('button', { name: /Figma/ }).click();
+    const opened = await page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen);
+    expect(String(opened?.[0])).toContain('figma.com');
+  });
+
+  test('the favourites strip obeys its three settings', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'На узком экране полосы нет.');
+    await page.goto('/');
+    const bar = page.getByRole('region', { name: 'Избранное во всех проектах' });
+    await expect(bar).toBeVisible();
+    const chip = bar.getByRole('button').first();
+    await expect(chip).toContainText('Figma');
+
+    await page.getByRole('button', { name: 'Настройки' }).first().click();
+    const settings = page.locator('.nx-settings');
+    await settings.getByRole('button', { name: 'Панели', exact: true }).click();
+    await settings.getByRole('switch', { name: 'Названия на полосе' }).click();
+    await expect(chip).not.toContainText('Figma');
+
+    await settings.getByRole('switch', { name: 'Полоса избранного' }).click();
+    await expect(bar).toHaveCount(0);
+    // Выключенная полоса гасит свои настройки, а не оставляет их мёртвыми.
+    await expect(settings.getByRole('switch', { name: 'Названия на полосе' })).toBeDisabled();
+    await expect(settings.getByLabel('Сколько показывать')).toBeDisabled();
+  });
+
   test('the quick-access panel and the dock are separate and never share the bar', async ({ page }) => {
     await page.goto('/');
     const quick = page.locator('.nx-quick');
@@ -561,7 +608,7 @@ test.describe('Nexus shell', () => {
     await page.getByRole('button', { name: 'Настройки' }).last().click();
     const heads = page.locator('.nx-settings .nx-fold-head');
     await expect(heads).toHaveCount(10);
-    for (const label of ['Общие', 'Оформление', 'Плитки', 'Боковое окно', 'Мобильная версия',
+    for (const label of ['Общие', 'Оформление', 'Плитки', 'Панели', 'Мобильная версия',
       'Поиск', 'Погода', 'Приватность', 'Горячие клавиши', 'Данные']) {
       await expect(heads.filter({ hasText: new RegExp(`^${label}$`) })).toHaveCount(1);
     }
@@ -582,7 +629,7 @@ test.describe('Nexus shell', () => {
     await page.goto('/');
     const panel = page.locator('.nx-panel');
     const before = (await panel.boundingBox())!.width;
-    await openSettings(page, 'Боковое окно');
+    await openSettings(page, 'Панели');
     await page.getByLabel('Ширина окна').selectOption('340px');
     await expect.poll(async () => (await panel.boundingBox())!.width).toBeGreaterThan(before);
   });
@@ -729,7 +776,10 @@ test.describe('Nexus shell', () => {
     const part = (selector: string) => {
       const nodes = Array.from(document.querySelectorAll('.nx-main .nx-tile ' + selector));
       if (!nodes.length) return 'нет';
-      return nodes.length + ':' + nodes.map(node => getComputedStyle(node).display + '|' + getComputedStyle(node).width).join(',');
+      return nodes.length + ':' + nodes.map(node => {
+        const style = getComputedStyle(node);
+        return style.display + '|' + style.width + '|' + style.borderRadius;
+      }).join(',');
     };
     const rootStyle = getComputedStyle(root);
     // Параметры наведения и нажатия живут в переменных: их читают правила :hover/:active.
@@ -738,8 +788,12 @@ test.describe('Nexus shell', () => {
       .map(name => name + '=' + rootStyle.getPropertyValue(name).trim()).join(';');
     const tileStyle = getComputedStyle(tile);
     const gridStyle = getComputedStyle(grid);
+    // Геометрия первой плитки ловит то, что не видно в отдельном свойстве:
+    // пропорция меняет высоту, прижатие сдвигает всю сетку внутри свободного места.
+    const box = tile.getBoundingClientRect();
     return [
-      gridStyle.gridTemplateColumns, gridStyle.gap,
+      gridStyle.gridTemplateColumns, gridStyle.gap, gridStyle.alignContent,
+      tileStyle.aspectRatio, Math.round(box.top) + 'x' + Math.round(box.height),
       tileStyle.borderRadius, tileStyle.backgroundColor, tileStyle.backgroundImage,
       tileStyle.boxShadow, tileStyle.minHeight, tileStyle.borderTopWidth, tileStyle.borderTopColor,
       tileStyle.transitionDuration, tileStyle.fontFamily, tileStyle.backdropFilter,
@@ -880,7 +934,7 @@ test.describe('Nexus shell', () => {
   test('у каждого контрола настроек есть своя иконка', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Настройки' }).last().click();
-    for (const fold of ['Общие', 'Оформление', 'Боковое окно', 'Мобильная версия', 'Поиск', 'Погода', 'Приватность']) {
+    for (const fold of ['Общие', 'Оформление', 'Панели', 'Мобильная версия', 'Поиск', 'Погода', 'Приватность']) {
       const head = page.locator('.nx-fold-head', { hasText: new RegExp(`^${fold}$`) });
       if (await head.getAttribute('aria-expanded') !== 'true') await head.click();
       const cells = page.locator('.nx-fold.open .nx-cell');

@@ -104,8 +104,14 @@ export function TileSettings({ tile, patch, applyPreset, siteIcons, setSiteIcons
         <Slider icon={Move3D} label="Отступ" field="gap" tile={tile} patch={patch} />
         <Slider icon={Frame} label="Скругление" field="radius" tile={tile} patch={patch} />
         <Slider icon={Tag} label="Иконка" field="iconSize" tile={tile} patch={patch} />
+        <Slider icon={Scaling} label="Скругление знака" field="markRadius" tile={tile} patch={patch} />
         <Slider icon={Columns3} label="Колонки" field="columns" tile={tile} patch={patch}
           format={value => (value === 0 ? 'авто' : String(value))} />
+        <Pick icon={Frame} label="Пропорция"
+          options={[['auto', 'Авто'], ['4/3', '4 : 3'], ['1/1', 'Квадрат'], ['3/4', '3 : 4']]}
+          value={tile.ratio} onChange={value => patch({ ratio: value as TileAppearance['ratio'] })} />
+        <Pick icon={MoveVertical} label="Прижатие" options={[['top', 'К верху'], ['center', 'По центру']]}
+          value={tile.anchor} onChange={value => patch({ anchor: value as TileAppearance['anchor'] })} />
         <Pick icon={tile.align === 'left' ? AlignLeft : AlignCenter} label="Выравнивание"
           options={[['center', 'По центру'], ['left', 'Слева']]}
           value={tile.align} onChange={value => patch({ align: value as TileAppearance['align'] })} />

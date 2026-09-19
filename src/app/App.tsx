@@ -329,6 +329,14 @@ export function App() {
     [scoped, query, ui.searchLocal],
   );
 
+  // Избранное живёт над сеткой и одинаково в любом проекте — как ряд избранных
+  // вкладок в Arc. На узком экране полосы нет: там дорог каждый пиксель высоты.
+  const favoriteBar = useMemo(() => {
+    if (narrow || ui.favoritesBar === false || section !== 'sites') return [];
+    const limit = ui.favoritesCount ?? 8;
+    return sites.filter(site => site.favorite).slice(0, limit);
+  }, [sites, narrow, ui.favoritesBar, ui.favoritesCount, section]);
+
   // ─── Палитра ──────────────────────────────────────────────────────────────
   // Окно поиска открывается только по вызову и ищет по всему хранилищу, а не по
   // текущему разделу: сайт находится, даже когда неизвестно, в каком он проекте.
@@ -783,6 +791,22 @@ export function App() {
               <button type="button" className={mobileView === 'icons' ? 'on' : ''} aria-pressed={mobileView === 'icons'}
                 aria-label="Иконки в четыре столбца" title="Иконки в четыре столбца" onClick={() => setMobileView('icons')}><Grid3X3 size={17} /></button>
             </div>
+          )}
+
+          {favoriteBar.length > 0 && (
+            <section className="nx-favbar" aria-label="Избранное во всех проектах">
+              <span className="nx-label">Избранное</span>
+              <div className="nx-favbar-row">
+                {favoriteBar.map(site => (
+                  <button key={site.id ?? site.domain} type="button" className="nx-favchip"
+                    title={`${site.title} · ${site.domain}`} onClick={() => openSite(site)}>
+                    <SiteIcon title={site.title} domain={site.domain} color={site.color}
+                      logos={ui.siteIcons !== false} className="nx-mark nx-favchip-mark" />
+                    {ui.favoritesLabels !== false && <span>{site.title}</span>}
+                  </button>
+                ))}
+              </div>
+            </section>
           )}
 
           <div className={'nx-head' + (heading ? '' : ' bare')}>

@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
 import {
-  Camera, ChevronDown, CloudSun, Columns2, Database, Download, ExternalLink, Eye, FolderTree,
+  Camera, ChevronDown, CloudSun, Columns2, Columns3, Database, Download, ExternalLink, Eye, FolderTree,
   Globe, Grid2X2, Grid3X3, History, Image as ImageIcon, Keyboard, ListFilter, MapPin, Minimize2,
   Monitor, Moon, Palette, PanelLeft, RefreshCw, RotateCcw, Rows3, Search,
-  Settings as SettingsIcon, ShieldCheck, Smartphone, Sun, Thermometer, Trash2, Upload, X, Zap,
+  Settings as SettingsIcon, ShieldCheck, Smartphone, Star, Sun, Thermometer, Trash2, Type, Upload, X, Zap,
 } from './icons.generated';
 import type { AppearanceState, MobileMode, TileState, UiState } from '../domain/appStore';
 import type { BrowserSession, Category, Project, SiteGroup, SiteRecord as Site, VisualPreset } from '../domain/types';
@@ -22,7 +22,7 @@ const SECTIONS: { id: SectionId; label: string; icon: ControlIcon }[] = [
   { id: 'general', label: 'Общие', icon: SettingsIcon },
   { id: 'look', label: 'Оформление', icon: Palette },
   { id: 'tiles', label: 'Плитки', icon: Grid2X2 },
-  { id: 'panel', label: 'Боковое окно', icon: PanelLeft },
+  { id: 'panel', label: 'Панели', icon: PanelLeft },
   { id: 'mobile', label: 'Мобильная версия', icon: Smartphone },
   { id: 'search', label: 'Поиск', icon: Search },
   { id: 'weather', label: 'Погода', icon: CloudSun },
@@ -79,7 +79,7 @@ export function SettingsPanel(props: SettingsProps) {
       case 'general': patchUi({ compact: false, animations: true, newTab: true }); break;
       case 'look': setAppearance({ ...DEFAULT_APPEARANCE }); break;
       case 'tiles': setTile({ ...DEFAULT_TILE }); patchUi({ siteIcons: true }); break;
-      case 'panel': patchUi({ sidebarWidth: '292px', projects: true, weather: true }); break;
+      case 'panel': patchUi({ sidebarWidth: '292px', projects: true, weather: true, favoritesBar: true, favoritesCount: 8, favoritesLabels: true }); break;
       case 'mobile': patchUi({ mobileMode: 'table' }); break;
       case 'search': patchUi({ searchEngine: 'Google', searchLocal: true, searchSuggestions: true }); break;
       case 'weather': patchUi({ weather: true, weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true }); break;
@@ -184,6 +184,19 @@ export function SettingsPanel(props: SettingsProps) {
           </Group>
         )}
 
+        {section === 'panel' && (
+          <Group title="Главная страница" hint="Полоса избранного одинакова в любом проекте и появляется только на широком экране.">
+            <Switch icon={Star} label="Полоса избранного" value={ui.favoritesBar !== false}
+              onChange={value => patchUi({ favoritesBar: value })} />
+            <Pick icon={Columns3} label="Сколько показывать" options={[['6', '6'], ['8', '8'], ['12', '12']]}
+              value={String(ui.favoritesCount ?? 8)} onChange={value => patchUi({ favoritesCount: Number(value) })}
+              disabled={ui.favoritesBar === false} why="Полоса избранного выключена" />
+            <Switch icon={Type} label="Названия на полосе" value={ui.favoritesLabels !== false}
+              onChange={value => patchUi({ favoritesLabels: value })}
+              disabled={ui.favoritesBar === false} why="Полоса избранного выключена" />
+          </Group>
+        )}
+
         {section === 'mobile' && (
           <Group title="Вид по умолчанию" hint="С этого вида открывается главная страница на узком экране; переключатель остаётся над сеткой.">
             {MOBILE_VIEWS.map(([value, label, hint, Icon]) => (
@@ -213,13 +226,13 @@ export function SettingsPanel(props: SettingsProps) {
           <Group title="Погода" hint="Данные берутся с Open-Meteo без ключа. Запрос отправляется сервису Open-Meteo при обновлении прогноза.">
             <Pick icon={MapPin} label="Город" options={CITIES.map(city => [city, city] as [string, string])}
               value={ui.weatherCity} onChange={value => patchUi({ weatherCity: value })}
-              disabled={!ui.weather} why="Погода выключена в разделе «Боковое окно»" />
+              disabled={!ui.weather} why="Погода выключена в разделе «Панели»" />
             <Pick icon={Thermometer} label="Единицы" options={UNITS.map(unit => [unit, unit] as [string, string])}
               value={ui.weatherUnits} onChange={value => patchUi({ weatherUnits: value })}
-              disabled={!ui.weather} why="Погода выключена в разделе «Боковое окно»" />
+              disabled={!ui.weather} why="Погода выключена в разделе «Панели»" />
             <Switch icon={RefreshCw} label="Обновлять автоматически" value={ui.weatherAuto}
               onChange={value => patchUi({ weatherAuto: value })}
-              disabled={!ui.weather} why="Погода выключена в разделе «Боковое окно»" />
+              disabled={!ui.weather} why="Погода выключена в разделе «Панели»" />
           </Group>
         )}
 
