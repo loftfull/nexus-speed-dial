@@ -443,12 +443,20 @@ export function toTileVars(tile: TileAppearance): TileVars {
     '--nx-tile-radius': `${tile.radius}px`,
     '--nx-icon': `${tile.iconSize}px`,
     '--nx-mark-radius': `${tile.markRadius}px`,
-    // Ширина колонки идёт от окна, но не уходит дальше чем на 8 % вниз и в
-    // полтора раза вверх от заданной: слайдер «Ширина» остаётся главным.
-    // «Ширина» и раньше была нижней границей — колонка всё равно тянется на 1fr.
+    // Ширина колонки идёт от самой области сетки, но не уходит дальше чем на
+    // 8 % вниз и в полтора раза вверх от заданной: слайдер «Ширина» остаётся
+    // главным. «Ширина» и раньше была нижней границей — колонка всё равно
+    // тянется на 1fr.
+    //
+    // Единица именно cqw, а не vw. С vw доля считалась от окна целиком, и
+    // стоило рядом появиться правому рельсу, как область сузилась на 284 px,
+    // а нижняя граница колонки осталась прежней: пять столбцов схлопывались
+    // в три растянутые плитки. cqw меряет ту ширину, которая сетке досталась
+    // на самом деле. Где контейнер не найден, единица падает обратно на
+    // размер окна — то есть на прежнее поведение.
     '--nx-tile-cols': tile.columns > 0
       ? `repeat(${tile.columns},minmax(0,1fr))`
-      : `repeat(auto-fill,minmax(clamp(${Math.round(tile.width * 0.92)}px,14vw,${Math.round(tile.width * 1.5)}px),1fr))`,
+      : `repeat(auto-fill,minmax(clamp(${Math.round(tile.width * 0.92)}px,14cqw,${Math.round(tile.width * 1.5)}px),1fr))`,
     '--nx-tile-ratio': tile.ratio,
     '--nx-grid-anchor': tile.anchor === 'center' ? 'center' : 'start',
     '--nx-tile-align': tile.align === 'left' ? 'flex-start' : 'center',

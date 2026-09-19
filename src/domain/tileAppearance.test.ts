@@ -218,15 +218,24 @@ describe('tileAppearance', () => {
 describe('размер под окно', () => {
   const base = DEFAULT_TILE_APPEARANCE;
 
-  it('ширина колонки идёт от окна и не уходит дальше границ', () => {
+  it('ширина колонки идёт от области сетки и не уходит дальше границ', () => {
     const vars = toTileVars({ ...base, width: 170, columns: 0 });
-    expect(vars['--nx-tile-cols']).toBe('repeat(auto-fill,minmax(clamp(156px,14vw,255px),1fr))');
+    expect(vars['--nx-tile-cols']).toBe('repeat(auto-fill,minmax(clamp(156px,14cqw,255px),1fr))');
     expect(vars['--nx-tile-min-h']).toBe('max(120px,8vw)');
+  });
+
+  // cqw, а не vw: доля должна считаться от области, доставшейся сетке.
+  // С vw любая панель сбоку сужала область, а нижняя граница колонки
+  // оставалась прежней — пять столбцов схлопывались в три растянутые плитки.
+  it('меряет ширину в единицах контейнера, а не окна', () => {
+    const cols = toTileVars({ ...base, width: 170, columns: 0 })['--nx-tile-cols'];
+    expect(cols).toContain('cqw');
+    expect(cols).not.toContain('vw,');
   });
 
   it('границы следуют за слайдером ширины', () => {
     expect(toTileVars({ ...base, width: 240, columns: 0 })['--nx-tile-cols'])
-      .toContain('clamp(221px,14vw,360px)');
+      .toContain('clamp(221px,14cqw,360px)');
   });
 
   it('заданное число колонок сильнее подбора по окну', () => {

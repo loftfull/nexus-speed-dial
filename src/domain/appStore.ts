@@ -8,13 +8,14 @@ import type { NexusBackup } from './backup';
 
 /** Внешний вид плитки целиком описан в `tileAppearance`. */
 export type TileState = TileAppearance;
-export type AppearanceState = { theme: string; accent: string; wallpaper: string };
+/** veil — плотность светлой вуали поверх своего изображения, 0…100. */
+export type AppearanceState = { theme: string; accent: string; wallpaper: string; veil?: number };
 
 /** Three arrangements the grid falls back to on a narrow screen. */
 export type MobileMode = 'table' | 'rows' | 'icons';
 export const MOBILE_MODES: MobileMode[] = ['table', 'rows', 'icons'];
 
-export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; remotePreviews?: boolean; siteIcons?: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: MobileMode; favoritesBar?: boolean; favoritesCount?: number; favoritesLabels?: boolean; panelRecent?: boolean; panelRecentCount?: number; panelRecentLabels?: boolean };
+export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; remotePreviews?: boolean; siteIcons?: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: MobileMode; favoritesBar?: boolean; favoritesCount?: number; favoritesLabels?: boolean; panelRecent?: boolean; panelRecentCount?: number; panelRecentLabels?: boolean; hero?: boolean; greetName?: string; rail?: boolean; homeLayout?: 'board' | 'grid'; banner?: boolean };
 
 export type AppState = {
   sites: SiteRecord[];

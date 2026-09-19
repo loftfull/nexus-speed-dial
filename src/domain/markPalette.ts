@@ -71,9 +71,11 @@ export function markPalette(domain: string, color?: string): MarkPalette {
 export function brandPlate(hex: string): MarkPalette {
   const rgb = toRgb(hex) ?? [120, 130, 150];
   return {
-    from: `color-mix(in srgb, rgb(${rgb.join(',')}) 16%, #ffffff)`,
-    to: `color-mix(in srgb, rgb(${rgb.join(',')}) 26%, #ffffff)`,
+    // Подложка почти белая, а цвет бренда уходит в свечение под маркой: так
+    // логотип читается своим цветом, а не спорит с тонированным квадратом.
+    from: `color-mix(in srgb, rgb(${rgb.join(',')}) 9%, #ffffff)`,
+    to: `color-mix(in srgb, rgb(${rgb.join(',')}) 17%, #ffffff)`,
     ink: luminance(rgb) > 0.55 ? 'rgba(16,22,32,.86)' : '#ffffff',
-    glow: `rgba(${rgb.join(',')},.28)`,
+    glow: `rgba(${rgb.join(',')},.5)`,
   };
 }

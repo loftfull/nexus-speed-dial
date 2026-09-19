@@ -1,6 +1,18 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Nexus shell', () => {
+  // Раскладка главной по умолчанию — «рабочий стол проектов». Проверки ниже
+  // написаны про сетку плиток, поэтому здесь она включается явно; сама доска
+  // проверяется отдельным блоком «Рабочий стол проектов» в конце файла.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const raw = localStorage.getItem('nexus-ui');
+      const ui = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+      ui.homeLayout = 'grid';
+      localStorage.setItem('nexus-ui', JSON.stringify(ui));
+    });
+  });
+
   test('shows the project grid and can open the add-site form', async ({ page }) => {
     await page.goto('/');
     // The category tabs name the scope, so the page itself carries only the count.
@@ -897,7 +909,9 @@ test.describe('Nexus shell', () => {
     const root = page.locator('.nx-root');
     const before = await root.evaluate(el => getComputedStyle(el).backgroundImage);
     await openSettings(page, 'Оформление');
-    await page.getByLabel('Фон').selectOption('mint');
+    // exact: в разделе есть и «Фон» (список обоев), и «Осветление фона»
+    // (ползунок вуали для своего снимка) — поиск по подстроке ловит оба.
+    await page.getByLabel('Фон', { exact: true }).selectOption('mint');
     await expect(page.locator('html')).toHaveAttribute('data-wallpaper', 'mint');
     await expect.poll(() => root.evaluate(el => getComputedStyle(el).backgroundImage)).not.toBe(before);
   });
@@ -1309,5 +1323,69 @@ test.describe('Nexus shell', () => {
       }
       await head.click();
     }
+  });
+});
+
+/**
+ * Рабочий стол проектов — раскладка главной по умолчанию.
+ *
+ * Проверяется не оформление, а композиция: что на экране стоят карточки
+ * проектов и колонки папок, что счётчики не врут и что постоянной строки
+ * поиска на главной нет.
+ */
+test.describe('Рабочий стол проектов', () => {
+  test('главная открывается доской, а не сеткой плиток', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Доска складывается в один столбец; её состав проверяется на широком экране.');
+    await page.goto('/');
+
+    await expect(page.locator('.nx-board')).toBeVisible();
+    await expect(page.locator('.nx-project-card').first()).toBeVisible();
+    await expect(page.locator('.nx-folder').first()).toBeVisible();
+    // Плоской сетки плиток на доске нет: её место занимают колонки папок.
+    await expect(page.locator('.nx-board .nx-grid')).toHaveCount(0);
+  });
+
+  test('счётчик на карточке проекта совпадает с проводником', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Проводник виден только на широком экране.');
+    await page.goto('/');
+
+    const card = page.locator('.nx-project-card').first();
+    const name = (await card.locator('b').innerText()).trim();
+    const onCard = (await card.locator('small').innerText()).match(/\d+/)?.[0];
+
+    // То же число показывает дерево слева. Первая версия читала project.siteIds
+    // и показывала ноль при непустом проекте — этот тест ловит возврат ошибки.
+    const inTree = await page.locator('.nx-tree-row', { hasText: name }).first().locator('i').innerText();
+    expect(onCard).toBe(inTree.trim());
+    expect(Number(onCard)).toBeGreaterThan(0);
+  });
+
+  test('на главной нет постоянной строки поиска — только вызов', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'На узком экране свой верх.');
+    await page.goto('/');
+
+    await expect(page.locator('.nx-board input[type="text"], .nx-board input[type="search"]')).toHaveCount(0);
+    await page.locator('.nx-board').getByRole('button', { name: 'Поиск и команды' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+  });
+
+  test('карточка проекта переключает доску на свой проект', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Ряд проектов сжимается на узком экране.');
+    await page.goto('/');
+
+    const second = page.locator('.nx-project-card').nth(1);
+    const name = (await second.locator('b').innerText()).trim();
+    await second.click();
+    await expect(page.locator('.nx-folders-title h2')).toHaveText(name);
+  });
+
+  test('настройка возвращает прежнюю сетку плиток', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Настройки проверяются один раз на широком экране.');
+    await page.goto('/');
+    await expect(page.locator('.nx-board')).toBeVisible();
+
+    await page.locator('.nx-board').getByRole('button', { name: 'Сменить раскладку главной' }).click();
+    await expect(page.locator('.nx-board')).toHaveCount(0);
+    await expect(page.locator('.nx-tile').first()).toBeVisible();
   });
 });

@@ -26,6 +26,9 @@ import type { Category, Project, SiteGroup, SiteRecord as Site } from '../domain
 
 import { Tile } from './Tile';
 import type { TileLayout } from './Tile';
+import { applyWallpaperPhoto, readWallpaperPhoto } from '../domain/wallpaper';
+import { greetingLine, greetingSubtitle } from '../domain/greeting';
+import { HomeBoard } from './HomeBoard';
 import { SiteIcon } from './SiteIcon';
 import type { ControlIcon } from './SettingControls';
 import { AddSiteModal } from '../components/AddSiteModal';
@@ -100,6 +103,14 @@ export function App() {
   const [categoryId, setCategoryId] = useState<string | null>(() => readStorage('nexus-active-category', null as string | null));
   const [view, setView] = useState<'all' | 'groups'>(() => readStorage('nexus-view-mode', 'all' as 'all' | 'groups'));
   const [query, setQuery] = useState('');
+  /**
+   * Раскладка главной. «Доска» — рабочий стол проектов, «сетка» — прежняя
+   * плоская сетка плиток. Доска живёт только в разделе сайтов и только
+   * когда не идёт поиск: во время поиска нужен плоский список результатов,
+   * а не структура проекта.
+   */
+  const boardLayout = section === 'sites' && ui.homeLayout !== 'grid' && !query.trim();
+
   const [limit, setLimit] = useState(PAGE);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -178,6 +189,10 @@ export function App() {
     document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.wallpaper = appearance.wallpaper || 'aurora';
     document.documentElement.style.setProperty('--accent', appearance.accent);
+    // Своё изображение лежит отдельным ключом, поэтому переменную ставим здесь,
+    // а не получаем вместе с остальным оформлением.
+    applyWallpaperPhoto(readWallpaperPhoto());
+    document.documentElement.style.setProperty('--nx-wall-veil', String((appearance.veil ?? 42) / 100));
   }, [appearance]);
 
   useEffect(() => {
@@ -410,13 +425,31 @@ export function App() {
     return found;
   }, [history, sites, panelOpen, ui.panelRecent, ui.panelRecentCount]);
 
+  /**
+   * Недавние для правого рельса. Считаются отдельно от панельных: те
+   * пропадают вместе со свёрнутым боковым окном, а рельс живёт своей жизнью
+   * и должен оставаться наполненным.
+   */
+  const railRecent = useMemo(() => {
+    const seen = new Set<string>();
+    const found: Site[] = [];
+    for (const ref of history) {
+      const site = sites.find(item => item.id === ref || item.domain === ref || item.title === ref);
+      if (!site || seen.has(site.id ?? site.domain)) continue;
+      seen.add(site.id ?? site.domain);
+      found.push(site);
+      if (found.length >= 5) break;
+    }
+    return found;
+  }, [history, sites]);
+
   // Избранное живёт над сеткой и одинаково в любом проекте — как ряд избранных
   // вкладок в Arc. На узком экране полосы нет: там дорог каждый пиксель высоты.
   const favoriteBar = useMemo(() => {
-    if (narrow || ui.favoritesBar === false || section !== 'sites') return [];
+    if (narrow || ui.favoritesBar === false || section !== 'sites' || boardLayout) return [];
     const limit = ui.favoritesCount ?? 8;
     return sites.filter(site => site.favorite).slice(0, limit);
-  }, [sites, narrow, ui.favoritesBar, ui.favoritesCount, section]);
+  }, [sites, narrow, ui.favoritesBar, ui.favoritesCount, section, boardLayout]);
 
   // ─── Палитра ──────────────────────────────────────────────────────────────
   // Окно поиска открывается только по вызову и ищет по всему хранилищу, а не по
@@ -696,6 +729,29 @@ export function App() {
     );
   } else if (section === 'notes') {
     body = <NotesWorkspace sites={sites.filter(site => site.note)} onEdit={setEditing} />;
+  } else if (boardLayout) {
+    // Раскладка «рабочий стол проектов»: своя композиция целиком, а не сетка
+    // с довесками. Полоса избранного, вкладки категорий и счётчик сверху ей
+    // не нужны — их роль здесь играют ряд проектов и доска папок.
+    body = (
+      <HomeBoard
+        projects={projects} categories={categories} groups={groups} sites={sites}
+        recent={railRecent} activeProjectId={activeProjectId} categoryId={categoryId}
+        greetName={ui.greetName} now={now} time={time} dateLine={dateLine}
+        logos={ui.siteIcons !== false}
+        banner={ui.banner !== false}
+        onOpenSite={openSite}
+        onSelectProject={selectProject}
+        onSelectCategory={value => { setCategoryId(value); setGroupId(null); }}
+        onAddProject={addProject}
+        onAddCategory={addCategory}
+        onAddSite={() => setAddOpen(true)}
+        onSearch={() => setPaletteOpen(true)}
+        onOpenCalendar={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}
+        calendarOpen={calendarOpen}
+        onToggleLayout={() => setUi(current => ({ ...current, homeLayout: 'grid' }))}
+      />
+    );
   } else {
     body = grid;
   }
@@ -706,11 +762,15 @@ export function App() {
     const grid = document.querySelector('.nx-main .nx-grid');
     const target = grid?.querySelector<HTMLElement>('.nx-tile button.nx-tile-face[tabindex="0"]')
       ?? grid?.querySelector<HTMLElement>('.nx-tile button.nx-tile-face')
+      // На доске плиток нет, а ссылка обещает «перейти к сайтам»: ведём к
+      // первой строке сайта в папках, а не к кнопке поиска в шапке — иначе
+      // подпись ссылки расходится с тем, куда она приводит.
+      ?? document.querySelector<HTMLElement>('.nx-folder li > button')
       ?? document.querySelector<HTMLElement>('.nx-main-scroll button, .nx-main-scroll a');
     target?.focus();
   };
 
-  const showCategoryBar = section === 'sites';
+  const showCategoryBar = section === 'sites' && !boardLayout;
   // Переключатель раскладки на узком экране стоит в одной строке с кнопкой
   // проекта, а не отдельной полосой: на 390 px каждая строка сверху — это
   // минус одна плитка на первом экране. Вне «Быстрого доступа» строки с
@@ -883,12 +943,17 @@ export function App() {
 
         <div className="nx-panel-foot">
           <div className="nx-when">
-            <button type="button" data-calendar-trigger className="nx-when-date"
-              aria-expanded={calendarOpen} aria-label={`Открыть календарь, сегодня ${dateLine}`}
-              onClick={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}>
-              <b>{time}</b>
-              {panelOpen && <span>{dateShort}</span>}
-            </button>
+            {/* На доске время уже стоит в её шапке. Два одинаковых времени на
+                одном экране — это не запас, а недосмотр, поэтому здесь часы
+                остаются только в раскладке «сетка». Погода ниже живёт всегда. */}
+            {!boardLayout && (
+              <button type="button" data-calendar-trigger className="nx-when-date"
+                aria-expanded={calendarOpen} aria-label={`Открыть календарь, сегодня ${dateLine}`}
+                onClick={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}>
+                <b>{time}</b>
+                {panelOpen && <span>{dateShort}</span>}
+              </button>
+            )}
             {ui.weather && (
               <button type="button" data-forecast-trigger className="nx-when-temp"
                 aria-expanded={forecastOpen} aria-label={`Прогноз на пять дней, сейчас ${weather.temp}`}
@@ -914,6 +979,12 @@ export function App() {
 
       <main className="nx-main">
         <div className="nx-main-scroll">
+          {ui.hero !== false && !boardLayout && (
+            <header className="nx-hero">
+              <h1 className="nx-hero-hello">{greetingLine(now.getHours(), ui.greetName)}</h1>
+              <p className="nx-hero-sub">{greetingSubtitle(now.getHours())}</p>
+            </header>
+          )}
           <div className="nx-mobile-top">
             <button type="button" className="nx-icon-btn" aria-label="Разделы" onClick={() => setMobileNav(true)}><Layers3 size={18} /></button>
             <div className="nx-mobile-card">
@@ -993,12 +1064,16 @@ export function App() {
             </section>
           )}
 
-          <div className={'nx-head' + (heading ? '' : ' bare')}>
-            <div>
-              {heading && <h1>{heading}</h1>}
-              <p>{subheading}</p>
+          {/* Строка «Все сайты · 9 сайтов» — принадлежность сетки. На доске
+              счётчики стоят на самих карточках проектов и папок. */}
+          {!boardLayout && (
+            <div className={'nx-head' + (heading ? '' : ' bare')}>
+              <div>
+                {heading && <h1>{heading}</h1>}
+                <p>{subheading}</p>
+              </div>
             </div>
-          </div>
+          )}
 
           {body}
         </div>
@@ -1072,6 +1147,54 @@ export function App() {
             <ChevronUp size={16} />
           </button>
         </div>
+
+        {/* Правый рельс. Раньше под сеткой оставалось около четырёхсот точек
+            пустого полотна: место есть, а смысла в нём нет. Здесь стоит то,
+            ради чего на стартовую страницу и смотрят между делом — время,
+            погода и последнее, куда заходили. */}
+        {ui.rail !== false && !boardLayout && (
+          <aside className="nx-rail" aria-label="Виджеты">
+            <button type="button" data-calendar-trigger className="nx-rail-card nx-rail-clock"
+              aria-expanded={calendarOpen} aria-label={`Открыть календарь, сегодня ${dateLine}`}
+              onClick={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}>
+              <b>{time}</b>
+              <small>{dateLine}</small>
+            </button>
+
+            {ui.weather && (
+              <button type="button" data-forecast-trigger className="nx-rail-card nx-rail-weather"
+                aria-expanded={forecastOpen} aria-label={`Прогноз на пять дней, сейчас ${weather.temp}`}
+                onClick={() => { setCalendarOpen(false); setForecastOpen(value => !value); }}>
+                <CloudSun size={30} aria-hidden="true" />
+                <span className="nx-rail-weather-main">
+                  <b>{weather.temp}</b>
+                  <small>{ui.weatherCity}</small>
+                </span>
+                <ChevronRight size={16} aria-hidden="true" />
+              </button>
+            )}
+
+            {railRecent.length > 0 && (
+              <section className="nx-rail-card nx-rail-recent">
+                <h2 className="nx-rail-title">Недавние</h2>
+                <ul>
+                  {railRecent.map(site => (
+                    <li key={site.id ?? site.domain}>
+                      <button type="button" onClick={() => openSite(site)} title={site.title}>
+                        <SiteIcon title={site.title} domain={site.domain} color={site.color}
+                          logos={ui.siteIcons !== false} className="nx-dock-mark" />
+                        <span className="nx-rail-recent-text">
+                          <b>{site.title}</b>
+                          <small>{site.domain}</small>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </aside>
+        )}
       </main>
 
       {paletteOpen && (

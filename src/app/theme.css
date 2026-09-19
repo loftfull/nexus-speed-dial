@@ -26,11 +26,14 @@
  --nx-fs-4:14px;
  --nx-fs-5:16px;
  --nx-fs-6:21px;
+ --nx-fs-hero:34px;
  --nx-fs-clock:46px;
  --nx-fs-clock-lg:54px;
  /* Радиусы: четыре ступени и две формы — 50 % и 999px. */
  --nx-r-xs:4px;
  --nx-r-lg:20px;
+ /* Ступень для плавающих карточек — бокового окна и виджетов рельса. */
+ --nx-r-xl:24px;
  --nx-r-md:14px;
  --nx-r-sm:10px;
  --nx-shade-rgb:20,28,45;
@@ -75,6 +78,11 @@
 
 .nx-root{
  --nx-panel-w:var(--nx-panel-open-w,272px);
+ /* Поля по краям и зазор между колонками: боковое окно перестаёт быть
+    приклеенной к рамке колонкой и становится карточкой, лежащей на сцене.
+    Именно этот отрыв от краёв отличает макеты с «плавающими» панелями от
+    обычной двухколоночной вёрстки. */
+ box-sizing:border-box;padding:12px;gap:12px;
  display:grid;grid-template-columns:var(--nx-panel-w) minmax(0,1fr);
  height:100vh;background:var(--nx-canvas);color:var(--nx-text);transition:grid-template-columns .22s ease;
  /* Inter: в разобранных системах это либо сама гарнитура, либо названный
@@ -93,7 +101,10 @@
 
 /* ── боковое окно слева ───────────────────────────────────────── */
 .nx-panel{grid-column:1;background:var(--nx-surface);display:flex;flex-direction:column;
- padding:22px 20px;overflow:hidden;border-right:1px solid var(--nx-line);transition:padding .2s}
+ padding:20px 18px;overflow:hidden;transition:padding .2s;
+ border-radius:var(--nx-r-xl);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 1px 2px rgba(16,24,40,.05),
+  0 18px 42px -18px rgba(16,24,40,.28)}
 .nx-panel-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;
  display:flex;flex-direction:column;gap:14px}
 .nx-panel.collapsed{padding:22px 15px}
@@ -173,8 +184,55 @@
 .nx-icon-btn.on{background:var(--nx-accent-soft);color:var(--nx-accent)}
 
 /* ── главная область ──────────────────────────────────────────── */
-.nx-main{grid-column:2;display:flex;flex-direction:column;min-width:0;overflow:hidden}
-.nx-main-scroll{flex:1;min-height:0;overflow-y:auto;padding:22px 30px 132px;display:flex;flex-direction:column;gap:18px}
+/* Рабочая область намеренно без своей заливки: плитки лежат прямо на сцене,
+   как в макетах со свободно стоящими карточками. Фон ей не нужен — он бы
+   закрыл обои, ради которых сцена и делалась.
+   Две колонки: содержимое прокручивается, рельс стоит на месте. */
+.nx-main{grid-column:2;display:grid;grid-template-columns:minmax(0,1fr) auto;
+ min-width:0;overflow:hidden;background:transparent}
+/* Док и его язычок лежат поверх обеих колонок, иначе рельс сдвинул бы их влево. */
+.nx-main > .nx-bottom{grid-column:1 / -1}
+
+/* ── приветствие ──────────────────────────────────────────────── */
+.nx-hero{flex:none;padding:6px 2px 2px}
+.nx-hero-hello{font-size:var(--nx-fs-hero);font-weight:700;letter-spacing:-.9px;line-height:1.12;color:var(--nx-text)}
+.nx-hero-sub{margin-top:5px;font-size:var(--nx-fs-4);color:var(--nx-muted)}
+
+/* ── правый рельс виджетов ────────────────────────────────────── */
+.nx-rail{grid-column:2;width:var(--nx-rail-w,272px);display:flex;flex-direction:column;gap:12px;
+ padding:12px 0 132px 12px;overflow-y:auto;scrollbar-width:thin}
+.nx-rail-card{background:var(--nx-surface);border-radius:var(--nx-r-xl);padding:16px 17px;text-align:left;
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 1px 2px rgba(16,24,40,.05),
+  0 16px 34px -16px rgba(16,24,40,.24);
+ transition:transform .18s var(--nx-tile-easing,ease),box-shadow .18s var(--nx-tile-easing,ease)}
+button.nx-rail-card:hover{transform:translateY(-2px);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.6),0 1px 2px rgba(16,24,40,.05),
+  0 22px 42px -16px rgba(16,24,40,.3)}
+.nx-rail-clock{display:flex;flex-direction:column;gap:2px}
+.nx-rail-clock b{font-size:var(--nx-fs-clock-lg);font-weight:700;letter-spacing:-1.4px;line-height:1;
+ font-variant-numeric:tabular-nums}
+.nx-rail-clock small{font-size:var(--nx-fs-2);color:var(--nx-muted)}
+.nx-rail-weather{display:flex;align-items:center;gap:12px;color:var(--nx-muted)}
+.nx-rail-weather-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.nx-rail-weather-main b{font-size:var(--nx-fs-6);font-weight:700;color:var(--nx-text);line-height:1.1;
+ font-variant-numeric:tabular-nums}
+.nx-rail-weather-main small{font-size:var(--nx-fs-2);color:var(--nx-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-rail-recent{padding:15px 12px 11px}
+.nx-rail-title{font-size:var(--nx-fs-1);font-weight:700;letter-spacing:1.3px;text-transform:uppercase;
+ color:var(--nx-muted);padding:0 5px 8px}
+.nx-rail-recent ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+.nx-rail-recent button{display:flex;align-items:center;gap:10px;width:100%;padding:7px 5px;border-radius:var(--nx-r-md);
+ text-align:left;transition:background .15s ease}
+.nx-rail-recent button:hover{background:var(--nx-sunken)}
+.nx-rail-recent-text{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.nx-rail-recent-text b{font-size:var(--nx-fs-2);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-rail-recent-text small{font-size:var(--nx-fs-1);color:var(--nx-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Рельс — первое, чем жертвуют при нехватке ширины: сетка сайтов важнее. */
+@media (max-width:1180px){ .nx-rail{display:none} .nx-main{grid-template-columns:minmax(0,1fr)} }
+/* container-type даёт сетке систему отсчёта: ширина колонки считается от
+   области, которая ей досталась, а не от всего окна. */
+.nx-main-scroll{flex:1;min-height:0;overflow-y:auto;padding:12px 18px 132px;display:flex;flex-direction:column;gap:18px;
+ container-type:inline-size}
 
 .nx-cats{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;border-bottom:1px solid var(--nx-line);flex:none}
 /* Вкладки и переключатели категории идут одной группой: на широком экране это
@@ -263,7 +321,8 @@
  background:linear-gradient(145deg,var(--nx-mark-from,#9aa6bb),var(--nx-mark-to,#6c7a93));
  color:var(--nx-mark-ink,#fff);font-weight:700;letter-spacing:-.4px;
  box-shadow:inset 0 1px 0 rgba(255,255,255,.34),inset 0 -1px 0 rgba(10,16,28,.1),
-  0 4px 12px var(--nx-mark-glow,rgba(20,28,45,.2));
+  0 10px 22px -6px var(--nx-mark-glow,rgba(20,28,45,.2)),
+  0 3px 8px -2px var(--nx-mark-glow,rgba(20,28,45,.2));
  transition:box-shadow .2s var(--nx-tile-easing,ease),transform .2s var(--nx-tile-easing,ease)}
 .nx-mark{width:calc(var(--nx-icon,40px) + 14px);height:calc(var(--nx-icon,40px) + 14px);
  border-radius:var(--nx-mark-radius,16px);font-size:var(--nx-fs-6)}
@@ -279,11 +338,18 @@
 .nx-mark:before,.nx-dock-mark:before{content:'';position:absolute;inset:0;z-index:0;
  background:radial-gradient(120% 78% at 50% -14%,rgba(255,255,255,.42),transparent 62%)}
 /* Под фирменным знаком подложка светлая, чтобы логотип читался своим цветом. */
-.nx-mark.brand,.nx-dock-mark.brand{box-shadow:inset 0 0 0 1px rgba(20,28,45,.07),
- 0 3px 10px var(--nx-mark-glow,rgba(20,28,45,.16))}
+/* Свет цвета самого бренда под маркой. Раньше здесь было 0 3px 10px с
+   прозрачностью .28 — на белой карточке этого не видно вовсе, и иконки
+   лежали на плитке плоскими наклейками. Два слоя: широкий даёт ореол,
+   узкий сажает марку на поверхность. */
+.nx-mark.brand,.nx-dock-mark.brand{box-shadow:inset 0 0 0 1px rgba(20,28,45,.06),
+ 0 12px 24px -8px var(--nx-mark-glow,rgba(20,28,45,.16)),
+ 0 4px 9px -3px var(--nx-mark-glow,rgba(20,28,45,.16))}
 .nx-mark.brand:before,.nx-dock-mark.brand:before{background:radial-gradient(120% 78% at 50% -14%,rgba(255,255,255,.7),transparent 66%)}
-.nx-tile:hover .nx-mark{transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.34),
- inset 0 -1px 0 rgba(10,16,28,.1),0 7px 18px var(--nx-mark-glow,rgba(20,28,45,.26))}
+.nx-tile:hover .nx-mark{transform:translateY(-2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.34),
+ inset 0 -1px 0 rgba(10,16,28,.1),
+ 0 18px 32px -10px var(--nx-mark-glow,rgba(20,28,45,.26)),
+ 0 6px 12px -4px var(--nx-mark-glow,rgba(20,28,45,.26))}
 :root[data-theme="dark"] .nx-mark.brand,:root[data-theme="dark"] .nx-dock-mark.brand{
  background:linear-gradient(145deg,rgba(255,255,255,.93),rgba(236,242,250,.88))}
 .nx-tile-name{display:var(--nx-tile-title,block);font-size:var(--nx-fs-3);font-weight:600;color:var(--nx-tile-ink,var(--nx-text));max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -383,7 +449,7 @@
 /* ── мобильная раскладка ──────────────────────────────────────── */
 .nx-mobile-top{display:none}
 @media (max-width:900px){
- .nx-root,.nx-root.panel-collapsed{grid-template-columns:minmax(0,1fr)}
+ .nx-root,.nx-root.panel-collapsed{grid-template-columns:minmax(0,1fr);padding:0;gap:0}
  .nx-panel{display:none}
  .nx-main{grid-column:1}
  .nx-main-scroll{padding:10px 16px 110px;gap:10px}
@@ -596,32 +662,101 @@
 
 /* ── подложка рабочего пространства ───────────────────────────────
    Обои задаются на <html>, поэтому их видно и за модальными окнами. */
-/* Обои — подложка рабочего экрана, а не витрина: цвет едва намечен у верхней
-   кромки и быстро уходит в полотно. Плотный градиент во весь экран спорил бы
-   с фирменными знаками сайтов. */
-:root[data-wallpaper="aurora"] .nx-root{background:radial-gradient(120% 70% at 72% -12%,#e8f1ff,#f5f6f8 58%)}
-:root[data-wallpaper="warm"] .nx-root{background:radial-gradient(120% 70% at 24% -10%,#fdf1e2,#f7f6f4 56%)}
-:root[data-wallpaper="mint"] .nx-root{background:radial-gradient(120% 70% at 80% -8%,#e4f6f0,#f4f7f6 54%)}
+/* Обои — сцена, а не намёк на цвет у кромки. Раньше здесь лежал один
+   радиальный градиент, уходящий в полотно за 55% высоты: на экране это
+   читалось как «забыли поставить фон». Сцена собирается из нескольких
+   крупных мягких пятен — тёплое и холодное дают глубину, нижнее затемнение
+   служит опорой плавающим панелям. Это меш-градиент: он весит ноль байт,
+   не требует сети и не тянет за собой чужие права на изображение. */
+:root[data-wallpaper="aurora"] .nx-root{background:
+ radial-gradient(78% 58% at 86% 2%,#d6e6ff 0%,rgba(214,230,255,0) 62%),
+ radial-gradient(64% 52% at 62% 16%,#e2dcff 0%,rgba(226,220,255,0) 60%),
+ radial-gradient(82% 64% at 10% 84%,#cfe0f7 0%,rgba(207,224,247,0) 64%),
+ radial-gradient(70% 56% at 34% 40%,#eaf1ff 0%,rgba(234,241,255,0) 66%),
+ linear-gradient(162deg,#f6f9ff 0%,#eef2fb 54%,#e7ecf8 100%)}
+:root[data-wallpaper="warm"] .nx-root{background:
+ radial-gradient(80% 60% at 88% 4%,#ffdcbb 0%,rgba(255,220,187,0) 62%),
+ radial-gradient(66% 52% at 64% 14%,#ffd0dc 0%,rgba(255,208,220,0) 60%),
+ radial-gradient(84% 66% at 8% 88%,#cfe0fb 0%,rgba(207,224,251,0) 64%),
+ radial-gradient(70% 56% at 36% 44%,#f2e6ff 0%,rgba(242,230,255,0) 66%),
+ linear-gradient(160deg,#fff6ee 0%,#f3f1fa 56%,#ebeef9 100%)}
+:root[data-wallpaper="mint"] .nx-root{background:
+ radial-gradient(76% 58% at 84% 6%,#bdeee1 0%,rgba(189,238,225,0) 62%),
+ radial-gradient(66% 52% at 16% 18%,#c9e6ff 0%,rgba(201,230,255,0) 60%),
+ radial-gradient(86% 66% at 52% 96%,#dcf4e9 0%,rgba(220,244,233,0) 66%),
+ radial-gradient(64% 50% at 44% 42%,#eefbf6 0%,rgba(238,251,246,0) 64%),
+ linear-gradient(164deg,#f4fcf9 0%,#edf5fa 56%,#e8f0f7 100%)}
+/* Сирень — самая «дорогая» из холодных: два пастельных пятна и ни одного
+   чистого цвета, поэтому фирменные знаки сайтов остаются главными. */
+:root[data-wallpaper="lilac"] .nx-root{background:
+ radial-gradient(76% 58% at 82% 6%,#e7d6ff 0%,rgba(231,214,255,0) 62%),
+ radial-gradient(66% 52% at 18% 14%,#ffd8ec 0%,rgba(255,216,236,0) 60%),
+ radial-gradient(86% 66% at 48% 94%,#d5e1ff 0%,rgba(213,225,255,0) 64%),
+ radial-gradient(62% 50% at 52% 44%,#f7f0ff 0%,rgba(247,240,255,0) 62%),
+ linear-gradient(160deg,#fbf6ff 0%,#f1f0fc 56%,#eaecf8 100%)}
 /* Бумага: тёплое полотно как опора, карточки поднимаются на белое —
    приём Intercom («never replace cream with pure white; lift cards onto white»). */
-:root[data-wallpaper="paper"] .nx-root{background:#f7f4ef}
+:root[data-wallpaper="paper"] .nx-root{background:
+ radial-gradient(80% 60% at 84% 2%,#fdf4e6 0%,rgba(253,244,230,0) 62%),
+ radial-gradient(76% 62% at 12% 92%,#f0e7da 0%,rgba(240,231,218,0) 64%),
+ linear-gradient(162deg,#faf7f1 0%,#f5f1e8 60%,#f1ece1 100%)}
 :root[data-wallpaper="plain"] .nx-root{background:var(--nx-canvas)}
-:root[data-theme="dark"][data-wallpaper="aurora"] .nx-root{background:radial-gradient(circle at 72% -8%,#152338,#0e1217 55%,#0e1217)}
-:root[data-theme="dark"][data-wallpaper="warm"] .nx-root{background:radial-gradient(circle at 24% -6%,#2a1f14,#0e1217 52%,#0e1217)}
-:root[data-theme="dark"][data-wallpaper="mint"] .nx-root{background:radial-gradient(circle at 80% 4%,#0f2a24,#0e1217 50%,#0e1217)}
+/* Своё изображение. Ставится на .nx-root, поверх — светлая вуаль: без неё
+   тёмная фотография съедает текст на панелях. Плотность вуали регулируется
+   в настройках, поэтому она переменная, а не константа. */
+:root[data-wallpaper="photo"] .nx-root{
+ background:var(--nx-wall-photo,linear-gradient(160deg,#f6f9ff,#e7ecf8)) center/cover no-repeat fixed}
+:root[data-wallpaper="photo"] .nx-root:before{
+ content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+ background:linear-gradient(180deg,
+  rgba(255,255,255,var(--nx-wall-veil,.42)) 0%,
+  rgba(255,255,255,calc(var(--nx-wall-veil,.42) * .72)) 42%,
+  rgba(255,255,255,calc(var(--nx-wall-veil,.42) * 1.06)) 100%)}
+:root[data-wallpaper="photo"] .nx-panel,
+:root[data-wallpaper="photo"] .nx-main{position:relative;z-index:1}
+
+:root[data-theme="dark"][data-wallpaper="aurora"] .nx-root{background:
+ radial-gradient(76% 56% at 82% -4%,#1b2d4a 0%,rgba(27,45,74,0) 60%),
+ radial-gradient(70% 54% at 14% 88%,#17233a 0%,rgba(23,35,58,0) 62%),
+ linear-gradient(165deg,#111823 0%,#0e1217 62%)}
+:root[data-theme="dark"][data-wallpaper="warm"] .nx-root{background:
+ radial-gradient(76% 56% at 20% -4%,#3a2617 0%,rgba(58,38,23,0) 60%),
+ radial-gradient(70% 54% at 86% 90%,#1d2130 0%,rgba(29,33,48,0) 62%),
+ linear-gradient(165deg,#161310 0%,#0e1217 62%)}
+:root[data-theme="dark"][data-wallpaper="mint"] .nx-root{background:
+ radial-gradient(76% 56% at 82% 0%,#123229 0%,rgba(18,50,41,0) 60%),
+ radial-gradient(70% 54% at 12% 90%,#14222c 0%,rgba(20,34,44,0) 62%),
+ linear-gradient(165deg,#101815 0%,#0e1217 62%)}
+:root[data-theme="dark"][data-wallpaper="lilac"] .nx-root{background:
+ radial-gradient(76% 56% at 80% -4%,#2a2145 0%,rgba(42,33,69,0) 60%),
+ radial-gradient(70% 54% at 16% 90%,#1b1b33 0%,rgba(27,27,51,0) 62%),
+ linear-gradient(165deg,#14121d 0%,#0e1217 62%)}
 :root[data-theme="dark"][data-wallpaper="paper"] .nx-root{background:#12100d}
 :root[data-theme="dark"][data-wallpaper="plain"] .nx-root{background:var(--nx-canvas)}
+:root[data-theme="dark"][data-wallpaper="photo"] .nx-root:before{
+ background:linear-gradient(180deg,
+  rgba(10,14,20,calc(var(--nx-wall-veil,.42) * 1.1)) 0%,
+  rgba(10,14,20,calc(var(--nx-wall-veil,.42) * .82)) 44%,
+  rgba(10,14,20,calc(var(--nx-wall-veil,.42) * 1.2)) 100%)}
+/* Кружок в настройках повторяет саму сцену в миниатюре, иначе выбор делается
+   вслепую: раньше это были плоские двухцветные заливки. */
+.nx-inline-buttons{display:flex;gap:8px}
 .nx-wall-dot{width:13px;height:13px;border-radius:var(--nx-r-xs);flex:none;box-shadow:inset 0 0 0 1px rgba(20,28,45,.12)}
-.nx-wall-dot.wall-aurora{background:linear-gradient(135deg,#dcecff,#eef2f6)}
-.nx-wall-dot.wall-warm{background:linear-gradient(135deg,#fff1dd,#f6f3ee)}
-.nx-wall-dot.wall-mint{background:linear-gradient(135deg,#ddf6ee,#f0f6f4)}
-.nx-wall-dot.wall-paper{background:linear-gradient(135deg,#f7f4ef,#efe9e0)}
+.nx-wall-dot.wall-aurora{background:radial-gradient(120% 100% at 80% 0%,#d6e6ff,#e2dcff 46%,#eef2fb)}
+.nx-wall-dot.wall-warm{background:radial-gradient(120% 100% at 80% 0%,#ffdcbb,#ffd0dc 44%,#eef0fa)}
+.nx-wall-dot.wall-mint{background:radial-gradient(120% 100% at 80% 0%,#bdeee1,#c9e6ff 46%,#eef5fa)}
+.nx-wall-dot.wall-lilac{background:radial-gradient(120% 100% at 80% 0%,#e7d6ff,#ffd8ec 44%,#e9ecf8)}
+.nx-wall-dot.wall-paper{background:radial-gradient(120% 100% at 80% 0%,#fdf4e6,#f1ece1)}
 .nx-wall-dot.wall-plain{background:#f5f6f8}
+.nx-wall-dot.wall-photo{background:var(--nx-wall-photo,linear-gradient(135deg,#cfe0f7,#e7d6ff)) center/cover}
 
 /* ── компактный режим и отключённые анимации ──────────────────── */
 .nx-root.compact{font-size:var(--nx-fs-3)}
 .nx-root.compact .nx-panel{padding:14px 13px}
-.nx-root.compact .nx-main-scroll{padding:14px 18px 122px;gap:12px}
+/* Компактный режим должен быть теснее обычного. После того как обычный отступ
+   стал 12 px, прежние 14 px делали «компактный» шире нормального — ровно это
+   и поймал тест «the compact switch really tightens the page». */
+.nx-root.compact .nx-main-scroll{padding:8px 12px 122px;gap:12px}
 .nx-root.compact .nx-link{padding:6px 9px}
 .nx-root.compact .nx-tile{min-height:120px;padding:16px 10px 14px;gap:9px}
 .nx-root.compact .nx-cat{padding:7px 11px 10px}
@@ -992,3 +1127,188 @@
  border-radius:var(--nx-r-sm);color:var(--nx-muted);font-size:var(--nx-fs-2);font-weight:600}
 .nx-session-actions button:hover{background:var(--nx-sunken);color:var(--nx-text)}
 .nx-session-actions button.danger:hover{color:#d1344f}
+
+/* ═══════════════════════════════════════════════════════════════
+   РАБОЧИЙ СТОЛ ПРОЕКТОВ
+   Отдельная раскладка главной: не сетка плиток, а доска папок.
+   Порядок сверху вниз — обращение, девиз, проекты, папки, недавние.
+   ═══════════════════════════════════════════════════════════════ */
+.nx-board{display:flex;flex-direction:column;gap:18px;flex:1 0 auto}
+
+/* ── шапка: обращение слева, действия и часы справа ───────────── */
+.nx-board-top{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex:none}
+.nx-board-hello h1{font-size:var(--nx-fs-hero);font-weight:700;letter-spacing:-.9px;line-height:1.1}
+.nx-board-hello p{margin-top:5px;font-size:var(--nx-fs-4);color:var(--nx-muted)}
+.nx-board-actions{display:flex;align-items:center;gap:9px;flex:none}
+.nx-round{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+ background:var(--nx-surface);color:var(--nx-text);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 1px 2px rgba(16,24,40,.05),
+  0 10px 22px -12px rgba(16,24,40,.3);
+ transition:transform .16s var(--nx-tile-easing,ease),box-shadow .16s ease,color .16s ease}
+.nx-round:hover{transform:translateY(-1px);color:var(--nx-accent);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),0 1px 2px rgba(16,24,40,.05),
+  0 14px 26px -12px rgba(16,24,40,.34)}
+.nx-board-clock{display:flex;flex-direction:column;align-items:flex-end;margin-left:6px;line-height:1.1;
+ padding:4px 6px;border-radius:var(--nx-r-md);transition:background .15s ease}
+.nx-board-clock:hover{background:var(--nx-surface)}
+.nx-board-clock small{font-size:var(--nx-fs-2);color:var(--nx-muted)}
+.nx-board-clock b{font-size:var(--nx-fs-clock);font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+
+/* ── баннер-девиз ─────────────────────────────────────────────── */
+.nx-banner{position:relative;overflow:hidden;flex:none;border-radius:var(--nx-r-xl);
+ min-height:132px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;gap:24px;
+ color:#fff;
+ background:
+  linear-gradient(90deg,rgba(14,22,40,.72) 0%,rgba(14,22,40,.34) 46%,rgba(14,22,40,.06) 72%),
+  var(--nx-wall-photo,none),
+  radial-gradient(82% 120% at 78% 8%,#6ea8ff 0%,rgba(110,168,255,0) 58%),
+  radial-gradient(70% 110% at 96% 92%,#9f7bff 0%,rgba(159,123,255,0) 60%),
+  linear-gradient(118deg,#17324f 0%,#2a4d74 44%,#4b7fae 100%);
+ background-size:cover;background-position:center;
+ box-shadow:0 20px 44px -22px rgba(16,24,40,.5)}
+.nx-banner-text h2{font-size:var(--nx-fs-6);font-weight:700;letter-spacing:-.5px;line-height:1.2;max-width:22ch}
+.nx-banner-text p{margin-top:8px;font-size:var(--nx-fs-3);color:rgba(255,255,255,.82)}
+/* Рукописная строка. Готовой гарнитуры в поставке нет — сеть при запуске
+   может быть недоступна, а ради одной надписи её тянуть незачем; курсив
+   с наклоном даёт тот же смысл «пометка от руки» на любой машине. */
+.nx-banner-script{font-family:'Segoe Script','Bradley Hand','Apple Chancery',cursive;
+ font-size:var(--nx-fs-4);line-height:1.5;text-align:right;color:#fff;
+ text-shadow:0 1px 10px rgba(12,18,32,.55),0 1px 2px rgba(12,18,32,.4);
+ transform:rotate(-3deg);flex:none;max-width:30%}
+
+/* ── ряд проектов ─────────────────────────────────────────────── */
+.nx-projects{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:12px;flex:none}
+.nx-project-card{display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+ padding:14px 14px 13px;border-radius:var(--nx-r-lg);text-align:left;
+ background:color-mix(in srgb,var(--nx-node,#7b8794) 10%,var(--nx-surface));
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 1px 2px rgba(16,24,40,.05),
+  0 12px 26px -16px rgba(16,24,40,.3);
+ transition:transform .18s var(--nx-tile-easing,ease),box-shadow .18s ease,background .18s ease}
+.nx-project-card:hover{transform:translateY(-3px);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.62),0 1px 2px rgba(16,24,40,.05),
+  0 20px 36px -16px rgba(16,24,40,.36)}
+.nx-project-card.on{background:var(--nx-surface);
+ box-shadow:inset 0 0 0 2px var(--nx-node,var(--nx-accent)),0 1px 2px rgba(16,24,40,.05),
+  0 16px 32px -16px color-mix(in srgb,var(--nx-node,#7b8794) 55%,transparent)}
+.nx-project-glyph{width:46px;height:46px;margin-bottom:7px;border-radius:var(--nx-r-md);
+ display:grid;place-items:center;color:var(--nx-node,var(--nx-accent));
+ background:linear-gradient(150deg,
+  color-mix(in srgb,var(--nx-node,#7b8794) 26%,#fff),
+  color-mix(in srgb,var(--nx-node,#7b8794) 12%,#fff));
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.7),
+  0 10px 20px -8px color-mix(in srgb,var(--nx-node,#7b8794) 60%,transparent)}
+.nx-project-card b{font-size:var(--nx-fs-3);font-weight:600;line-height:1.25;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.nx-project-card small{font-size:var(--nx-fs-1);color:var(--nx-muted)}
+.nx-project-card.add{--nx-node:#8d97a8;background:transparent;
+ box-shadow:inset 0 0 0 1px var(--nx-line);color:var(--nx-muted);justify-content:center}
+.nx-project-card.add .nx-project-glyph{background:var(--nx-sunken);box-shadow:none;color:var(--nx-muted)}
+
+/* ── доска папок ──────────────────────────────────────────────── */
+/* flex:none — карточка обнимает содержимое. Растянутая на всю оставшуюся
+   высоту, она снизу превращалась в пустое белое поле. */
+.nx-folders{background:var(--nx-surface);border-radius:var(--nx-r-xl);padding:16px 16px 18px;flex:none;
+ display:flex;flex-direction:column;gap:14px;
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 1px 2px rgba(16,24,40,.05),
+  0 18px 40px -20px rgba(16,24,40,.26)}
+.nx-folders-top{display:flex;align-items:center;gap:12px}
+.nx-folders-mark{width:42px;height:42px;flex:none;border-radius:var(--nx-r-md);display:grid;place-items:center;
+ color:var(--nx-node,var(--nx-accent));
+ background:linear-gradient(150deg,
+  color-mix(in srgb,var(--nx-node,#7b8794) 26%,#fff),
+  color-mix(in srgb,var(--nx-node,#7b8794) 12%,#fff));
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.7),
+  0 10px 20px -8px color-mix(in srgb,var(--nx-node,#7b8794) 55%,transparent)}
+.nx-folders-title{flex:1;min-width:0}
+.nx-folders-title h2{font-size:var(--nx-fs-5);font-weight:700;letter-spacing:-.3px;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-crumbs{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:var(--nx-fs-1);color:var(--nx-muted)}
+.nx-crumbs button{color:var(--nx-muted);border-radius:var(--nx-r-xs)}
+.nx-crumbs button:hover{color:var(--nx-accent)}
+.nx-folders-more{width:38px;height:38px;flex:none}
+.nx-folders-empty{font-size:var(--nx-fs-3);color:var(--nx-muted);padding:18px 4px 12px}
+
+/* auto-fit: пустые дорожки схлопываются, и колонки занимают всю ширину доски.
+   С auto-fill они оставались узкими, а справа висела полоса пустой карточки
+   шириной почти в пол-экрана. Призрачная колонка «Новая папка» держит
+   минимум две дорожки, поэтому растянуться до нелепой ширины нечему. */
+.nx-folder-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,212px),1fr));gap:12px;align-items:stretch}
+.nx-folder{display:flex;flex-direction:column;gap:7px;padding:12px 11px 11px;border-radius:var(--nx-r-lg);
+ background:var(--nx-canvas);box-shadow:inset 0 0 0 1px var(--nx-line)}
+.nx-folder > header{display:flex;align-items:center;gap:9px}
+.nx-folder-mark{width:32px;height:32px;flex:none;border-radius:var(--nx-r-sm);display:grid;place-items:center;
+ background:var(--nx-accent-soft);color:var(--nx-accent)}
+.nx-folder-title{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.nx-folder-title b{font-size:var(--nx-fs-3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-folder-title small{font-size:var(--nx-fs-1);color:var(--nx-muted)}
+.nx-folder-open{width:26px;height:26px;flex:none;border-radius:var(--nx-r-sm);display:grid;place-items:center;
+ color:var(--nx-muted)}
+.nx-folder-open:hover{background:var(--nx-sunken);color:var(--nx-accent)}
+.nx-folder ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;flex:1}
+/* Марка в строке — фиксированного размера: .nx-dock-mark сам по себе тянется
+   по месту, и в широкой колонке иконки растягивались в цветные полосы. */
+.nx-folder li > button .nx-dock-mark{width:30px;height:30px;flex:none;border-radius:var(--nx-r-sm)}
+.nx-folder li > button .nx-dock-mark img{width:19px;height:19px}
+.nx-folder li > button{display:flex;align-items:center;gap:9px;width:100%;padding:7px 8px;
+ border-radius:var(--nx-r-sm);background:var(--nx-surface);text-align:left;
+ box-shadow:inset 0 0 0 1px rgba(20,28,45,.04);
+ transition:transform .14s ease,box-shadow .14s ease}
+.nx-folder li > button:hover{transform:translateX(2px);box-shadow:inset 0 0 0 1px rgba(20,28,45,.09)}
+.nx-folder li > button > span{flex:1;min-width:0;font-size:var(--nx-fs-2);font-weight:600;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-folder-rest > button{justify-content:center;background:transparent;box-shadow:none;
+ font-size:var(--nx-fs-1);color:var(--nx-muted);width:100%;padding:5px}
+.nx-folder-rest > button:hover{color:var(--nx-accent)}
+.nx-folder-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px;
+ border-radius:var(--nx-r-sm);font-size:var(--nx-fs-2);color:var(--nx-muted);
+ box-shadow:inset 0 0 0 1px var(--nx-line);transition:color .15s ease,box-shadow .15s ease}
+.nx-folder-add:hover{color:var(--nx-accent);box-shadow:inset 0 0 0 1px var(--nx-accent)}
+.nx-folder-new{align-items:center;justify-content:center;text-align:center;gap:4px;min-height:132px;
+ background:transparent;box-shadow:inset 0 0 0 1px var(--nx-line);color:var(--nx-muted);
+ transition:color .16s ease,box-shadow .16s ease}
+.nx-folder-new:hover{color:var(--nx-accent);box-shadow:inset 0 0 0 1px var(--nx-accent)}
+.nx-folder-new b{font-size:var(--nx-fs-3);font-weight:600}
+.nx-folder-new small{font-size:var(--nx-fs-1)}
+.nx-folder-new .nx-folder-mark{background:var(--nx-sunken);color:inherit;margin-bottom:3px}
+
+/* ── полоса недавних ──────────────────────────────────────────── */
+.nx-strip{background:var(--nx-surface);border-radius:var(--nx-r-xl);padding:14px 16px 16px;flex:none;
+ display:flex;flex-direction:column;gap:11px;
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 1px 2px rgba(16,24,40,.05),
+  0 18px 40px -20px rgba(16,24,40,.26)}
+.nx-strip > header{display:flex;align-items:center;gap:9px}
+.nx-strip-mark{width:32px;height:32px;flex:none;border-radius:var(--nx-r-sm);display:grid;place-items:center;
+ background:var(--nx-accent-soft);color:var(--nx-accent)}
+.nx-strip h2{font-size:var(--nx-fs-4);font-weight:700;letter-spacing:-.2px}
+.nx-strip-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
+.nx-strip-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:13px 8px 11px;
+ border-radius:var(--nx-r-lg);background:var(--nx-canvas);
+ box-shadow:inset 0 0 0 1px var(--nx-line);
+ transition:transform .18s var(--nx-tile-easing,ease),box-shadow .18s ease}
+.nx-strip-card:hover{transform:translateY(-3px);background:var(--nx-surface);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 14px 28px -14px rgba(16,24,40,.32)}
+.nx-strip-card > span{font-size:var(--nx-fs-2);font-weight:600;max-width:100%;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-strip-plus{width:calc(var(--nx-icon,40px) + 14px);height:calc(var(--nx-icon,40px) + 14px);
+ border-radius:var(--nx-mark-radius,16px);display:grid;place-items:center;
+ background:var(--nx-sunken);color:var(--nx-muted)}
+.nx-strip-card.add{color:var(--nx-muted)}
+
+/* ── узкий экран: доска складывается в один столбец ───────────── */
+@media (max-width:900px){
+ /* Приветствие в раскладке «сетка» на узком экране не показываем: оно
+    отодвигает первую плитку вниз на 45 px и ломает бюджет хрома, ради
+    которого верх мобильной версии и ужимали. У доски своё приветствие. */
+ .nx-hero{display:none}
+ .nx-board{gap:12px}
+ .nx-board-top{flex-direction:column;gap:10px;align-items:stretch}
+ /* Часы и кнопки на узком экране уже стоят дважды: время с погодой — в
+    мобильной шапке сверху, поиск и «плюс» — в доке снизу. Свой ряд доски
+    здесь только повторял бы их и отнимал первый экран. */
+ .nx-board-actions{display:none}
+ .nx-banner{min-height:104px;padding:18px 20px}
+ .nx-banner-script{display:none}
+ .nx-projects{grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:9px}
+ .nx-project-card b{white-space:normal;line-height:1.2}
+ .nx-folder-cols{grid-template-columns:1fr}
+}

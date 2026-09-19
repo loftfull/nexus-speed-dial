@@ -17,11 +17,11 @@ const declared = prefix => new Set([...css.matchAll(new RegExp(`--${prefix}[\\w-
 
 const FONT_SIZES = new Set([
   'var(--nx-fs-1)', 'var(--nx-fs-2)', 'var(--nx-fs-3)', 'var(--nx-fs-4)',
-  'var(--nx-fs-5)', 'var(--nx-fs-6)', 'var(--nx-fs-clock)', 'var(--nx-fs-clock-lg)',
+  'var(--nx-fs-5)', 'var(--nx-fs-6)', 'var(--nx-fs-clock)', 'var(--nx-fs-clock-lg)', 'var(--nx-fs-hero)',
 ]);
 const WEIGHTS = new Set(['400', '600', '700']);
 const RADII = new Set([
-  'var(--nx-r-xs)', 'var(--nx-r-sm)', 'var(--nx-r-md)', 'var(--nx-r-lg)',
+  'var(--nx-r-xs)', 'var(--nx-r-sm)', 'var(--nx-r-md)', 'var(--nx-r-lg)', 'var(--nx-r-xl)',
   '0', '50%', '999px',
   // Слой состояния повторяет форму плитки, а не задаёт свою.
   'inherit',
@@ -43,8 +43,8 @@ check('font-size', FONT_SIZES);
 check('font-weight', WEIGHTS);
 check('border-radius', RADII);
 
-if (declared('nx-fs').size !== 8) problems.push(`ступеней кегля объявлено ${declared('nx-fs').size}, ожидается 8`);
-if (declared('nx-r-').size !== 4) problems.push(`ступеней радиуса объявлено ${declared('nx-r-').size}, ожидается 4`);
+if (declared('nx-fs').size !== 9) problems.push(`ступеней кегля объявлено ${declared('nx-fs').size}, ожидается 9`);
+if (declared('nx-r-').size !== 5) problems.push(`ступеней радиуса объявлено ${declared('nx-r-').size}, ожидается 5`);
 
 const scale = ['1', '2', '3', '4', '5', '6'].map(step => Number(css.match(new RegExp(`--nx-fs-${step}:(\\d+(?:\\.\\d+)?)px`))[1]));
 if (scale.some((value, index) => index > 0 && value <= scale[index - 1])) problems.push(`ступени кегля не возрастают: ${scale.join(', ')}`);
@@ -54,4 +54,4 @@ if (problems.length) {
   console.error('Значения вне шкалы оформления:\n' + problems.map(line => '  ' + line).join('\n'));
   process.exit(1);
 }
-console.log(`Шкала в порядке: кегли ${scale.join('/')} px, насыщенности 400/600/700, четыре ступени радиуса.`);
+console.log(`Шкала в порядке: кегли ${scale.join('/')} px, насыщенности 400/600/700, ступеней радиуса ${declared('nx-r-').size}.`);
