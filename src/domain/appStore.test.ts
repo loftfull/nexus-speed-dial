@@ -49,6 +49,46 @@ describe('app store reducer', () => {
     ['nexus-sites', 'nexus-projects', 'nexus-sessions'].forEach(key => localStorage.removeItem(key));
   });
 
+  it('applies a backup as one state transaction, including saved settings', () => {
+    const backup = {
+      version: 1,
+      exportedAt: '2026-09-19T00:00:00.000Z',
+      sites: [{
+        id: 'site-backup',
+        title: 'Backup docs',
+        desc: 'Docs',
+        domain: 'backup.test',
+        url: 'https://backup.test/docs',
+        color: '#123456',
+        icon: 'B',
+        category: 'Research',
+        categoryId: 'cat-backup',
+      }],
+      projects: [{ id: 'project-backup', name: 'Research', color: '#234567', icon: 'R', siteIds: ['site-backup'], createdAt: 1, updatedAt: 2 }],
+      categories: [{ id: 'cat-backup', name: 'Research', projectId: 'project-backup' }],
+      groups: [{ id: 'group-backup', name: 'Docs', categoryId: 'cat-backup' }],
+      sessions: [{ id: 'session-backup', name: 'Research', siteIds: ['site-backup'], createdAt: 3 }],
+      settings: {
+        ui: { compact: true, searchEngine: 'Яндекс', mobileMode: 'icons' },
+        tile: { preset: 'flat', mode: 'list' },
+        appearance: { theme: 'dark', accent: '#c9364f', wallpaper: 'plain' },
+      },
+    };
+
+    const next = appReducer(initial, { type: 'backup/apply', value: backup } as any);
+
+    expect(next.sites.some(site => site.id === 'site-backup' && site.url === 'https://backup.test/docs')).toBe(true);
+    expect(next.projects.some(project => project.id === 'project-backup')).toBe(true);
+    expect(next.categories.some(category => category.id === 'cat-backup')).toBe(true);
+    expect(next.groups.some(group => group.id === 'group-backup')).toBe(true);
+    expect(next.sessions.some(session => session.id === 'session-backup')).toBe(true);
+    expect(next.ui).toMatchObject({ compact: true, searchEngine: 'Яндекс', mobileMode: 'icons' });
+    expect(next.tile).toMatchObject({ preset: 'flat', mode: 'list' });
+    expect(next.appearance).toMatchObject({ theme: 'dark', accent: '#c9364f', wallpaper: 'plain' });
+    expect(next.history).toBe(initial.history);
+    expect(next.trash).toBe(initial.trash);
+  });
+
   it('keeps a known mobile arrangement and rejects anything else', () => {
     expect(normalizeMobileMode('rows')).toBe('rows');
     expect(normalizeMobileMode('icons')).toBe('icons');
