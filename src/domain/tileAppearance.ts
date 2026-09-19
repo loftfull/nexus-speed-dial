@@ -42,12 +42,26 @@ export type TileAppearance = {
   borderOpacity: number;
   innerHighlight: boolean;
   /**
+   * `hairline` — только внутреннее кольцо по кромке, без тени: так строят
+   *   глубину Linear, Raycast и Resend — лестницей поверхностей и кромкой;
+   * `stack` — несколько мелких смещений вместо одной размытой тени, плюс
+   *   то же кольцо (приём Vercel: «никогда одна тень с размытием 8 px»);
    * `soft` — мягкая многослойная тень;
    * `neumorph` — две зеркальные тени, тёмная вниз-вправо и светлая
-   * вверх-влево, размытие вдвое больше сдвига (мягкий рельеф);
+   *   вверх-влево, размытие вдвое больше сдвига (мягкий рельеф);
    * `material` — пара «ключевая + окружающая» по уровням Material 3.
    */
-  shadowStyle: 'none' | 'drop' | 'soft' | 'neumorph' | 'material';
+  shadowStyle: 'none' | 'hairline' | 'stack' | 'drop' | 'soft' | 'neumorph' | 'material';
+  /**
+   * Плотность внутреннего кольца по кромке, %. Кольцо держит край карточки
+   * чётким и не даёт ей расплыться — в разобранных системах это главный
+   * признак «карточки». 0 — кольца нет.
+   */
+  ring: number;
+  /** Плотность кромки под курсором, %: у Linear наведённая карточка поднимается на ступень. */
+  ringHover: number;
+  /** Толщина кромки в десятых пикселя: 5 — это 0.5 px, волосяная линия. */
+  ringWidth: number;
   shadowDepth: number;
   shadowSoftness: number;
   shadowOpacity: number;
@@ -95,6 +109,9 @@ export const TILE_BOUNDS = {
   borderOpacity: [0, 100, 5],
   shadowDepth: [0, 24, 1],
   // Выше 20 px размытие роняет кадры на телефонах, поэтому это и потолок.
+  ring: [0, 24, 1],
+  ringHover: [0, 40, 1],
+  ringWidth: [5, 20, 5],
   blur: [0, 20, 1],
   fillOpacity: [4, 40, 1],
   stateLayer: [0, 16, 1],
@@ -121,7 +138,7 @@ const BASE: TileAppearance = {
   align: 'center', font: 'Manrope',
   surface: 'solid', tint: 0,
   borderWidth: 0, borderOpacity: 0, innerHighlight: false,
-  shadowStyle: 'drop', shadowDepth: 6, shadowSoftness: 18, shadowOpacity: 6,
+  shadowStyle: 'stack', shadowDepth: 6, shadowSoftness: 18, shadowOpacity: 6, ring: 8, ringHover: 14, ringWidth: 10,
   blur: 0, fillOpacity: 18, stateLayer: 0,
   hoverLift: 2, hoverScale: 100, hoverShadow: 140, pressedScale: 98,
   transitionMs: 180, easing: 'standard', focusRing: 'standard',
@@ -208,6 +225,42 @@ export const TILE_PRESETS: Record<VisualPreset, TileAppearance> = {
     hoverLift: 0, hoverShadow: 100, pressedScale: 97, transitionMs: 200, easing: 'soft',
   },
 
+  /*
+   * Ниже — три вида, собранные по разбору чужих систем в
+   * docs/design-audit-github.md. Общее у них одно: глубина строится на
+   * лестнице поверхностей и волосяной кромке, а не на размытой тени.
+   */
+
+  // Linear, Raycast, Resend: подложка на ступень светлее полотна плюс кромка,
+  // тени нет вовсе.
+  ladder: {
+    ...BASE, preset: 'ladder',
+    radius: 14, surface: 'tinted', tint: 0,
+    borderWidth: 0, borderOpacity: 0, innerHighlight: false,
+    shadowStyle: 'hairline', ring: 12,
+    hoverLift: 0, hoverScale: 100, hoverShadow: 100, pressedScale: 99,
+    transitionMs: 140, easing: 'snappy', stateLayer: 5,
+  },
+
+  // Framer, уровень 2: кромка, светлый край сверху и одна мелкая тень.
+  edge: {
+    ...BASE, preset: 'edge',
+    radius: 16, surface: 'solid', tint: 0,
+    borderWidth: 0, borderOpacity: 0, innerHighlight: true,
+    shadowStyle: 'stack', ring: 10, shadowDepth: 5, shadowSoftness: 16, shadowOpacity: 7,
+    hoverLift: 1, hoverShadow: 130, pressedScale: 99, transitionMs: 160, easing: 'soft',
+  },
+
+  // Vercel, уровень 4: несколько мелких смещений вместо одной размытой тени,
+  // и кольцо, чтобы край оставался чётким.
+  studio: {
+    ...BASE, preset: 'studio',
+    radius: 12, surface: 'solid', tint: 0,
+    borderWidth: 0, borderOpacity: 0, innerHighlight: true,
+    shadowStyle: 'stack', ring: 9, shadowDepth: 9, shadowSoftness: 24, shadowOpacity: 8,
+    hoverLift: 2, hoverShadow: 150, pressedScale: 99, transitionMs: 180, easing: 'standard',
+  },
+
   // Material 3: уровни высоты вместо произвольной тени и слой состояния
   // цветом содержимого — 8 % под курсором и 10 % при нажатии.
   material: {
@@ -223,12 +276,14 @@ export const TILE_PRESETS: Record<VisualPreset, TileAppearance> = {
 export const PRESET_ORDER: VisualPreset[] = [
   'soft', 'compact', 'flat', 'outline', 'floating', 'aurora', 'sand', 'contrast', 'accent',
   'glass', 'neumorph', 'material',
+  'ladder', 'edge', 'studio',
 ];
 
 export const PRESET_LABELS: Record<VisualPreset, string> = {
   soft: 'Мягкий', compact: 'Плотный', flat: 'Плоский', outline: 'Контур', floating: 'Парящий',
   aurora: 'Аврора', sand: 'Песочный', contrast: 'Тёмный', accent: 'Акцент',
   glass: 'Стекло', neumorph: 'Рельеф', material: 'Material',
+  ladder: 'Ступень', edge: 'Кромка', studio: 'Студия',
 };
 
 export const DEFAULT_TILE_APPEARANCE: TileAppearance = { ...TILE_PRESETS.soft };
@@ -254,7 +309,7 @@ export function normalizeTileAppearance(value: unknown): TileAppearance {
     align: ONE_OF(raw.align, ['left', 'center'] as const, DEFAULT_TILE_APPEARANCE.align),
     font: ONE_OF(raw.font, ['Manrope', 'Inter'] as const, DEFAULT_TILE_APPEARANCE.font),
     surface: ONE_OF(raw.surface, ['solid', 'tinted', 'gradient', 'contrast', 'glass'] as const, DEFAULT_TILE_APPEARANCE.surface),
-    shadowStyle: ONE_OF(raw.shadowStyle, ['none', 'drop', 'soft', 'neumorph', 'material'] as const, DEFAULT_TILE_APPEARANCE.shadowStyle),
+    shadowStyle: ONE_OF(raw.shadowStyle, ['none', 'hairline', 'stack', 'drop', 'soft', 'neumorph', 'material'] as const, DEFAULT_TILE_APPEARANCE.shadowStyle),
     easing: ONE_OF(raw.easing, ['standard', 'soft', 'snappy'] as const, DEFAULT_TILE_APPEARANCE.easing),
     focusRing: ONE_OF(raw.focusRing, ['minimal', 'standard', 'strong'] as const, DEFAULT_TILE_APPEARANCE.focusRing),
     loadAnimation: ONE_OF(raw.loadAnimation, ['none', 'fade', 'rise'] as const, DEFAULT_TILE_APPEARANCE.loadAnimation),
@@ -300,13 +355,37 @@ function background(tile: TileAppearance): string {
  * Тень из выбранного типа и трёх чисел. `soft` кладёт три слабых слоя —
  * так тень читается мягко и не превращается в жёсткий контур.
  */
-function shadow(tile: TileAppearance, boost = 1): string {
-  if (tile.shadowStyle === 'none') return 'none';
+/**
+ * Внутреннее кольцо по кромке. В разобранных системах (см.
+ * docs/design-audit-github.md) это универсальный признак карточки: Vercel
+ * добавляет его к каждому уровню, Linear и Raycast строят на нём всю глубину.
+ */
+function ring(tile: TileAppearance, hovered = false): string {
+  const density = hovered ? tile.ringHover : tile.ring;
+  if (tile.ring <= 0 || density <= 0) return '';
+  return `inset 0 0 0 ${(tile.ringWidth / 10).toFixed(1)}px rgba(var(--nx-ring-rgb), ${(density / 100).toFixed(3)})`;
+}
+
+function shadow(tile: TileAppearance, boost = 1, hovered = false): string {
+  const edge = ring(tile, hovered);
+  const withEdge = (value: string) => (edge ? (value === 'none' ? edge : `${value}, ${edge}`) : value);
+  if (tile.shadowStyle === 'none') return withEdge('none');
+  if (tile.shadowStyle === 'hairline') return withEdge('none');
   const alpha = (tile.shadowOpacity / 100) * boost;
   const depth = Math.round(tile.shadowDepth * boost);
   const soft = Math.round(tile.shadowSoftness * boost);
   const layer = (offset: number, blurRadius: number, weight: number) =>
     `0 ${offset}px ${blurRadius}px rgba(var(--nx-shade-rgb), ${(alpha * weight).toFixed(3)})`;
+  if (tile.shadowStyle === 'stack') {
+    // Несколько мелких смещений вместо одной размытой тени: так свет читается
+    // как настоящий, а край остаётся чётким.
+    const step = Math.max(1, Math.round(depth / 3));
+    return withEdge([
+      layer(1, 1, 0.5),
+      layer(step, step, 0.7),
+      `0 ${step * 3}px ${Math.round(soft * 0.8)}px -${step * 2}px rgba(var(--nx-shade-rgb), ${(alpha * 0.9).toFixed(3)})`,
+    ].join(', '));
+  }
   if (tile.shadowStyle === 'neumorph') {
     // Две зеркальные тени: тёмная вниз-вправо, светлая вверх-влево,
     // размытие вдвое больше сдвига. Цвета берутся от полотна, поэтому
@@ -314,6 +393,7 @@ function shadow(tile: TileAppearance, boost = 1): string {
     const offset = Math.max(1, depth);
     const spread = offset * 2;
     const mix = Math.max(40, 100 - Math.round(alpha * 100 * 4));
+    // У рельефа кольца нет: оно спорит с зеркальными тенями.
     return `${offset}px ${offset}px ${spread}px color-mix(in srgb, var(--nx-canvas) ${mix}%, #000),`
       + ` -${offset}px -${offset}px ${spread}px color-mix(in srgb, var(--nx-canvas) ${mix}%, #fff)`;
   }
@@ -325,13 +405,13 @@ function shadow(tile: TileAppearance, boost = 1): string {
     const key = layer(level, level + 1, 1.6);
     const ambient = `0 ${level * 2}px ${level * 3 + 2}px ${level}px`
       + ` rgba(var(--nx-shade-rgb), ${(alpha * 0.8).toFixed(3)})`;
-    return `${key}, ${ambient}`;
+    return withEdge(`${key}, ${ambient}`);
   }
   if (tile.shadowStyle === 'soft') {
-    return [layer(Math.round(depth / 4), Math.round(soft / 3), 0.5), layer(depth, soft, 0.7),
-      layer(Math.round(depth * 1.8), Math.round(soft * 1.8), 0.4)].join(', ');
+    return withEdge([layer(Math.round(depth / 4), Math.round(soft / 3), 0.5), layer(depth, soft, 0.7),
+      layer(Math.round(depth * 1.8), Math.round(soft * 1.8), 0.4)].join(', '));
   }
-  return `${layer(1, 2, 0.4)}, ${layer(depth, soft, 1)}`;
+  return withEdge(`${layer(1, 2, 0.4)}, ${layer(depth, soft, 1)}`);
 }
 
 /** Класс сетки для выбранной раскладки: им `mode` доходит до экрана. */
@@ -368,7 +448,9 @@ export function toTileVars(tile: TileAppearance): TileVars {
     // сама система, стекло становится плотным — иначе текст поплывёт.
     '--nx-tile-bg-solid': tile.surface === 'glass' ? 'var(--nx-surface)' : background(tile),
     '--nx-tile-border': `${tile.borderWidth}px solid rgba(var(--nx-line-rgb), ${(tile.borderOpacity / 100).toFixed(2)})`,
-    '--nx-tile-highlight': tile.innerHighlight ? 'inset 0 1px 0 rgba(255,255,255,.72)' : 'inset 0 0 0 rgba(0,0,0,0)',
+    // Светлая кромка сверху: у Framer это 0.10, у Linear — «едва заметная».
+    // Прежние 0.72 читались как глянец, а не как свет.
+    '--nx-tile-highlight': tile.innerHighlight ? 'inset 0 1px 0 rgba(255,255,255,.12)' : 'inset 0 0 0 rgba(0,0,0,0)',
     // Размытие работает только под стеклом: на плотной подложке размывать нечего.
     '--nx-tile-blur': tile.surface === 'glass' && tile.blur > 0 ? `blur(${tile.blur}px)` : 'none',
     // Слой состояния Material 3: цвет содержимого поверх подложки,
@@ -378,7 +460,9 @@ export function toTileVars(tile: TileAppearance): TileVars {
     '--nx-tile-state-press': tile.stateLayer > 0
       ? `color-mix(in srgb, currentColor ${Math.min(100, tile.stateLayer + 2)}%, transparent)` : 'transparent',
     '--nx-tile-shadow': shadow(tile),
-    '--nx-tile-shadow-hover': shadow(tile, tile.hoverShadow / 100),
+    // Кромка под курсором усиливается независимо от тени: у «Ступени» тени нет,
+    // и вся реакция на наведение — в кромке.
+    '--nx-tile-shadow-hover': shadow(tile, tile.hoverShadow / 100, true),
     '--nx-tile-ink': tile.surface === 'contrast' ? '#f2f6fc' : 'var(--nx-text)',
     '--nx-tile-ink-soft': tile.surface === 'contrast' ? 'rgba(242,246,252,.66)' : 'var(--nx-muted)',
     '--nx-tile-lift': `-${tile.hoverLift}px`,

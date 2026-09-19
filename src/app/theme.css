@@ -32,6 +32,8 @@
  --nx-r-sm:10px;
  --nx-shade-rgb:20,28,45;
  --nx-line-rgb:189,199,214;
+ /* Кромка карточки: в разобранных системах это главный признак поверхности. */
+ --nx-ring-rgb:20,28,45;
 }
 :root[data-theme="dark"]{
  --nx-canvas:#0e1217;
@@ -48,9 +50,15 @@
  --nx-shadow-lg:0 2px 8px rgba(0,0,0,.5),0 28px 64px rgba(0,0,0,.6);
  --nx-shade-rgb:0,0,0;
  --nx-line-rgb:70,84,104;
+ /* На тёмном кромка светлая: глубину даёт светлый край, а не чёрная тень. */
+ --nx-ring-rgb:255,255,255;
 }
 
 @layer nx-reset, nx-ui;
+
+/* Контекстные альтернативы, кернинг и лигатуры включены во всём приложении:
+   в разобранных системах это общее место — шрифт звучит иначе. */
+:root{font-feature-settings:"calt","kern","liga"}
 
 @layer nx-reset{
  .nx-root *,.nx-root *:before,.nx-root *:after{box-sizing:border-box}
@@ -898,3 +906,31 @@
 
 /* Кнопка «Восстановить» в корзине: тот же вид, что «Показать больше», но мельче. */
 .nx-restore{padding:7px var(--nx-fs-4);font-size:var(--nx-fs-2)}
+
+/* ─── Премиальная отделка ────────────────────────────────────────────────────
+   Разбор чужих систем (docs/design-audit-github.md) сошёлся на одном: глубину
+   держат лестница поверхностей и волосяная кромка, а не размытая тень.
+   Поэтому каждая поверхность приложения получает внутреннее кольцо, а тени
+   остаются мелкими. */
+.nx-panel,.nx-quick,.nx-dock,.nx-palette,.nx-action-dialog,.nx-settings,
+.nx-card,.nx-favchip,.nx-mobile-top>*,.site-form,.calendar,.nx-forecast{
+ box-shadow:var(--nx-shadow-sm),inset 0 0 0 1px rgba(var(--nx-ring-rgb),.07)}
+.nx-palette,.nx-action-dialog,.site-form{
+ box-shadow:0 1px 1px rgba(var(--nx-shade-rgb),.04),0 8px 16px -4px rgba(var(--nx-shade-rgb),.07),
+  0 24px 32px -8px rgba(var(--nx-shade-rgb),.09),inset 0 0 0 1px rgba(var(--nx-ring-rgb),.09)}
+
+/* Клавиши показываются как настоящие: у Raycast это единственное украшение
+   с глубиной — лёгкий градиент, будто у клавиши есть грань. */
+.nx-palette-kbd,.nx-keys kbd{
+ background:linear-gradient(180deg,color-mix(in srgb,var(--nx-surface) 96%,var(--nx-text)),var(--nx-sunken));
+ border:0;box-shadow:inset 0 0 0 1px rgba(var(--nx-ring-rgb),.14),0 1px 0 rgba(var(--nx-shade-rgb),.06);
+ color:var(--nx-muted);font-variant-numeric:tabular-nums}
+
+/* Цифры везде табличные: счётчики, часы и значения ползунков не должны
+   прыгать при смене цифры. Приём взят у Stripe и Coinbase. */
+.nx-link i,.nx-group-count,.nx-clock b,.nx-mobile-time b,.nx-cell-value,.nx-when b,
+.nx-sample small,.days button{font-variant-numeric:tabular-nums}
+
+/* Крупная ступень набирается с отрицательным трекингом — так её набирают
+   Linear и Vercel; без этого заголовок выглядит разреженным. */
+.nx-head h1,.nx-action-dialog h2,.site-form h2{letter-spacing:-.4px}

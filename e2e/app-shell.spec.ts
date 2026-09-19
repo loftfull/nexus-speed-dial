@@ -1003,21 +1003,73 @@ test.describe('Nexus shell', () => {
     await expect(head).toHaveAttribute('aria-expanded', 'true');
   };
 
-  test('каждый из двенадцати готовых видов даёт свою плитку', async ({ page }, testInfo) => {
+  test('каждый из пятнадцати готовых видов даёт свою плитку', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
     await page.goto('/');
     await openTiles(page);
     const presets = page.locator('.nx-preset');
-    await expect(presets).toHaveCount(12);
+    await expect(presets).toHaveCount(15);
 
     const seen = new Set<string>();
-    for (let index = 0; index < 12; index += 1) {
+    for (let index = 0; index < 15; index += 1) {
       await presets.nth(index).click();
       await page.waitForTimeout(60);
       seen.add(await tileFingerprint(page));
     }
-    // Двенадцать разных отпечатков: ни один готовый вид не повторяет другой.
-    expect(seen.size).toBe(12);
+    // Пятнадцать разных отпечатков: ни один готовый вид не повторяет другой.
+    expect(seen.size).toBe(15);
+  });
+
+  test('глубина держится на кромке, а не на размытой тени', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
+    await page.goto('/');
+    await openTiles(page);
+    const tile = page.locator('.nx-main .nx-tile').first();
+    const shadow = () => tile.evaluate(el => getComputedStyle(el).boxShadow);
+
+    // «Ступень» — приём Linear, Raycast и Resend: кромка есть, тени нет вовсе.
+    await page.locator('.nx-preset', { hasText: 'Ступень' }).first().click();
+    await page.waitForTimeout(80);
+    const ladder = await shadow();
+    expect(ladder).toContain('inset');
+    // Ни одного слоя со смещением: всё, что есть, — внутреннее кольцо.
+    expect(ladder.split('inset').filter(part => /\d+px \d+px/.test(part) && !part.includes('0px 0px')).length).toBe(0);
+
+    // Наведение усиливает кромку — у Linear наведённая карточка встаёт на ступень выше.
+    const restAlpha = Number((ladder.match(/[\d.]+\)/g) ?? ['0)'])[0].slice(0, -1));
+    await tile.hover();
+    await page.waitForTimeout(200);
+    const hoveredAlpha = Number((((await shadow()).match(/[\d.]+\)/g)) ?? ['0)'])[0].slice(0, -1));
+    expect(hoveredAlpha).toBeGreaterThan(restAlpha);
+
+    // «Студия» — приём Vercel: несколько мелких смещений плюс та же кромка.
+    await page.mouse.move(0, 0);
+    await page.locator('.nx-preset', { hasText: 'Студия' }).first().click();
+    await page.waitForTimeout(80);
+    const studio = await shadow();
+    expect(studio).toContain('inset');
+    expect((studio.match(/rgba\(/g) ?? []).length).toBeGreaterThanOrEqual(4);
+  });
+
+  test('клавиши и цифры набраны как в дорогих интерфейсах', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('.nx-grid');
+    // Счётчики в проводнике — табличными цифрами, чтобы не прыгали.
+    const counter = page.locator('.nx-link i').first();
+    if (await counter.count()) {
+      expect(await counter.evaluate(el => getComputedStyle(el).fontVariantNumeric)).toContain('tabular-nums');
+    }
+    await page.keyboard.press('Control+k');
+    const key = page.locator('.nx-palette-kbd').first();
+    await expect(key).toBeVisible();
+    const look = await key.evaluate(el => {
+      const style = getComputedStyle(el);
+      return { image: style.backgroundImage, shadow: style.boxShadow, numeric: style.fontVariantNumeric };
+    });
+    // Клавиша — с гранью: лёгкий градиент и кромка, как у Raycast.
+    expect(look.image).toContain('gradient');
+    expect(look.shadow).toContain('inset');
+    expect(look.numeric).toContain('tabular-nums');
   });
 
   test('стекло, рельеф и Material доходят до экрана, а не только до настроек', async ({ page }, testInfo) => {

@@ -28,8 +28,8 @@ const SURFACES: [TileAppearance['surface'], string][] = [
   ['contrast', 'Тёмная'], ['glass', 'Стекло'],
 ];
 const SHADOWS: [TileAppearance['shadowStyle'], string][] = [
-  ['none', 'Нет'], ['drop', 'Обычная'], ['soft', 'Мягкая'],
-  ['neumorph', 'Рельеф'], ['material', 'Material'],
+  ['none', 'Нет'], ['hairline', 'Только кромка'], ['stack', 'Стопка'],
+  ['drop', 'Обычная'], ['soft', 'Мягкая'], ['neumorph', 'Рельеф'], ['material', 'Material'],
 ];
 const MODES: [TileAppearance['mode'], string, Icon][] = [
   ['standard', 'Плитки', LayoutGrid], ['icon', 'Иконки', Grid2X2], ['list', 'Список', Rows3], ['preview', 'Превью', PanelTop],
@@ -135,7 +135,7 @@ export function TileSettings({ tile, patch, applyPreset, siteIcons, setSiteIcons
         <Slider icon={MoveVertical} label="Глубина тени" field="shadowDepth" tile={tile} patch={patch}
           disabled={tile.shadowStyle === 'none'} why="Тень выключена" />
         <Slider icon={Waves} label="Мягкость тени" field="shadowSoftness" tile={tile} patch={patch}
-          disabled={tile.shadowStyle === 'none'} why="Тень выключена" />
+          disabled={tile.shadowStyle === 'none' || tile.shadowStyle === 'hairline'} why="Тень выключена" />
         <Slider icon={Droplet} label="Плотность тени" field="shadowOpacity" tile={tile} patch={patch} unit="%"
           disabled={tile.shadowStyle === 'none'} why="Тень выключена" />
       </Group>
@@ -146,6 +146,11 @@ export function TileSettings({ tile, patch, applyPreset, siteIcons, setSiteIcons
         <Slider icon={Contrast} label="Плотность стекла" field="fillOpacity" tile={tile} patch={patch} unit="%"
           disabled={tile.surface !== 'glass'} why="Работает только на стеклянной подложке" />
         <Slider icon={MousePointerClick} label="Слой состояния" field="stateLayer" tile={tile} patch={patch} unit="%" />
+        <Slider icon={Square} label="Кромка" field="ring" tile={tile} patch={patch} unit="%" />
+        <Slider icon={Crosshair} label="Кромка под курсором" field="ringHover" tile={tile} patch={patch} unit="%"
+          disabled={tile.ring === 0} why="Сначала включите кромку" />
+        <Slider icon={SquareDashed} label="Толщина кромки" field="ringWidth" tile={tile} patch={patch}
+          format={value => (value / 10).toFixed(1) + ' px'} disabled={tile.ring === 0} why="Сначала включите кромку" />
       </Group>
 
       <Group title="Реакция на взаимодействие">

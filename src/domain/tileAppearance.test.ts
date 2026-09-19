@@ -26,7 +26,7 @@ const OTHER: { [K in keyof TileAppearance]: (current: TileAppearance[K]) => Tile
   showFavorite: current => !current,
   width: () => 210, minHeight: () => 200, gap: () => 8, radius: () => 4, iconSize: () => 64,
   columns: () => 4, markRadius: () => 4, tint: () => 40,
-  blur: () => 14, fillOpacity: () => 30, stateLayer: () => 10,
+  blur: () => 14, fillOpacity: () => 30, stateLayer: () => 10, ring: () => 20, ringHover: () => 30, ringWidth: () => 20,
   borderWidth: () => 2, borderOpacity: () => 80, shadowDepth: () => 18, shadowSoftness: () => 40,
   shadowOpacity: () => 25, hoverLift: () => 10, hoverScale: () => 106, hoverShadow: () => 200,
   pressedScale: () => 92, transitionMs: () => 400,
@@ -43,15 +43,15 @@ const BASE_FOR: Partial<Record<keyof TileAppearance, TileAppearance>> = {
 };
 
 describe('tileAppearance', () => {
-  it('содержит ровно двенадцать готовых видов', () => {
-    expect(PRESET_ORDER).toHaveLength(12);
-    expect(new Set(PRESET_ORDER).size).toBe(12);
+  it('содержит ровно пятнадцать готовых видов', () => {
+    expect(PRESET_ORDER).toHaveLength(15);
+    expect(new Set(PRESET_ORDER).size).toBe(15);
     PRESET_ORDER.forEach(id => expect(TILE_PRESETS[id].preset).toBe(id));
   });
 
   it('каждый готовый вид действительно отличается от остальных на экране', () => {
     const rendered = PRESET_ORDER.map(id => JSON.stringify(toTileVars(TILE_PRESETS[id])));
-    expect(new Set(rendered).size).toBe(12);
+    expect(new Set(rendered).size).toBe(15);
   });
 
   // Главная гарантия: в разделе нет ни одного контрола без видимого действия.
@@ -103,8 +103,34 @@ describe('tileAppearance', () => {
     expect(value.preset).toBe('soft');
   });
 
-  it('не выдаёт тень, когда тень выключена', () => {
-    expect(toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'none' })['--nx-tile-shadow']).toBe('none');
+  it('выключенная тень оставляет только кромку, а без кромки — ничего', () => {
+    const bare = toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'none', ring: 0 });
+    expect(bare['--nx-tile-shadow']).toBe('none');
+    // Кромка живёт отдельно от тени: это она держит край карточки.
+    const edged = toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'none', ring: 10, ringWidth: 10 });
+    expect(edged['--nx-tile-shadow']).toBe('inset 0 0 0 1.0px rgba(var(--nx-ring-rgb), 0.100)');
+    // Волосяная кромка: половина пикселя — то, чем эти системы и отличаются.
+    const hair = toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'none', ring: 10, ringWidth: 5 });
+    expect(hair['--nx-tile-shadow']).toContain('inset 0 0 0 0.5px');
+  });
+
+  it('кромка добавляется ко всем стилям тени, кроме рельефа', () => {
+    for (const style of ['hairline', 'stack', 'drop', 'soft', 'material'] as const) {
+      const vars = toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: style, ring: 10, shadowDepth: 8 });
+      expect(vars['--nx-tile-shadow']).toContain('inset 0 0 0 ');
+    }
+    // У рельефа две зеркальные тени, и кольцо с ними спорит.
+    const relief = toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'neumorph', ring: 10 });
+    expect(relief['--nx-tile-shadow']).not.toContain('inset');
+  });
+
+  it('стопка вместо одной размытой тени даёт три смещения', () => {
+    const stacked = toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'stack', ring: 0, shadowDepth: 9 })['--nx-tile-shadow'];
+    // Слои считаем по числу цветов: внутри rgba() тоже есть запятые.
+    expect((stacked.match(/rgba\(/g) ?? []).length).toBe(3);
+    // Одна размытая тень была бы одним слоем — именно от неё уходим.
+    const single = toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'drop', ring: 0 })['--nx-tile-shadow'];
+    expect((single.match(/rgba\(/g) ?? []).length).toBe(2);
   });
 
   it('прячет подписи, когда они выключены', () => {
@@ -173,12 +199,19 @@ describe('tileAppearance', () => {
   });
 
   it('усиливает тень под курсором ровно на заданную долю', () => {
-    const calm = toTileVars({ ...DEFAULT_TILE_APPEARANCE, hoverShadow: 100 });
+    // При равных кромке и тени наведение ничего не меняет.
+    const calm = toTileVars({ ...DEFAULT_TILE_APPEARANCE, hoverShadow: 100, ringHover: DEFAULT_TILE_APPEARANCE.ring });
     const strong = toTileVars({ ...DEFAULT_TILE_APPEARANCE, hoverShadow: 200 });
     expect(calm['--nx-tile-shadow-hover']).toBe(calm['--nx-tile-shadow']);
+
+    // А кромка под курсором усиливается сама по себе, даже когда тень не растёт:
+    // у «Ступени» тени нет вовсе, и вся реакция на наведение — в кромке.
+    const edgeOnly = toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'hairline', hoverShadow: 100, ring: 10, ringHover: 20 });
+    expect(edgeOnly['--nx-tile-shadow-hover']).not.toBe(edgeOnly['--nx-tile-shadow']);
+    expect(edgeOnly['--nx-tile-shadow-hover']).toContain('0.200');
     expect(strong['--nx-tile-shadow-hover']).not.toBe(strong['--nx-tile-shadow']);
     // Выключенная тень остаётся выключенной и под курсором.
-    expect(toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'none' })['--nx-tile-shadow-hover']).toBe('none');
+    expect(toTileVars({ ...DEFAULT_TILE_APPEARANCE, shadowStyle: 'none', ring: 0 })['--nx-tile-shadow-hover']).toBe('none');
   });
 });
 

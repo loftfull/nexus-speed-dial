@@ -31,12 +31,14 @@ export type TileMode = 'standard' | 'icon' | 'list' | 'preview' | 'screenshot' |
 export type VisualPreset =
   | 'soft' | 'compact' | 'flat' | 'outline' | 'floating'
   | 'aurora' | 'sand' | 'contrast' | 'accent'
-  | 'glass' | 'neumorph' | 'material';
+  | 'glass' | 'neumorph' | 'material'
+  | 'ladder' | 'edge' | 'studio';
 
 export const TILE_MODES: TileMode[] = ['standard', 'icon', 'list', 'preview', 'screenshot', 'mobile'];
 export const VISUAL_PRESETS: VisualPreset[] = [
   'soft', 'compact', 'flat', 'outline', 'floating', 'aurora', 'sand', 'contrast', 'accent',
   'glass', 'neumorph', 'material',
+  'ladder', 'edge', 'studio',
 ];
 
 /** Workspace → Category → Group is the navigation hierarchy. */
