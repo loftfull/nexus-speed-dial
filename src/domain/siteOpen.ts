@@ -1,4 +1,5 @@
 import type { SiteRecord } from './types';
+import { normalizeSiteAddress } from './siteUtils';
 
 export type SiteOpenState = {
   sites: SiteRecord[];
@@ -15,8 +16,8 @@ function hasHttpProtocol(value: string): boolean {
 }
 
 export function resolveSiteUrl(site: SiteRecord): string {
-  const value = site.domain.trim();
-  return hasHttpProtocol(value) ? value : `https://${value}`;
+  return normalizeSiteAddress(site.url ?? site.domain)?.url
+    ?? (hasHttpProtocol(site.domain) ? site.domain.trim() : `https://${site.domain.trim()}`);
 }
 
 function historyAliases(site: SiteRecord): Set<string> {
@@ -24,6 +25,7 @@ function historyAliases(site: SiteRecord): Set<string> {
   if (site.id) aliases.add(site.id);
   aliases.add(site.title);
   aliases.add(site.domain);
+  if (site.url) aliases.add(site.url);
   aliases.add(resolveSiteUrl(site));
   return aliases;
 }
@@ -35,12 +37,12 @@ export function recordSiteOpen(
   now: number,
   saveHistory: boolean,
 ): SiteOpenState {
-  const identity = site.id ?? site.domain;
+  const identity = site.id ?? site.url ?? site.domain;
   const aliases = historyAliases(site);
   const nextSites = sites.map(item => {
     const matches = site.id
       ? item.id === site.id
-      : item.domain === site.domain && item.title === site.title;
+      : resolveSiteUrl(item) === resolveSiteUrl(site) && item.title === site.title;
     return matches ? { ...item, lastOpened: now } : item;
   });
 
@@ -56,7 +58,7 @@ export function recordSiteOpen(
 
 export function resolveHistoryTarget(historyItem: string, sites: SiteRecord[]): HistoryTarget {
   const site = sites.find(item =>
-    item.id === historyItem || item.domain === historyItem || item.title === historyItem,
+    item.id === historyItem || item.url === historyItem || item.domain === historyItem || item.title === historyItem,
   );
 
   if (site) {
