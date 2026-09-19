@@ -9,10 +9,15 @@ const screenshotOptions = { maxDiffPixels: 250 } as const;
  */
 async function settle(page: Page) {
   await page.waitForSelector('.nx-tile, .nx-empty');
-  await page.waitForFunction(() => {
-    const images = [...document.querySelectorAll('.nx-mark img, .nx-dock-mark img')];
-    return images.every(image => (image as HTMLImageElement).complete);
-  }, undefined, { timeout: 10_000 }).catch(() => {});
+  // `complete` истинно и для картинки, которая не загрузилась, поэтому ждём
+  // не её, а состояния самого знака: готовая картинка получает класс `ready`,
+  // а неудачная исчезает совсем и остаётся монограмма. Пока есть знак с
+  // неотрисованной картинкой, снимок делать рано.
+  await page.waitForFunction(
+    () => document.querySelectorAll('.nx-mark img:not(.ready), .nx-dock-mark img:not(.ready)').length === 0,
+    undefined,
+    { timeout: 10_000 },
+  ).catch(() => {});
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(250);
 }
@@ -56,6 +61,8 @@ test.describe('Nexus visual baselines', () => {
     await settle(page);
     await page.keyboard.press('Control+k');
     await expect(page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' })).toBeFocused();
+    // В палитре свои знаки сайтов: она тоже должна устояться.
+    await settle(page);
     await expect(page).toHaveScreenshot('desktop-palette.png', { ...screenshotOptions, fullPage: true });
   });
 
