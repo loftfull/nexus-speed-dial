@@ -514,6 +514,69 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-main .nx-tile').first()).toBeVisible();
   });
 
+  test('a session saves the sites on screen and opens them all back', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'open', {
+        configurable: true, writable: true,
+        value: (...args: unknown[]) => {
+          const store = window as typeof window & { __opened?: string[] };
+          (store.__opened ??= []).push(String(args[0]));
+          return null;
+        },
+      });
+    });
+    await page.goto('/');
+    await page.waitForSelector('.nx-grid');
+    const total = await page.locator('.nx-main .nx-tile').count();
+
+    await page.locator('.nx-quick').getByRole('button', { name: 'Сессии' }).click();
+    // Пустое состояние предлагает действие, а не просто сообщает о пустоте.
+    const save = page.getByRole('button', { name: /Сохранить текущие сайты/ });
+    await expect(save).toBeVisible();
+    await save.click();
+    await page.getByLabel('Название сессии').fill('Утро понедельника');
+    await page.locator('.nx-action-dialog').getByRole('button', { name: 'Сохранить' }).click();
+
+    const card = page.locator('.nx-session').first();
+    await expect(card.locator('b')).toHaveText('Утро понедельника');
+    // Сессия помнит проект и число сайтов.
+    await expect(card.locator('.nx-session-name span')).toContainText('Дом');
+    await expect(card.locator('.nx-session-mark')).toHaveCount(total);
+
+    // Много вкладок разом — заметное действие, поэтому приложение переспрашивает.
+    await card.getByRole('button', { name: 'Открыть' }).click();
+    const confirm = page.locator('.nx-action-dialog');
+    await expect(confirm).toContainText('Открыть');
+    await confirm.getByRole('button', { name: 'Открыть все' }).click();
+    const opened = await page.evaluate(() => (window as typeof window & { __opened?: string[] }).__opened ?? []);
+    expect(opened.length).toBe(total);
+
+    // Переименование и удаление доходят до списка.
+    await card.getByRole('button', { name: 'Переименовать' }).click();
+    const field = page.getByLabel('Название сессии');
+    await field.fill('Вечерний набор');
+    await page.locator('.nx-action-dialog').getByRole('button', { name: 'Сохранить' }).click();
+    await expect(page.locator('.nx-session b')).toHaveText('Вечерний набор');
+
+    await page.locator('.nx-session').first().getByRole('button', { name: 'Удалить' }).click();
+    await expect(page.locator('.nx-session')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Сохранить текущие сайты/ })).toBeVisible();
+  });
+
+  test('the palette can save a session too', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
+    await page.goto('/');
+    await page.waitForSelector('.nx-grid');
+    await page.keyboard.press('Control+k');
+    await page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' }).fill('сессия');
+    await page.getByRole('option', { name: /Сохранить сессию/ }).click();
+    await page.getByLabel('Название сессии').fill('Из палитры');
+    await page.locator('.nx-action-dialog').getByRole('button', { name: 'Сохранить' }).click();
+    await page.locator('.nx-quick').getByRole('button', { name: 'Сессии' }).click();
+    await expect(page.locator('.nx-session b')).toHaveText('Из палитры');
+  });
+
   test('the favourites strip stays the same in every project and opens a site', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'На узком экране полосы нет: там дорога высота.');
     await page.addInitScript(() => {

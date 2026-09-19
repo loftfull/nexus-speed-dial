@@ -969,3 +969,26 @@
 .nx-recent-mark{width:22px;height:22px;border-radius:var(--nx-r-xs);font-size:var(--nx-fs-1)}
 .nx-recent-mark img{width:14px;height:14px}
 .nx-panel.collapsed .nx-recent-block{display:none}
+
+/* ─── Сессии ─────────────────────────────────────────────────────────────────
+   Папка с набором сайтов проекта: открыть всю сразу или зайти в один сайт. */
+.nx-sessions{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:var(--nx-gap,16px);flex:1 0 auto;align-content:start}
+.nx-session{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:var(--nx-r-md);
+ background:var(--nx-surface);box-shadow:var(--nx-shadow-sm),inset 0 0 0 1px rgba(var(--nx-ring-rgb),.07)}
+.nx-session-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.nx-session-name{display:flex;flex-direction:column;gap:3px;min-width:0}
+.nx-session-name b{font-size:var(--nx-fs-4);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-session-name span{font-size:var(--nx-fs-2);color:var(--nx-muted);font-variant-numeric:tabular-nums}
+.nx-session-open{display:flex;align-items:center;gap:7px;flex:none;min-height:34px;padding:0 13px;
+ border-radius:var(--nx-r-sm);background:var(--nx-accent-soft);color:var(--nx-accent);
+ font-size:var(--nx-fs-3);font-weight:600}
+.nx-session-open:disabled{background:var(--nx-sunken);color:var(--nx-muted);cursor:default}
+.nx-session-sites{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.nx-session-mark{width:30px;height:30px;border-radius:var(--nx-r-sm);font-size:var(--nx-fs-2)}
+.nx-session-mark img{width:18px;height:18px}
+.nx-session-more{font-size:var(--nx-fs-2);color:var(--nx-muted);font-variant-numeric:tabular-nums}
+.nx-session-actions{display:flex;gap:8px;border-top:1px solid var(--nx-line);padding-top:10px}
+.nx-session-actions button{display:flex;align-items:center;gap:6px;min-height:30px;padding:0 9px;
+ border-radius:var(--nx-r-sm);color:var(--nx-muted);font-size:var(--nx-fs-2);font-weight:600}
+.nx-session-actions button:hover{background:var(--nx-sunken);color:var(--nx-text)}
+.nx-session-actions button.danger:hover{color:#d1344f}

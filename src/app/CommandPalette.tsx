@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   Clock3, ExternalLink, FolderTree, Globe, Home, Keyboard, Layers3, LayoutGrid, ListFilter,
-  PanelLeft, Plus, Search, Settings as SettingsIcon, Star, StickyNote, Tag, Trash2, X,
+  PanelLeft, Plus, Search, Settings as SettingsIcon, SquareStack, Star, StickyNote, Tag, Trash2, X,
 } from './icons.generated';
 import type { ControlIcon } from './SettingControls';
 import { SiteIcon } from './SiteIcon';
@@ -17,7 +17,7 @@ const KIND_ICON: Record<Exclude<PaletteKind, 'site'>, ControlIcon> = {
 const NAMED_ICON: Record<string, ControlIcon> = {
   plus: Plus, project: Layers3, category: Tag, settings: SettingsIcon, panel: PanelLeft,
   dock: LayoutGrid, trash: Trash2, filter: ListFilter, clear: X, home: Home, star: Star,
-  clock: Clock3, note: StickyNote, search: Search, open: ExternalLink,
+  clock: Clock3, note: StickyNote, search: Search, open: ExternalLink, session: SquareStack,
 };
 
 /** Подсветка попаданий в название. Диапазоны режут строку по границам символов. */

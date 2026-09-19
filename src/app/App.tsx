@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
-  Check, ChevronDown, ChevronRight, ChevronUp, Clock3, CloudSun, Droplets, Home, Layers3, LayoutGrid,
+  Check, ChevronDown, ChevronRight, ChevronUp, Clock3, CloudSun, Droplets, ExternalLink, Home, Layers3, LayoutGrid,
   Briefcase, Cloud, CloudRain, GraduationCap, ShoppingBag, Snowflake, Sun,
-  Grid3X3, MoreHorizontal, Plus, Rows3, RotateCw, Search, Settings as SettingsIcon, SlidersHorizontal,
-  Star, StickyNote, Table2, Tag, Trash2, Wind, X,
+  Grid3X3, MoreHorizontal, Pencil, Plus, Rows3, RotateCw, Search, Settings as SettingsIcon, SlidersHorizontal,
+  Star, StickyNote, SquareStack, Table2, Tag, Trash2, Wind, X,
 } from './icons.generated';
 
 import './theme.css';
@@ -16,6 +16,7 @@ import { makeCategoryId, makeGroupId } from '../domain/hierarchy';
 import { buildWebSearchUrl } from '../domain/webSearch';
 import { recordSiteOpen, resolveHistoryTarget, resolveSiteUrl } from '../domain/siteOpen';
 import { filterSites } from '../domain/siteUtils';
+import { createSession, liveCount, orderSessions, removeSession, renameSession, sessionSites, touchSession } from '../domain/sessions';
 import { buildPaletteItems, looksLikeUrl } from '../domain/palette';
 import type { PaletteItem } from '../domain/palette';
 import { categoryColor, groupColor, projectColor } from '../domain/nodeColor';
@@ -36,9 +37,12 @@ import { CommandPalette } from './CommandPalette';
 import { TileGrid, focusableInTile } from './TileGrid';
 import { NotesWorkspace } from '../components/NotesWorkspace';
 
-type SectionId = 'sites' | 'favorites' | 'trash' | 'recent' | 'notes';
+type SectionId = 'sites' | 'favorites' | 'trash' | 'recent' | 'notes' | 'sessions';
 type AppActionDialog =
   | { kind: 'project' }
+  | { kind: 'session-save'; sites: Site[] }
+  | { kind: 'session-rename'; id: string; name: string }
+  | { kind: 'session-open'; id: string; count: number }
   | { kind: 'category' }
   | { kind: 'group'; categoryId: string }
   | { kind: 'empty-trash' };
@@ -48,12 +52,13 @@ const SECTIONS: { id: SectionId; label: string; icon: ControlIcon }[] = [
   { id: 'favorites', label: 'Избранное', icon: Star },
   { id: 'recent', label: 'Недавние', icon: Clock3 },
   { id: 'notes', label: 'Заметки', icon: StickyNote },
+  { id: 'sessions', label: 'Сессии', icon: SquareStack },
   { id: 'trash', label: 'Корзина', icon: Trash2 },
 ];
 const SECTION_TITLE = Object.fromEntries(SECTIONS.map(s => [s.id, s.label])) as Record<SectionId, string>;
 /** Ключи иконок для палитры: сам домен остаётся без React-компонентов. */
 const SECTION_PALETTE_ICON: Record<SectionId, string> = {
-  sites: 'home', favorites: 'star', recent: 'clock', notes: 'note', trash: 'trash',
+  sites: 'home', favorites: 'star', recent: 'clock', notes: 'note', trash: 'trash', sessions: 'session',
 };
 const PROJECT_GLYPHS = [Home, Briefcase, GraduationCap, Star, Layers3, ShoppingBag];
 const PAGE = 24;
@@ -316,6 +321,30 @@ export function App() {
       return;
     }
 
+    if (action.kind === 'session-save') {
+      try {
+        const session = createSession({ name: value, sites: action.sites, projectId: activeProjectId ?? undefined });
+        setSessions(current => [session, ...current]);
+        setToast(`Сессия «${session.name}» сохранена`);
+      } catch (error) {
+        setToast(error instanceof Error ? error.message : 'Не удалось сохранить сессию');
+      }
+      setActionDialog(null);
+      return;
+    }
+
+    if (action.kind === 'session-rename') {
+      setSessions(current => renameSession(current, action.id, value));
+      setActionDialog(null);
+      return;
+    }
+
+    if (action.kind === 'session-open') {
+      openSession(action.id);
+      setActionDialog(null);
+      return;
+    }
+
     setTrash([]);
     setToast('Корзина очищена');
     setActionDialog(null);
@@ -333,6 +362,36 @@ export function App() {
     () => (ui.searchLocal === false || !query ? scoped : filterSites(scoped, query, {}, 'Быстрый доступ', () => [])),
     [scoped, query, ui.searchLocal],
   );
+
+  // ─── Сессии ───────────────────────────────────────────────────────────────
+  // Сессия — папка с набором сайтов: тем, что открыт в браузере сейчас, или
+  // тем, что выбран в приложении. Раньше её можно было только сохранить при
+  // импорте вкладок, а открыть — нигде.
+  const projectSessions = useMemo(() => orderSessions(sessions, activeProjectId), [sessions, activeProjectId]);
+
+  const openSession = (id: string) => {
+    const session = sessions.find(item => item.id === id);
+    if (!session) return;
+    const list = sessionSites(session, sites);
+    if (!list.length) { setToast('В этой сессии не осталось сохранённых сайтов'); return; }
+    setSessions(current => touchSession(current, id));
+    list.forEach(openSite);
+    setToast(`Открыто ${countSites(list.length)} из сессии «${session.name}»`);
+  };
+
+  const askOpenSession = (id: string) => {
+    const session = sessions.find(item => item.id === id);
+    if (!session) return;
+    const count = liveCount(session, sites);
+    // Много вкладок разом — заметное действие, поэтому спрашиваем.
+    if (count > 6) { setActionDialog({ kind: 'session-open', id, count }); return; }
+    openSession(id);
+  };
+
+  const saveSession = (list: Site[]) => {
+    if (!list.length) { setToast('Сначала выберите, что сохранить'); return; }
+    setActionDialog({ kind: 'session-save', sites: list });
+  };
 
   // Недавние занимают пустоту под деревом проектов: раньше половина панели
   // не несла ничего. Список берётся из истории и свёрнут до последних.
@@ -370,6 +429,7 @@ export function App() {
       { id: 'settings', title: 'Настройки', hint: 'Оформление, панели, данные', shortcut: 'Ctrl ,', keywords: 'параметры опции', icon: 'settings' },
       { id: 'toggle-dock', title: dockOpen ? 'Скрыть док-панель' : 'Показать док-панель', hint: 'Закреплённые сайты', keywords: 'док закреплённые', icon: 'dock' },
       { id: 'empty-trash', title: 'Очистить корзину', hint: `В корзине ${countSites(trash.length)}`, keywords: 'удалить корзину', icon: 'trash' },
+      { id: 'save-session', title: 'Сохранить сессию', hint: 'Набор сайтов, открытых на экране', keywords: 'сессия вкладки набор', icon: 'session' },
     ];
     // Проводника на узком экране нет вовсе, поэтому и команды о нём там нет.
     if (!narrow) {
@@ -449,6 +509,7 @@ export function App() {
       case 'toggle-panel': setPanelOpen(open => !open); break;
       case 'toggle-dock': setDockOpen(open => !open); break;
       case 'empty-trash': setActionDialog({ kind: 'empty-trash' }); break;
+      case 'save-session': saveSession(scoped); break;
       case 'filter': setQuery(value.trim()); break;
       case 'clear-filter': setQuery(''); break;
     }
@@ -584,6 +645,55 @@ export function App() {
       ? <TileGrid className={gridClass}>{items.map((site, index) => <React.Fragment key={`${site.id}-${index}`}>{renderTile(site)}</React.Fragment>)}</TileGrid>
       : <Empty icon={Clock3} title="Пока ничего не открывали" hint="Открытые сайты появятся здесь"
           action={{ label: 'К сайтам', icon: Home, onClick: () => setSection('sites') }} />;
+  } else if (section === 'sessions') {
+    body = projectSessions.length ? (
+      <div className="nx-sessions">
+        {projectSessions.map(session => {
+          const inside = sessionSites(session, sites);
+          const owner = projects.find(item => item.id === session.projectId);
+          return (
+            <article className="nx-session" key={session.id}>
+              <div className="nx-session-head">
+                <div className="nx-session-name">
+                  <b>{session.name}</b>
+                  <span>{owner ? `${owner.name} · ` : ''}{countSites(inside.length)}</span>
+                </div>
+                <button type="button" className="nx-session-open" onClick={() => askOpenSession(session.id)}
+                  disabled={!inside.length}
+                  title={inside.length ? 'Открыть все сайты сессии' : 'Сайты этой сессии удалены'}>
+                  <ExternalLink size={15} aria-hidden="true" />Открыть
+                </button>
+              </div>
+              <div className="nx-session-sites">
+                {inside.slice(0, 12).map(item => (
+                  <button key={item.id ?? item.domain} type="button" className="nx-session-site"
+                    title={`${item.title} · ${item.domain}`} onClick={() => openSite(item)}>
+                    <SiteIcon title={item.title} domain={item.domain} color={item.color}
+                      logos={useFavicons} className="nx-mark nx-session-mark" />
+                  </button>
+                ))}
+                {inside.length > 12 && <span className="nx-session-more">+{inside.length - 12}</span>}
+              </div>
+              <div className="nx-session-actions">
+                <button type="button" onClick={() => setActionDialog({ kind: 'session-rename', id: session.id, name: session.name })}>
+                  <Pencil size={14} aria-hidden="true" />Переименовать
+                </button>
+                <button type="button" className="danger" onClick={() => {
+                  setSessions(current => removeSession(current, session.id));
+                  setToast(`Сессия «${session.name}» удалена`);
+                }}>
+                  <Trash2 size={14} aria-hidden="true" />Удалить
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    ) : (
+      <Empty icon={SquareStack} title="Сессий пока нет"
+        hint="Сессия сохраняет набор сайтов проекта, чтобы открыть их все разом"
+        action={{ label: 'Сохранить текущие сайты', icon: Plus, onClick: () => saveSession(scoped) }} />
+    );
   } else if (section === 'notes') {
     body = <NotesWorkspace sites={sites.filter(site => site.note)} onEdit={setEditing} />;
   } else {
@@ -1030,6 +1140,34 @@ export function App() {
           description="Группа объединит связанные плитки внутри категории."
           input={{ label: 'Название группы', placeholder: 'Например, Инструменты' }}
           confirmLabel="Создать"
+          onConfirm={submitActionDialog}
+          onClose={() => setActionDialog(null)}
+        />
+      )}
+      {actionDialog?.kind === 'session-save' && (
+        <ActionDialog
+          title="Сохранить сессию"
+          description={`В сессию попадут ${countSites(actionDialog.sites.length)} — те, что сейчас на экране. Открыть их потом можно будет одним нажатием.`}
+          input={{ label: 'Название сессии', placeholder: 'Например, Утро понедельника' }}
+          confirmLabel="Сохранить"
+          onConfirm={submitActionDialog}
+          onClose={() => setActionDialog(null)}
+        />
+      )}
+      {actionDialog?.kind === 'session-rename' && (
+        <ActionDialog
+          title="Переименовать сессию"
+          input={{ label: 'Название сессии', initialValue: actionDialog.name }}
+          confirmLabel="Сохранить"
+          onConfirm={submitActionDialog}
+          onClose={() => setActionDialog(null)}
+        />
+      )}
+      {actionDialog?.kind === 'session-open' && (
+        <ActionDialog
+          title={`Открыть ${countSites(actionDialog.count)}?`}
+          description="Каждый сайт сессии откроется в своей вкладке."
+          confirmLabel="Открыть все"
           onConfirm={submitActionDialog}
           onClose={() => setActionDialog(null)}
         />
