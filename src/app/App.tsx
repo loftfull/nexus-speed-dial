@@ -876,7 +876,8 @@ export function App() {
           sites={sites} setSites={setSites} categories={categories} setCategories={setCategories}
           groups={groups} setGroups={setGroups} ui={ui} setUi={setUi} tile={tile} setTile={setTile}
           appearance={appearance} setAppearance={setAppearance} projects={projects} setProjects={setProjects}
-          sessions={sessions} setSessions={setSessions} />
+          sessions={sessions} setSessions={setSessions}
+          onApplyBackup={backup => dispatch({ type: 'backup/apply', value: backup })} />
       )}
     </div>
   );
