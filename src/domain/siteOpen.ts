@@ -16,8 +16,11 @@ function hasHttpProtocol(value: string): boolean {
 }
 
 export function resolveSiteUrl(site: SiteRecord): string {
-  return normalizeSiteAddress(site.url ?? site.domain)?.url
-    ?? (hasHttpProtocol(site.domain) ? site.domain.trim() : `https://${site.domain.trim()}`);
+  if (site.url) {
+    return normalizeSiteAddress(site.url)?.url ?? site.url.trim();
+  }
+  const value = site.domain.trim();
+  return hasHttpProtocol(value) ? value : `https://${value}`;
 }
 
 function historyAliases(site: SiteRecord): Set<string> {
