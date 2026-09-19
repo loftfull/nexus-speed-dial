@@ -22,6 +22,7 @@ function setup(overrides: Partial<SettingsProps> = {}) {
     groups: [], setGroups: vi.fn(), projects: [], setProjects: vi.fn(),
     sessions: [], setSessions: vi.fn(),
     ui, setUi: vi.fn(), tile, setTile: vi.fn(), appearance, setAppearance: vi.fn(),
+    onApplyBackup: vi.fn(),
     ...overrides,
   };
   render(<SettingsPanel {...props} />);
