@@ -707,7 +707,7 @@ button.nx-rail-card:hover{transform:translateY(-2px);
    фотографию. Файл лежит в public/ и отдаётся отдельным запросом, а не
    зашивается в сборку. */
 :root[data-wallpaper="lake"] .nx-root{
- background:url("/wallpapers/lake.webp") center top/cover no-repeat fixed,
+ background:url("../assets/lake.webp") center top/cover no-repeat fixed,
   linear-gradient(170deg,#dbe8f8 0%,#eef3fb 46%,#f4f7fc 100%)}
 /* Своё изображение. Ставится на .nx-root, поверх — светлая вуаль: без неё
    тёмная фотография съедает текст на панелях. Плотность вуали регулируется
@@ -777,7 +777,7 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-wall-dot.wall-lilac{background:radial-gradient(120% 100% at 80% 0%,#e7d6ff,#ffd8ec 44%,#e9ecf8)}
 .nx-wall-dot.wall-paper{background:radial-gradient(120% 100% at 80% 0%,#fdf4e6,#f1ece1)}
 .nx-wall-dot.wall-plain{background:#f5f6f8}
-.nx-wall-dot.wall-lake{background:url("/wallpapers/lake.webp") center top/cover}
+.nx-wall-dot.wall-lake{background:url("../assets/lake.webp") center top/cover}
 .nx-wall-dot.wall-photo{background:var(--nx-wall-photo,linear-gradient(135deg,#cfe0f7,#e7d6ff)) center/cover}
 
 /* ── компактный режим и отключённые анимации ──────────────────── */

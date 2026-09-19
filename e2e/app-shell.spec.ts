@@ -1363,11 +1363,17 @@ test.describe('Рабочий стол проектов', () => {
     await page.goto('/');
     await expect(page.locator('html')).toHaveAttribute('data-wallpaper', 'lake');
     const background = await page.locator('.nx-root').evaluate(el => getComputedStyle(el).backgroundImage);
-    expect(background).toContain('wallpapers/lake.webp');
-    // Файл именно отдаётся, а не просто упомянут в стилях.
-    const answer = await page.request.get('/wallpapers/lake.webp');
+    expect(background).toMatch(/lake[-.\w]*\.webp/);
+
+    // Адрес берётся из самих стилей, а не пишется в тесте руками: сборка
+    // выходит под префиксом (base в vite.config) и с хешем в имени, и
+    // зашитый путь проверял бы выдумку вместо того, что на самом деле
+    // запрашивает браузер.
+    const source = background.match(/url\(["']?([^"')]+)["']?\)/)?.[1];
+    expect(source).toBeTruthy();
+    const answer = await page.request.get(source!);
     expect(answer.status()).toBe(200);
-    expect(Number(answer.headers()['content-length'] ?? 0)).toBeGreaterThan(10_000);
+    expect((await answer.body()).byteLength).toBeGreaterThan(10_000);
   });
 
   test('счётчик на карточке проекта совпадает с проводником', async ({ page }, testInfo) => {
