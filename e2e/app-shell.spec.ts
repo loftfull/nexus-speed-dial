@@ -1345,6 +1345,31 @@ test.describe('Рабочий стол проектов', () => {
     await expect(page.locator('.nx-board .nx-grid')).toHaveCount(0);
   });
 
+  test('в шапке только показания и действия — без приветствия и девиза', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'На узком экране показания живут в мобильной шапке.');
+    await page.goto('/');
+
+    // Ни обращения, ни баннера: место на стартовой странице отдано данным.
+    await expect(page.locator('.nx-banner')).toHaveCount(0);
+    await expect(page.locator('.nx-board-hello, .nx-hero')).toHaveCount(0);
+    await expect(page.getByText(/Добр(ое|ый) (утро|день|вечер)/)).toHaveCount(0);
+
+    // Зато стоят часы с датой и счётчик сайтов.
+    await expect(page.locator('.nx-board-clock b')).toHaveText(/^\d{2}:\d{2}$/);
+    await expect(page.locator('.nx-board-total b')).toHaveText(/^\d+$/);
+  });
+
+  test('сцена из поставки стоит фоном и доезжает до экрана', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-wallpaper', 'lake');
+    const background = await page.locator('.nx-root').evaluate(el => getComputedStyle(el).backgroundImage);
+    expect(background).toContain('wallpapers/lake.webp');
+    // Файл именно отдаётся, а не просто упомянут в стилях.
+    const answer = await page.request.get('/wallpapers/lake.webp');
+    expect(answer.status()).toBe(200);
+    expect(Number(answer.headers()['content-length'] ?? 0)).toBeGreaterThan(10_000);
+  });
+
   test('счётчик на карточке проекта совпадает с проводником', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'Проводник виден только на широком экране.');
     await page.goto('/');

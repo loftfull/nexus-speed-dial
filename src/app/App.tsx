@@ -27,7 +27,6 @@ import type { Category, Project, SiteGroup, SiteRecord as Site } from '../domain
 import { Tile } from './Tile';
 import type { TileLayout } from './Tile';
 import { applyWallpaperPhoto, readWallpaperPhoto } from '../domain/wallpaper';
-import { greetingLine, greetingSubtitle } from '../domain/greeting';
 import { HomeBoard } from './HomeBoard';
 import { SiteIcon } from './SiteIcon';
 import type { ControlIcon } from './SettingControls';
@@ -187,12 +186,23 @@ export function App() {
       ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
       : appearance.theme;
     document.documentElement.dataset.theme = theme;
-    document.documentElement.dataset.wallpaper = appearance.wallpaper || 'aurora';
+    document.documentElement.dataset.wallpaper = appearance.wallpaper || 'lake';
     document.documentElement.style.setProperty('--accent', appearance.accent);
     // Своё изображение лежит отдельным ключом, поэтому переменную ставим здесь,
     // а не получаем вместе с остальным оформлением.
     applyWallpaperPhoto(readWallpaperPhoto());
     document.documentElement.style.setProperty('--nx-wall-veil', String((appearance.veil ?? 42) / 100));
+    // Размытие панелей включается атрибутом, а не одним лишь нулём в
+    // переменной: backdrop-filter:blur(0) всё равно заставляет браузер
+    // складывать слой заново, и это видно на слабых машинах.
+    const blur = appearance.panelBlur ?? 0;
+    if (blur > 0) {
+      document.documentElement.dataset.panelBlur = String(blur);
+      document.documentElement.style.setProperty('--nx-panel-blur', `${blur}px`);
+    } else {
+      delete document.documentElement.dataset.panelBlur;
+      document.documentElement.style.removeProperty('--nx-panel-blur');
+    }
   }, [appearance]);
 
   useEffect(() => {
@@ -737,9 +747,11 @@ export function App() {
       <HomeBoard
         projects={projects} categories={categories} groups={groups} sites={sites}
         recent={railRecent} activeProjectId={activeProjectId} categoryId={categoryId}
-        greetName={ui.greetName} now={now} time={time} dateLine={dateLine}
+        time={time} dateLine={dateLine}
         logos={ui.siteIcons !== false}
-        banner={ui.banner !== false}
+        weather={ui.weather ? { temp: weather.temp, city: ui.weatherCity } : null}
+        totalSites={sites.length}
+        folderSites={ui.folderSites ?? 4}
         onOpenSite={openSite}
         onSelectProject={selectProject}
         onSelectCategory={value => { setCategoryId(value); setGroupId(null); }}
@@ -748,7 +760,9 @@ export function App() {
         onAddSite={() => setAddOpen(true)}
         onSearch={() => setPaletteOpen(true)}
         onOpenCalendar={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}
+        onOpenForecast={() => { setCalendarOpen(false); setForecastOpen(value => !value); }}
         calendarOpen={calendarOpen}
+        forecastOpen={forecastOpen}
         onToggleLayout={() => setUi(current => ({ ...current, homeLayout: 'grid' }))}
       />
     );
@@ -979,12 +993,6 @@ export function App() {
 
       <main className="nx-main">
         <div className="nx-main-scroll">
-          {ui.hero !== false && !boardLayout && (
-            <header className="nx-hero">
-              <h1 className="nx-hero-hello">{greetingLine(now.getHours(), ui.greetName)}</h1>
-              <p className="nx-hero-sub">{greetingSubtitle(now.getHours())}</p>
-            </header>
-          )}
           <div className="nx-mobile-top">
             <button type="button" className="nx-icon-btn" aria-label="Разделы" onClick={() => setMobileNav(true)}><Layers3 size={18} /></button>
             <div className="nx-mobile-card">

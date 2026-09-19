@@ -13,7 +13,7 @@ const ui: UiState = {
   localOnly: true, saveHistory: true, analytics: false,
 };
 const tile: TileState = { ...DEFAULT_TILE_APPEARANCE };
-const appearance: AppearanceState = { theme: 'light', accent: '#2f6fe4', wallpaper: 'aurora' };
+const appearance: AppearanceState = { theme: 'light', accent: '#2f6fe4', wallpaper: 'lake' };
 
 function setup(overrides: Partial<SettingsProps> = {}) {
   const props: SettingsProps = {
@@ -222,7 +222,7 @@ describe('SettingsPanel', () => {
     const user = userEvent.setup();
     const props = setup({ appearance: { theme: 'dark', accent: '#c9364f', wallpaper: 'mint' } });
     await user.click(screen.getByRole('button', { name: /Сбросить раздел «Оформление»/ }));
-    expect(props.setAppearance).toHaveBeenCalledWith({ theme: 'light', accent: '#2f6fe4', wallpaper: 'aurora' });
+    expect(props.setAppearance).toHaveBeenCalledWith({ theme: 'light', accent: '#2f6fe4', wallpaper: 'lake' });
   });
 
   it('не предлагает сброс в разделах без настроек', async () => {

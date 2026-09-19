@@ -701,19 +701,48 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  radial-gradient(76% 62% at 12% 92%,#f0e7da 0%,rgba(240,231,218,0) 64%),
  linear-gradient(162deg,#faf7f1 0%,#f5f1e8 60%,#f1ece1 100%)}
 :root[data-wallpaper="plain"] .nx-root{background:var(--nx-canvas)}
+/* Горное озеро — снимок, идущий в поставке. Он построен как подложка: сцена
+   занимает верхнюю четверть, дальше кадр уходит в почти белое, поэтому
+   панели и карточки ложатся на спокойное поле, а не на детализированную
+   фотографию. Файл лежит в public/ и отдаётся отдельным запросом, а не
+   зашивается в сборку. */
+:root[data-wallpaper="lake"] .nx-root{
+ background:url("/wallpapers/lake.webp") center top/cover no-repeat fixed,
+  linear-gradient(170deg,#dbe8f8 0%,#eef3fb 46%,#f4f7fc 100%)}
 /* Своё изображение. Ставится на .nx-root, поверх — светлая вуаль: без неё
    тёмная фотография съедает текст на панелях. Плотность вуали регулируется
    в настройках, поэтому она переменная, а не константа. */
 :root[data-wallpaper="photo"] .nx-root{
  background:var(--nx-wall-photo,linear-gradient(160deg,#f6f9ff,#e7ecf8)) center/cover no-repeat fixed}
+/* Вуаль — только для произвольного пользовательского снимка: он может быть
+   каким угодно тёмным и пёстрым. Снимок из поставки заранее сведён под
+   подложку, и притушивать его значит портить то, ради чего он выбран. */
 :root[data-wallpaper="photo"] .nx-root:before{
  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
  background:linear-gradient(180deg,
   rgba(255,255,255,var(--nx-wall-veil,.42)) 0%,
   rgba(255,255,255,calc(var(--nx-wall-veil,.42) * .72)) 42%,
   rgba(255,255,255,calc(var(--nx-wall-veil,.42) * 1.06)) 100%)}
+:root[data-wallpaper="lake"] .nx-panel,
+:root[data-wallpaper="lake"] .nx-main,
 :root[data-wallpaper="photo"] .nx-panel,
 :root[data-wallpaper="photo"] .nx-main{position:relative;z-index:1}
+
+/* Размытие панелей: над фотографией стекло читается как стекло, а не как
+   белый прямоугольник. Ноль по умолчанию — приём включает сам пользователь.
+   Префиксованное свойство идёт первым: минификатор выбрасывает дубль, и,
+   записанное вторым, оно съедало стандартное. */
+:root[data-panel-blur] .nx-panel,
+:root[data-panel-blur] .nx-folders,
+:root[data-panel-blur] .nx-strip,
+:root[data-panel-blur] .nx-rail-card,
+:root[data-panel-blur] .nx-project-card,
+:root[data-panel-blur] .nx-round{
+ -webkit-backdrop-filter:blur(var(--nx-panel-blur,0px));
+ backdrop-filter:blur(var(--nx-panel-blur,0px));
+ background-color:color-mix(in srgb,var(--nx-surface) 76%,transparent)}
+:root[data-panel-blur] .nx-project-card{
+ background-color:color-mix(in srgb,var(--nx-node,#7b8794) 10%,color-mix(in srgb,var(--nx-surface) 70%,transparent))}
 
 :root[data-theme="dark"][data-wallpaper="aurora"] .nx-root{background:
  radial-gradient(76% 56% at 82% -4%,#1b2d4a 0%,rgba(27,45,74,0) 60%),
@@ -748,6 +777,7 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-wall-dot.wall-lilac{background:radial-gradient(120% 100% at 80% 0%,#e7d6ff,#ffd8ec 44%,#e9ecf8)}
 .nx-wall-dot.wall-paper{background:radial-gradient(120% 100% at 80% 0%,#fdf4e6,#f1ece1)}
 .nx-wall-dot.wall-plain{background:#f5f6f8}
+.nx-wall-dot.wall-lake{background:url("/wallpapers/lake.webp") center top/cover}
 .nx-wall-dot.wall-photo{background:var(--nx-wall-photo,linear-gradient(135deg,#cfe0f7,#e7d6ff)) center/cover}
 
 /* ── компактный режим и отключённые анимации ──────────────────── */
@@ -1136,23 +1166,45 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-board{display:flex;flex-direction:column;gap:18px;flex:1 0 auto}
 
 /* ── шапка: обращение слева, действия и часы справа ───────────── */
-.nx-board-top{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex:none}
-.nx-board-hello h1{font-size:var(--nx-fs-hero);font-weight:700;letter-spacing:-.9px;line-height:1.1}
-.nx-board-hello p{margin-top:5px;font-size:var(--nx-fs-4);color:var(--nx-muted)}
+.nx-board-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none}
+/* Показания лежат на стеклянной плашке, а не прямо на сцене. Фон может быть
+   каким угодно — своим тёмным снимком в том числе, — и текст на нём обязан
+   читаться без везения. Плашка это гарантирует, не пряча сцену. */
+.nx-board-facts{display:flex;align-items:center;flex:none;padding:7px 8px;border-radius:999px;
+ background:color-mix(in srgb,var(--nx-surface) 74%,transparent);
+ -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 12px 30px -16px rgba(16,24,40,.4)}
+.nx-board-facts > * + *{position:relative;margin-left:4px;padding-left:16px}
+.nx-board-facts > * + *:before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
+ width:1px;height:26px;background:var(--nx-line)}
 .nx-board-actions{display:flex;align-items:center;gap:9px;flex:none}
+/* Кнопки стоят прямо на сцене, а небо на снимке почти белое: без своего
+   стекла и внятной кромки белый круг на белом фоне просто исчезал. */
 .nx-round{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
- background:var(--nx-surface);color:var(--nx-text);
- box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 1px 2px rgba(16,24,40,.05),
-  0 10px 22px -12px rgba(16,24,40,.3);
+ background:color-mix(in srgb,var(--nx-surface) 78%,transparent);color:var(--nx-text);
+ -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.6),0 1px 2px rgba(16,24,40,.08),
+  0 12px 26px -12px rgba(16,24,40,.4);
  transition:transform .16s var(--nx-tile-easing,ease),box-shadow .16s ease,color .16s ease}
 .nx-round:hover{transform:translateY(-1px);color:var(--nx-accent);
  box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),0 1px 2px rgba(16,24,40,.05),
   0 14px 26px -12px rgba(16,24,40,.34)}
-.nx-board-clock{display:flex;flex-direction:column;align-items:flex-end;margin-left:6px;line-height:1.1;
- padding:4px 6px;border-radius:var(--nx-r-md);transition:background .15s ease}
-.nx-board-clock:hover{background:var(--nx-surface)}
-.nx-board-clock small{font-size:var(--nx-fs-2);color:var(--nx-muted)}
+.nx-board-clock{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;
+ padding:3px 10px;border-radius:var(--nx-r-md);transition:background .15s ease}
+.nx-board-clock:hover{background:var(--nx-sunken)}
 .nx-board-clock b{font-size:var(--nx-fs-clock);font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.nx-board-clock small{font-size:var(--nx-fs-2);color:var(--nx-muted);white-space:nowrap}
+
+.nx-board-weather{display:flex;align-items:center;gap:9px;padding:3px 12px 3px 10px;border-radius:var(--nx-r-md);
+ color:var(--nx-muted);transition:background .15s ease}
+.nx-board-weather:hover{background:var(--nx-sunken)}
+.nx-board-weather > span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15}
+.nx-board-weather b{font-size:var(--nx-fs-5);font-weight:700;color:var(--nx-text);font-variant-numeric:tabular-nums}
+.nx-board-weather small{font-size:var(--nx-fs-2);color:var(--nx-muted);white-space:nowrap}
+
+.nx-board-total{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;padding:3px 12px 3px 0}
+.nx-board-total b{font-size:var(--nx-fs-5);font-weight:700;font-variant-numeric:tabular-nums}
+.nx-board-total small{font-size:var(--nx-fs-2);color:var(--nx-muted);white-space:nowrap}
 
 /* ── баннер-девиз ─────────────────────────────────────────────── */
 .nx-banner{position:relative;overflow:hidden;flex:none;border-radius:var(--nx-r-xl);
@@ -1200,8 +1252,14 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-project-card b{font-size:var(--nx-fs-3);font-weight:600;line-height:1.25;
  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .nx-project-card small{font-size:var(--nx-fs-1);color:var(--nx-muted)}
-.nx-project-card.add{--nx-node:#8d97a8;background:transparent;
- box-shadow:inset 0 0 0 1px var(--nx-line);color:var(--nx-muted);justify-content:center}
+/* Прозрачной призрачная карточка быть не может: на фотографии от неё
+   оставалась бы одна еле заметная рамка. Полупрозрачная — читается на
+   любой сцене и при этом не спорит с настоящими проектами. */
+.nx-project-card.add{--nx-node:#8d97a8;
+ background:color-mix(in srgb,var(--nx-surface) 52%,transparent);
+ -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 10px 24px -16px rgba(16,24,40,.3);
+ color:var(--nx-muted);justify-content:center}
 .nx-project-card.add .nx-project-glyph{background:var(--nx-sunken);box-shadow:none;color:var(--nx-muted)}
 
 /* ── доска папок ──────────────────────────────────────────────── */
@@ -1264,7 +1322,7 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  box-shadow:inset 0 0 0 1px var(--nx-line);transition:color .15s ease,box-shadow .15s ease}
 .nx-folder-add:hover{color:var(--nx-accent);box-shadow:inset 0 0 0 1px var(--nx-accent)}
 .nx-folder-new{align-items:center;justify-content:center;text-align:center;gap:4px;min-height:132px;
- background:transparent;box-shadow:inset 0 0 0 1px var(--nx-line);color:var(--nx-muted);
+ background:var(--nx-canvas);box-shadow:inset 0 0 0 1px var(--nx-line);color:var(--nx-muted);
  transition:color .16s ease,box-shadow .16s ease}
 .nx-folder-new:hover{color:var(--nx-accent);box-shadow:inset 0 0 0 1px var(--nx-accent)}
 .nx-folder-new b{font-size:var(--nx-fs-3);font-weight:600}
@@ -1301,11 +1359,10 @@ button.nx-rail-card:hover{transform:translateY(-2px);
     которого верх мобильной версии и ужимали. У доски своё приветствие. */
  .nx-hero{display:none}
  .nx-board{gap:12px}
- .nx-board-top{flex-direction:column;gap:10px;align-items:stretch}
- /* Часы и кнопки на узком экране уже стоят дважды: время с погодой — в
-    мобильной шапке сверху, поиск и «плюс» — в доке снизу. Свой ряд доски
-    здесь только повторял бы их и отнимал первый экран. */
- .nx-board-actions{display:none}
+ /* Шапки доски на узком экране нет вовсе: время, дата и погода уже стоят в
+    мобильной шапке сверху, поиск и «плюс» — в доке снизу. Повторять их
+    значит отдать первый экран тому, что на нём уже есть. */
+ .nx-board-top{display:none}
  .nx-banner{min-height:104px;padding:18px 20px}
  .nx-banner-script{display:none}
  .nx-projects{grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:9px}

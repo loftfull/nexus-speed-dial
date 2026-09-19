@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react';
 import {
-  Camera, ChevronDown, CloudSun, Columns2, Columns3, Database, Download, ExternalLink, Eye, FolderTree,
+  Camera, ChevronDown, CloudSun, Columns2, Columns3, Database, Download, Droplets, ExternalLink, Eye, FolderTree,
   Globe, Grid2X2, Grid3X3, History, Image as ImageIcon, Keyboard, ListFilter, MapPin, Minimize2,
-  LayoutGrid, Monitor, Moon, Palette, PanelLeft, RefreshCw, RotateCcw, Rows3, Search, Sparkles,
+  LayoutGrid, Monitor, Moon, Palette, PanelLeft, RefreshCw, RotateCcw, Rows3, Search,
   Settings as SettingsIcon, ShieldCheck, Smartphone, Star, Sun, Thermometer, Trash2, Type, Upload, X, Zap,
 } from './icons.generated';
 import type { AppearanceState, MobileMode, TileState, UiState } from '../domain/appStore';
@@ -38,7 +38,7 @@ const ACCENTS = ['#2f6fe4', '#6d51e0', '#0f9d76', '#e0851f', '#c9364f', '#1c2026
 const CITIES = ['Москва', 'Санкт-Петербург', 'Берлин', 'Лондон'];
 const UNITS = ['Цельсий (°C)', 'Фаренгейт (°F)'];
 const WALLPAPERS: [string, string][] = [
-  ['aurora', 'Аврора'], ['warm', 'Рассвет'], ['mint', 'Лагуна'], ['lilac', 'Сирень'],
+  ['lake', 'Горное озеро'], ['aurora', 'Аврора'], ['warm', 'Рассвет'], ['mint', 'Лагуна'], ['lilac', 'Сирень'],
   ['paper', 'Бумага'], ['plain', 'Однотонные'], ['photo', 'Своё фото'],
 ];
 const PANEL_WIDTHS = ['240px', '292px', '340px'];
@@ -57,7 +57,7 @@ const SHORTCUTS: [string, string][] = [
 ];
 
 export const DEFAULT_TILE: TileState = normalizeTileAppearance(null);
-export const DEFAULT_APPEARANCE: AppearanceState = { theme: 'light', accent: '#2f6fe4', wallpaper: 'aurora' };
+export const DEFAULT_APPEARANCE: AppearanceState = { theme: 'light', accent: '#2f6fe4', wallpaper: 'lake' };
 
 export type SettingsProps = {
   onClose: () => void;
@@ -78,7 +78,7 @@ export function SettingsPanel(props: SettingsProps) {
   const photoInput = useRef<HTMLInputElement>(null);
   const [hasPhoto, setHasPhoto] = useState(() => readWallpaperPhoto() !== null);
   const [photoNote, setPhotoNote] = useState<string | null>(null);
-  const photoActive = hasPhoto && (appearance.wallpaper ?? 'aurora') === 'photo';
+  const photoActive = hasPhoto && (appearance.wallpaper ?? 'lake') === 'photo';
 
   /**
    * Снимок с телефона легко весит несколько мегабайт, а в localStorage на всё
@@ -111,8 +111,8 @@ export function SettingsPanel(props: SettingsProps) {
   /** Puts one fold back to the values a fresh install starts with. */
   const resetSection = (section: SectionId) => {
     switch (section) {
-      case 'general': patchUi({ compact: false, animations: true, newTab: true, homeLayout: 'board', greetName: '', rail: true }); break;
-      case 'look': setAppearance({ ...DEFAULT_APPEARANCE }); patchUi({ banner: true }); break;
+      case 'general': patchUi({ compact: false, animations: true, newTab: true, homeLayout: 'board', folderSites: 4, rail: true }); break;
+      case 'look': setAppearance({ ...DEFAULT_APPEARANCE }); break;
       case 'tiles': setTile({ ...DEFAULT_TILE }); patchUi({ siteIcons: true }); break;
       case 'panel': patchUi({ sidebarWidth: '292px', projects: true, weather: true, favoritesBar: true, favoritesCount: 8, favoritesLabels: true, panelRecent: true, panelRecentCount: 6, panelRecentLabels: true }); break;
       case 'mobile': patchUi({ mobileMode: 'table' }); break;
@@ -174,12 +174,10 @@ export function SettingsPanel(props: SettingsProps) {
               options={[['board', 'Рабочий стол проектов'], ['grid', 'Сетка плиток']]}
               value={ui.homeLayout ?? 'board'}
               onChange={value => patchUi({ homeLayout: value as 'board' | 'grid' })} />
-            <Cell icon={Type} label="Как к вам обращаться" as="label"
-              why="Появится в приветствии наверху: «Добрый вечер, Владимир!»">
-              <input type="text" value={ui.greetName ?? ''} placeholder="Без имени"
-                aria-label="Как к вам обращаться" maxLength={32}
-                onChange={event => patchUi({ greetName: event.target.value })} />
-            </Cell>
+            <Pick icon={FolderTree} label="Сайтов в папке"
+              options={[['3', '3'], ['4', '4'], ['6', '6'], ['8', '8']]}
+              value={String(ui.folderSites ?? 4)}
+              onChange={value => patchUi({ folderSites: Number(value) })} />
             <Switch icon={CloudSun} label="Виджеты справа в сетке" value={ui.rail !== false}
               why="Часы, погода и недавние. В раскладке «рабочий стол» не используются"
               onChange={value => patchUi({ rail: value })} />
@@ -203,7 +201,7 @@ export function SettingsPanel(props: SettingsProps) {
               options={[['light', 'Светлая'], ['dark', 'Тёмная'], ['system', 'Системная']]}
               value={appearance.theme} onChange={value => setAppearance({ ...appearance, theme: value })} />
             <Pick icon={ImageIcon} label="Фон" options={WALLPAPERS}
-              value={appearance.wallpaper ?? 'aurora'} onChange={value => setAppearance({ ...appearance, wallpaper: value })} />
+              value={appearance.wallpaper ?? 'lake'} onChange={value => setAppearance({ ...appearance, wallpaper: value })} />
             <Cell icon={ImageIcon} label="Своё изображение"
               why={photoNote ?? 'Снимок уменьшается и хранится только на этом устройстве'}>
               <span className="nx-card-buttons nx-inline-buttons">
@@ -215,7 +213,7 @@ export function SettingsPanel(props: SettingsProps) {
                     saveWallpaperPhoto(null);
                     setHasPhoto(false);
                     setPhotoNote(null);
-                    if ((appearance.wallpaper ?? 'aurora') === 'photo') setAppearance({ ...appearance, wallpaper: 'aurora' });
+                    if ((appearance.wallpaper ?? 'lake') === 'photo') setAppearance({ ...appearance, wallpaper: 'lake' });
                   }}>Убрать</button>
                 )}
               </span>
@@ -232,9 +230,13 @@ export function SettingsPanel(props: SettingsProps) {
                 disabled={!photoActive} value={appearance.veil ?? 42}
                 onChange={event => setAppearance({ ...appearance, veil: Number(event.target.value) })} />
             </Cell>
-            <Switch icon={Sparkles} label="Баннер с девизом" value={ui.banner !== false}
-              why="Широкая карточка с девизом наверху рабочего стола проектов"
-              onChange={value => patchUi({ banner: value })} />
+            <Cell icon={Droplets} label="Размытие панелей" as="label"
+              why="Панели пропускают сцену сквозь себя — заметнее всего на фотографии">
+              <span className="nx-cell-value" aria-hidden="true">{appearance.panelBlur ?? 0}px</span>
+              <input type="range" min={0} max={20} step={1} aria-label="Размытие панелей"
+                value={appearance.panelBlur ?? 0}
+                onChange={event => setAppearance({ ...appearance, panelBlur: Number(event.target.value) })} />
+            </Cell>
             <Cell icon={Palette} label="Акцент">
               <span className="nx-swatches">
                 {ACCENTS.map(color => (

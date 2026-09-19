@@ -1,11 +1,10 @@
 import React from 'react';
 import {
-  Briefcase, ChevronRight, Clock3, Folder, GraduationCap, Home, Layers3,
+  Briefcase, ChevronRight, Clock3, CloudSun, Folder, GraduationCap, Home, Layers3,
   LayoutGrid, MoreVertical, Plus, Search, ShoppingBag, Star,
 } from './icons.generated';
 import { SiteIcon } from './SiteIcon';
 import { boardColumns, boardCrumbs, projectCards } from '../domain/dashboard';
-import { greetingLine, greetingSubtitle } from '../domain/greeting';
 import { projectColor } from '../domain/nodeColor';
 import { sites as countSites } from '../domain/plural';
 import type { Category, Project, SiteGroup, SiteRecord } from '../domain/types';
@@ -20,12 +19,15 @@ export type HomeBoardProps = {
   recent: SiteRecord[];
   activeProjectId: string | null;
   categoryId: string | null;
-  greetName?: string;
-  now: Date;
   time: string;
   dateLine: string;
   logos: boolean;
-  banner: boolean;
+  /** Показания погоды для шапки; null — виджет выключен в настройках. */
+  weather: { temp: string; city: string } | null;
+  /** Сколько сайтов в хранилище всего — счётчик в шапке. */
+  totalSites: number;
+  /** Сколько строк помещается в одну карточку папки. */
+  folderSites: number;
   onOpenSite: (site: SiteRecord) => void;
   onSelectProject: (id: string) => void;
   onSelectCategory: (id: string | null) => void;
@@ -34,7 +36,9 @@ export type HomeBoardProps = {
   onAddSite: () => void;
   onSearch: () => void;
   onOpenCalendar: () => void;
+  onOpenForecast: () => void;
   calendarOpen: boolean;
+  forecastOpen: boolean;
   onToggleLayout: () => void;
 };
 
@@ -53,8 +57,8 @@ export type HomeBoardProps = {
 export function HomeBoard(props: HomeBoardProps) {
   const {
     projects, categories, groups, sites, recent, activeProjectId, categoryId,
-    greetName, now, time, dateLine, logos, banner,
-    onOpenSite, onSelectProject, onSelectCategory, onAddProject, onAddCategory, onAddSite, onSearch, onOpenCalendar, calendarOpen, onToggleLayout,
+    time, dateLine, logos, weather, totalSites, folderSites,
+    onOpenSite, onSelectProject, onSelectCategory, onAddProject, onAddCategory, onAddSite, onSearch, onOpenCalendar, onOpenForecast, calendarOpen, forecastOpen, onToggleLayout,
   } = props;
 
   const cards = projectCards(projects, categories, sites);
@@ -64,7 +68,7 @@ export function HomeBoard(props: HomeBoardProps) {
     categories, groups, sites,
     projectId: active?.id ?? null,
     categoryId: activeCategory?.id ?? null,
-    limit: 4,
+    limit: folderSites,
   });
   // Крошки показываются только на глубине: без выбранной категории строка
   // «Дом» под заголовком «Дом» — это повтор, а не навигация.
@@ -72,11 +76,36 @@ export function HomeBoard(props: HomeBoardProps) {
 
   return (
     <div className="nx-board">
+      {/* Слева — показания, справа — действия. Ни приветствия, ни девиза:
+          на стартовой странице место стоит дорого, а «Добрый вечер!» не
+          сообщает ничего, чего пользователь не знал бы и без него. */}
       <header className="nx-board-top">
-        <div className="nx-board-hello">
-          <h1>{greetingLine(now.getHours(), greetName)}</h1>
-          <p>{greetingSubtitle(now.getHours())}</p>
+        <div className="nx-board-facts">
+          <button type="button" data-calendar-trigger className="nx-board-clock"
+            aria-expanded={calendarOpen} aria-label={`Открыть календарь, сегодня ${dateLine}`}
+            onClick={onOpenCalendar}>
+            <b>{time}</b>
+            <small>{dateLine}</small>
+          </button>
+
+          {weather && (
+            <button type="button" data-forecast-trigger className="nx-board-weather"
+              aria-expanded={forecastOpen} aria-label={`Прогноз на пять дней, сейчас ${weather.temp}`}
+              onClick={onOpenForecast}>
+              <CloudSun size={26} aria-hidden="true" />
+              <span>
+                <b>{weather.temp}</b>
+                <small>{weather.city}</small>
+              </span>
+            </button>
+          )}
+
+          <span className="nx-board-total">
+            <b>{totalSites}</b>
+            <small>{countSites(totalSites).replace(/^\d+\s*/, '')}</small>
+          </span>
         </div>
+
         <div className="nx-board-actions">
           <button type="button" className="nx-round" aria-label="Поиск и команды" title="Поиск и команды (Ctrl K)" onClick={onSearch}>
             <Search size={19} />
@@ -87,31 +116,8 @@ export function HomeBoard(props: HomeBoardProps) {
           <button type="button" className="nx-round" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={onAddSite}>
             <Plus size={19} />
           </button>
-          {/* Часы — это и вход в календарь: иначе, убрав дубль времени из
-              боковой панели, мы бы заодно убрали единственную кнопку,
-              которая его открывала. */}
-          <button type="button" data-calendar-trigger className="nx-board-clock"
-            aria-expanded={calendarOpen} aria-label={`Открыть календарь, сегодня ${dateLine}`}
-            onClick={onOpenCalendar}>
-            <small>{dateLine}</small>
-            <b>{time}</b>
-          </button>
         </div>
       </header>
-
-      {/* Баннер берёт ту же сцену, что и обои: если пользователь поставил
-          своё изображение, оно появится и здесь. Готовой фотографии в
-          поставке нет намеренно — чужой снимок тянул бы за собой чужие
-          права, а сцена рисуется средствами самого браузера. */}
-      {banner && (
-      <section className="nx-banner" aria-label="Девиз">
-        <div className="nx-banner-text">
-          <h2>Идеи сегодня — результаты завтра</h2>
-          <p>Собирай. Структурируй. Действуй.</p>
-        </div>
-        <p className="nx-banner-script">Порядок в мыслях —<br />больше свободы</p>
-      </section>
-      )}
 
       <nav className="nx-projects" aria-label="Проекты">
         {cards.map(({ project, total }, index) => {
