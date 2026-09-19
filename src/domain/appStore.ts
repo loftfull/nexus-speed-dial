@@ -1,4 +1,5 @@
 import type { SiteRecord, Project, BrowserSession, Category, SiteGroup } from './types';
+import { normalizeSiteAddress } from './siteUtils';
 import { normalizeTileAppearance, type TileAppearance } from './tileAppearance';
 import { migrateHierarchy } from './hierarchy';
 import { seedCategories, seedGroups, seedProjects } from './seed';
@@ -55,8 +56,16 @@ export function normalizeMobileMode(value: unknown): MobileMode {
 }
 
 export function createInitialAppState(initialSites: SiteRecord[]): AppState {
-  const storedSites = readStorage('nexus-sites', initialSites).map((site, index) => site.id ? site : { ...site, id: `site-${site.domain.replace(/[^a-z0-9]+/gi, '-')}-${index}` });
-  const resolveSiteRef = (reference: string) => storedSites.find(site => site.id === reference || site.domain === reference || site.title === reference)?.id || reference;
+  const storedSites = readStorage('nexus-sites', initialSites).map((site, index) => {
+    const address = normalizeSiteAddress(site.url ?? site.domain);
+    return {
+      ...site,
+      id: site.id || `site-${site.domain.replace(/[^a-z0-9]+/gi, '-')}-${index}`,
+      domain: address?.domain ?? site.domain,
+      url: address?.url ?? site.url,
+    };
+  });
+  const resolveSiteRef = (reference: string) => storedSites.find(site => site.id === reference || site.url === reference || site.domain === reference || site.title === reference)?.id || reference;
   const storedProjects = readStorage('nexus-projects', defaultProjects).map(project => ({ ...project, siteIds: project.siteIds.map(resolveSiteRef) }));
   const hierarchy = migrateHierarchy({
     projects: storedProjects,
