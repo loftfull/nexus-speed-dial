@@ -4,6 +4,7 @@ import { normalizeTileAppearance, type TileAppearance } from './tileAppearance';
 import { migrateHierarchy } from './hierarchy';
 import { seedCategories, seedGroups, seedProjects } from './seed';
 import { readStorage, writeStorage } from './storage';
+import type { NexusBackup } from './backup';
 
 /** Внешний вид плитки целиком описан в `tileAppearance`. */
 export type TileState = TileAppearance;
@@ -39,7 +40,8 @@ export type AppAction =
   | { type: 'tile/set'; value: TileState | ((current: TileState) => TileState) }
   | { type: 'appearance/set'; value: AppearanceState | ((current: AppearanceState) => AppearanceState) }
   | { type: 'projects/set'; value: Project[] | ((current: Project[]) => Project[]) }
-  | { type: 'sessions/set'; value: BrowserSession[] | ((current: BrowserSession[]) => BrowserSession[]) };  
+  | { type: 'sessions/set'; value: BrowserSession[] | ((current: BrowserSession[]) => BrowserSession[]) }
+  | { type: 'backup/apply'; value: NexusBackup };
 
 export const defaultProjects = seedProjects;
 export const defaultCategories = seedCategories;
@@ -90,6 +92,96 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function mergeById<T extends { id?: string }>(incoming: T[], current: T[]): T[] {
+  const incomingIds = new Set(incoming.map(item => item.id).filter((id): id is string => Boolean(id)));
+  return [...incoming, ...current.filter(item => !item.id || !incomingIds.has(item.id))];
+}
+
+function normalizeBackupSite(value: unknown, index: number): SiteRecord | null {
+  if (!isRecord(value) || typeof value.title !== 'string') return null;
+  const source = typeof value.url === 'string' ? value.url : typeof value.domain === 'string' ? value.domain : '';
+  const address = normalizeSiteAddress(source);
+  if (!address) return null;
+  const title = value.title.trim();
+  if (!title) return null;
+
+  return {
+    ...(value as SiteRecord),
+    id: typeof value.id === 'string' && value.id ? value.id : `site-backup-${Date.now()}-${index}`,
+    title,
+    domain: address.domain,
+    url: address.url,
+    desc: typeof value.desc === 'string' ? value.desc : 'Сохранённый сайт',
+    color: typeof value.color === 'string' ? value.color : '#2f7cf6',
+    icon: typeof value.icon === 'string' && value.icon ? value.icon : title[0].toUpperCase(),
+    category: typeof value.category === 'string' ? value.category : 'Личное',
+  };
+}
+
+function siteDestination(site: SiteRecord): string {
+  return normalizeSiteAddress(site.url ?? site.domain)?.url ?? site.domain;
+}
+
+export function applyBackup(state: AppState, backup: NexusBackup): AppState {
+  const incomingSites = backup.sites
+    .map(normalizeBackupSite)
+    .filter((site): site is SiteRecord => Boolean(site));
+  const incomingIds = new Set(incomingSites.map(site => site.id).filter((id): id is string => Boolean(id)));
+  const incomingDestinations = new Set(incomingSites.map(siteDestination));
+  const sites = [
+    ...incomingSites,
+    ...state.sites.filter(site =>
+      (!site.id || !incomingIds.has(site.id)) && !incomingDestinations.has(siteDestination(site))),
+  ];
+
+  const resolveSiteRef = (reference: string) =>
+    sites.find(site => site.id === reference || site.url === reference || site.domain === reference || site.title === reference)?.id || reference;
+
+  const projects = mergeById(
+    (backup.projects.filter(isRecord) as unknown as Project[]).map(project => ({
+      ...project,
+      siteIds: Array.isArray(project.siteIds) ? project.siteIds.map(resolveSiteRef) : [],
+    })),
+    state.projects,
+  );
+  const categories = mergeById(backup.categories.filter(isRecord) as unknown as Category[], state.categories);
+  const groups = mergeById(backup.groups.filter(isRecord) as unknown as SiteGroup[], state.groups);
+  const sessions = mergeById(
+    (backup.sessions.filter(isRecord) as unknown as BrowserSession[]).map(session => ({
+      ...session,
+      siteIds: Array.isArray(session.siteIds) ? session.siteIds.map(resolveSiteRef) : [],
+      noteSiteIds: Array.isArray(session.noteSiteIds) ? session.noteSiteIds.map(resolveSiteRef) : session.noteSiteIds,
+    })),
+    state.sessions,
+  );
+
+  const settings = isRecord(backup.settings) ? backup.settings : {};
+  const uiPatch = isRecord(settings.ui) ? settings.ui as Partial<UiState> : {};
+  const tilePatch = isRecord(settings.tile) ? settings.tile : {};
+  const appearancePatch = isRecord(settings.appearance) ? settings.appearance as Partial<AppearanceState> : {};
+  const nextUi = { ...state.ui, ...uiPatch };
+
+  return {
+    ...state,
+    sites,
+    projects,
+    categories,
+    groups,
+    sessions,
+    ui: {
+      ...nextUi,
+      sidebarWidth: normalizeSidebarWidth(nextUi.sidebarWidth),
+      mobileMode: normalizeMobileMode(nextUi.mobileMode),
+    },
+    tile: normalizeTileAppearance({ ...state.tile, ...tilePatch }),
+    appearance: { ...state.appearance, ...appearancePatch },
+  };
+}
+
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'sites/set': return { ...state, sites: typeof action.value === 'function' ? action.value(state.sites) : action.value };
@@ -102,6 +194,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'appearance/set': return { ...state, appearance: typeof action.value === 'function' ? action.value(state.appearance) : action.value };
     case 'projects/set': return { ...state, projects: typeof action.value === 'function' ? action.value(state.projects) : action.value };
     case 'sessions/set': return { ...state, sessions: typeof action.value === 'function' ? action.value(state.sessions) : action.value };
+    case 'backup/apply': return applyBackup(state, action.value);
     default: return state;
   }
 }
