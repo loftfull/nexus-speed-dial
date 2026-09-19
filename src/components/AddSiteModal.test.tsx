@@ -10,7 +10,12 @@ describe('AddSiteModal', () => {
     await user.type(screen.getByLabelText('Название'), 'Linear');
     await user.type(screen.getByLabelText('Адрес сайта'), 'https://linear.app/projects');
     await user.click(screen.getByRole('button', { name: 'Добавить сайт' }));
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ title: 'Linear', domain: 'linear.app', category: 'Личное' }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Linear',
+      domain: 'linear.app',
+      url: 'https://linear.app/projects',
+      category: 'Личное',
+    }));
   });
 
   it('prefills an existing site for editing', () => {
