@@ -344,4 +344,3 @@ function DataSection({ sites, setSites, categories, groups, projects, setProject
     </>
   );
 }
-
