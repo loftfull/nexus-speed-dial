@@ -1,7 +1,26 @@
 import type { SiteRecord } from './types';
 
+export type NormalizedSiteAddress = { domain: string; url: string };
+
+export function normalizeSiteAddress(value: string): NormalizedSiteAddress | null {
+  const raw = value.trim();
+  if (!raw) return null;
+  if (/^[a-z][a-z\d+.-]*:\/\//i.test(raw) && !/^https?:\/\//i.test(raw)) return null;
+
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    const domain = parsed.host.replace(/^www\./i, '');
+    const validHost = domain.includes('.') || /^localhost(?::\d{1,5})?$/i.test(domain);
+    if (!validHost) return null;
+    return { domain, url: parsed.toString() };
+  } catch {
+    return null;
+  }
+}
+
 export function normalizeDomain(value: string): string {
-  return value.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0].split('?')[0];
+  return normalizeSiteAddress(value)?.domain ?? '';
 }
 
 export type SiteScope = { projectId?: string | null; categoryId?: string | null; groupId?: string | null };
@@ -20,7 +39,7 @@ export function filterSites(
 ): SiteRecord[] {
   const needle = query.trim().toLowerCase();
   let result = sites.filter(site => {
-    const matchesQuery = !needle || `${site.title} ${site.desc} ${site.domain} ${site.note ?? ''} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle);
+    const matchesQuery = !needle || `${site.title} ${site.desc} ${site.domain} ${site.url ?? ''} ${site.note ?? ''} ${(site.tags ?? []).join(' ')}`.toLowerCase().includes(needle);
     let matchesScope = true;
     if (scope.groupId) matchesScope = site.groupId === scope.groupId;
     else if (scope.categoryId) matchesScope = site.categoryId === scope.categoryId;
@@ -55,12 +74,13 @@ function createSiteId(): string {
 
 export function createSite(input: Partial<SiteRecord>): SiteRecord {
   const title = (input.title ?? '').trim();
-  const domain = normalizeDomain(input.domain ?? '');
-  if (!title || !domain) throw new Error('Название и адрес сайта обязательны');
+  const address = normalizeSiteAddress(input.url ?? input.domain ?? '');
+  if (!title || !address) throw new Error('Название и адрес сайта обязательны');
   return {
     id: input.id || createSiteId(),
     title,
-    domain,
+    domain: address.domain,
+    url: address.url,
     desc: input.desc?.trim() || 'Сохранённый сайт',
     color: input.color || '#2f7cf6',
     icon: input.icon || title[0].toUpperCase(),
