@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ExternalLink, MoreVertical, Pencil, Star, Trash2 } from './icons.generated';
 import type { SiteRecord } from '../domain/types';
 import { SiteIcon } from './SiteIcon';
@@ -13,6 +13,8 @@ const HORIZONTAL: TileLayout[] = ['list', 'row'];
 
 export type TileProps = {
   site: SiteRecord;
+  /** Номер плитки в сетке: из него сетка считает задержку каскада. */
+  style?: React.CSSProperties;
   /** Media type used to hand the site over to a drop target such as the dock. */
   dragType?: string;
   layout?: TileLayout;
@@ -28,7 +30,7 @@ export type TileProps = {
 
 export function Tile({
   site, dragType, layout = 'standard', showDomain = false, showDescription = false,
-  showCategory = false, useFavicons = true, onOpen, onFavorite, onEdit, onDelete,
+  showCategory = false, useFavicons = true, style, onOpen, onFavorite, onEdit, onDelete,
 }: TileProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const holder = useRef<HTMLDivElement>(null);
@@ -56,6 +58,7 @@ export function Tile({
     <div
       className={'nx-tile nx-tile-' + layout + (menuOpen ? ' menu-open' : '')}
       ref={holder}
+      style={style}
       draggable={Boolean(dragType && site.id)}
       onDragStart={event => {
         if (!dragType || !site.id) return;

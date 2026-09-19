@@ -32,6 +32,17 @@ export function TileGrid({ className, children }: { className: string; children:
     });
   });
 
+  // Каскад появления: каждой плитке — свой номер, из него считается задержка.
+  // Номер ставится в разметке, а не в CSS: :nth-child не умеет давать
+  // произвольное число, а правило с сотней селекторов раздуло бы стили.
+  const numbered = React.Children.map(children, (child, index) => (
+    React.isValidElement(child)
+      ? React.cloneElement(child as React.ReactElement<{ style?: React.CSSProperties }>, {
+        style: { ...(child.props as { style?: React.CSSProperties }).style, '--nx-i': Math.min(index, 14) } as React.CSSProperties,
+      })
+      : child
+  ));
+
   return (
     <div
       ref={ref}
@@ -60,7 +71,7 @@ export function TileGrid({ className, children }: { className: string; children:
         focusableInTile(list[next])?.focus();
       }}
     >
-      {children}
+      {numbered}
     </div>
   );
 }

@@ -34,9 +34,13 @@ const SHADOWS: [TileAppearance['shadowStyle'], string][] = [
 const MODES: [TileAppearance['mode'], string, Icon][] = [
   ['standard', 'Плитки', LayoutGrid], ['icon', 'Иконки', Grid2X2], ['list', 'Список', Rows3], ['preview', 'Превью', PanelTop],
 ];
-const EASINGS: [TileAppearance['easing'], string][] = [['standard', 'Ровная'], ['soft', 'Мягкая'], ['snappy', 'Резкая']];
+const EASINGS: [TileAppearance['easing'], string][] = [
+  ['standard', 'Ровная'], ['soft', 'Мягкая'], ['snappy', 'Резкая'], ['spring', 'Пружина'],
+];
 const FOCUS: [TileAppearance['focusRing'], string][] = [['minimal', 'Тонкое'], ['standard', 'Обычное'], ['strong', 'Заметное']];
-const LOADS: [TileAppearance['loadAnimation'], string][] = [['none', 'Без'], ['fade', 'Проявление'], ['rise', 'Подъём']];
+const LOADS: [TileAppearance['loadAnimation'], string][] = [
+  ['none', 'Без'], ['fade', 'Проявление'], ['rise', 'Подъём'], ['cascade', 'Каскад'],
+];
 
 /** Плитка-образец: тот же набор переменных, что и на главной странице. */
 function SampleTile({ tile, state, label }: { tile: TileAppearance; state?: 'hover' | 'press'; label: string }) {

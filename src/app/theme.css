@@ -61,6 +61,9 @@
 
 /* Контекстные альтернативы, кернинг и лигатуры включены во всём приложении:
    в разобранных системах это общее место — шрифт звучит иначе. */
+/* Контекстные альтернативы, кернинг и лигатуры — общее место у Raycast,
+   Vercel, Stripe, Apple и Resend. Стилистические наборы (ss01, ss03) не
+   включаю намеренно: у них это часть чужого фирменного голоса. */
 :root{font-feature-settings:"calt","kern","liga"}
 
 @layer nx-reset{
@@ -74,7 +77,10 @@
  --nx-panel-w:var(--nx-panel-open-w,272px);
  display:grid;grid-template-columns:var(--nx-panel-w) minmax(0,1fr);
  height:100vh;background:var(--nx-canvas);color:var(--nx-text);transition:grid-template-columns .22s ease;
- font:400 14px/1.45 Manrope,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+ /* Inter: в разобранных системах это либо сама гарнитура, либо названный
+    ими же «closest open-source equivalent» к фирменной. Manrope осталась
+    вариантом для плитки. */
+ font:400 14px/1.45 Inter,Manrope,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
  -webkit-font-smoothing:antialiased;overflow:hidden;
 }
 /* Обводка фокуса — для кнопок и ссылок. У полей ввода свой знак фокуса
@@ -214,6 +220,9 @@
  color:var(--nx-tile-ink,var(--nx-text));
  text-align:var(--nx-tile-text-align,center);font-family:var(--nx-tile-font,inherit);
  animation-name:var(--nx-tile-load,none);animation-duration:var(--nx-tile-transition,180ms);
+ /* Каскад: задержка растёт с номером плитки, но не дальше пятнадцатой —
+    иначе нижний ряд заставлял бы себя ждать. */
+ animation-delay:calc(var(--nx-i,0) * var(--nx-tile-step,0ms));
  animation-timing-function:var(--nx-tile-easing,ease);animation-fill-mode:both;
  transition:box-shadow var(--nx-tile-transition,180ms) var(--nx-tile-easing,ease),
   transform var(--nx-tile-transition,180ms) var(--nx-tile-easing,ease),
@@ -840,6 +849,8 @@
 .site-form,.mobile-sections-card{animation:nx-panel-in .26s cubic-bezier(.22,1,.36,1) both}
 @media(prefers-reduced-motion:reduce){
  .site-form,.mobile-sections-card,.nx-settings{animation:none!important}
+ /* Каскад — украшение: тем, кто просил меньше движения, он не нужен. */
+ .nx-tile{animation-delay:0ms!important}
 }
 
 /* ─── Палитра ────────────────────────────────────────────────────────────────

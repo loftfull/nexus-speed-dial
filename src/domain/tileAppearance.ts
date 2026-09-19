@@ -82,9 +82,11 @@ export type TileAppearance = {
   hoverShadow: number;
   pressedScale: number;
   transitionMs: number;
-  easing: 'standard' | 'soft' | 'snappy';
+  /** `spring` — лёгкий перелёт на возврате: кривая с выбросом больше единицы. */
+  easing: 'standard' | 'soft' | 'snappy' | 'spring';
   focusRing: 'minimal' | 'standard' | 'strong';
-  loadAnimation: 'none' | 'fade' | 'rise';
+  /** `cascade` — то же появление, но плитки выходят по очереди, а не разом. */
+  loadAnimation: 'none' | 'fade' | 'rise' | 'cascade';
   dragFeedback: boolean;
 
   /* ── содержимое ───────────────────────────────────────────── */
@@ -135,14 +137,14 @@ const clamp = (value: number, key: TileNumberKey) => {
 const BASE: TileAppearance = {
   preset: 'soft', mode: 'standard',
   width: 170, minHeight: 148, gap: 20, radius: 20, iconSize: 40, columns: 0, markRadius: 16, ratio: 'auto', anchor: 'top',
-  align: 'center', font: 'Manrope',
+  align: 'center', font: 'Inter',
   surface: 'solid', tint: 0,
   borderWidth: 0, borderOpacity: 0, innerHighlight: false,
   shadowStyle: 'stack', shadowDepth: 6, shadowSoftness: 18, shadowOpacity: 6, ring: 8, ringHover: 14, ringWidth: 10,
   blur: 0, fillOpacity: 18, stateLayer: 0,
   hoverLift: 2, hoverScale: 100, hoverShadow: 140, pressedScale: 98,
   transitionMs: 180, easing: 'standard', focusRing: 'standard',
-  loadAnimation: 'fade', dragFeedback: true,
+  loadAnimation: 'cascade', dragFeedback: true,
   // Адрес показан по умолчанию: карточка должна быть заполнена содержанием,
   // а не воздухом. В разобранных системах строка списка всегда несёт вторую
   // строку — заголовок и пояснение.
@@ -313,9 +315,9 @@ export function normalizeTileAppearance(value: unknown): TileAppearance {
     font: ONE_OF(raw.font, ['Manrope', 'Inter'] as const, DEFAULT_TILE_APPEARANCE.font),
     surface: ONE_OF(raw.surface, ['solid', 'tinted', 'gradient', 'contrast', 'glass'] as const, DEFAULT_TILE_APPEARANCE.surface),
     shadowStyle: ONE_OF(raw.shadowStyle, ['none', 'hairline', 'stack', 'drop', 'soft', 'neumorph', 'material'] as const, DEFAULT_TILE_APPEARANCE.shadowStyle),
-    easing: ONE_OF(raw.easing, ['standard', 'soft', 'snappy'] as const, DEFAULT_TILE_APPEARANCE.easing),
+    easing: ONE_OF(raw.easing, ['standard', 'soft', 'snappy', 'spring'] as const, DEFAULT_TILE_APPEARANCE.easing),
     focusRing: ONE_OF(raw.focusRing, ['minimal', 'standard', 'strong'] as const, DEFAULT_TILE_APPEARANCE.focusRing),
-    loadAnimation: ONE_OF(raw.loadAnimation, ['none', 'fade', 'rise'] as const, DEFAULT_TILE_APPEARANCE.loadAnimation),
+    loadAnimation: ONE_OF(raw.loadAnimation, ['none', 'fade', 'rise', 'cascade'] as const, DEFAULT_TILE_APPEARANCE.loadAnimation),
     innerHighlight: typeof raw.innerHighlight === 'boolean' ? raw.innerHighlight : DEFAULT_TILE_APPEARANCE.innerHighlight,
     dragFeedback: typeof raw.dragFeedback === 'boolean' ? raw.dragFeedback : DEFAULT_TILE_APPEARANCE.dragFeedback,
     showTitle: typeof raw.showTitle === 'boolean' ? raw.showTitle : DEFAULT_TILE_APPEARANCE.showTitle,
@@ -330,9 +332,13 @@ const EASING: Record<TileAppearance['easing'], string> = {
   standard: 'cubic-bezier(.2,.8,.2,1)',
   soft: 'cubic-bezier(.22,.61,.36,1)',
   snappy: 'cubic-bezier(.16,1,.3,1)',
+  // Кривая с выбросом: значение больше единицы даёт перелёт и возврат.
+  spring: 'cubic-bezier(.34,1.56,.64,1)',
 };
 const FOCUS_WIDTH: Record<TileAppearance['focusRing'], string> = { minimal: '1px', standard: '2px', strong: '3px' };
-const LOAD_NAME: Record<TileAppearance['loadAnimation'], string> = { none: 'none', fade: 'nx-tile-fade', rise: 'nx-tile-rise' };
+const LOAD_NAME: Record<TileAppearance['loadAnimation'], string> = {
+  none: 'none', fade: 'nx-tile-fade', rise: 'nx-tile-rise', cascade: 'nx-tile-rise',
+};
 
 /** Подложка плитки. `contrast` даёт тёмную поверхность, `gradient` — переливы. */
 function background(tile: TileAppearance): string {
@@ -445,7 +451,7 @@ export function toTileVars(tile: TileAppearance): TileVars {
     '--nx-grid-anchor': tile.anchor === 'center' ? 'center' : 'start',
     '--nx-tile-align': tile.align === 'left' ? 'flex-start' : 'center',
     '--nx-tile-text-align': tile.align,
-    '--nx-tile-font': tile.font === 'Inter' ? 'Inter,Manrope,system-ui,sans-serif' : 'Manrope,system-ui,sans-serif',
+    '--nx-tile-font': tile.font === 'Manrope' ? 'Manrope,Inter,system-ui,sans-serif' : 'Inter,Manrope,system-ui,sans-serif',
     '--nx-tile-bg': background(tile),
     // Запасная подложка: когда размытие недоступно или его просит отключить
     // сама система, стекло становится плотным — иначе текст поплывёт.
@@ -475,6 +481,8 @@ export function toTileVars(tile: TileAppearance): TileVars {
     '--nx-tile-easing': EASING[tile.easing],
     '--nx-tile-focus-width': FOCUS_WIDTH[tile.focusRing],
     '--nx-tile-load': LOAD_NAME[tile.loadAnimation],
+    // Шаг каскада: плитки выходят по очереди. Ноль — все разом, как раньше.
+    '--nx-tile-step': tile.loadAnimation === 'cascade' ? '26ms' : '0ms',
     '--nx-tile-drag-opacity': tile.dragFeedback ? '.55' : '1',
     '--nx-tile-title': tile.showTitle ? 'block' : 'none',
     '--nx-tile-desc': tile.showDescription ? '-webkit-box' : 'none',
