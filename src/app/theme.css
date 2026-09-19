@@ -143,6 +143,9 @@
 .nx-main-scroll{flex:1;min-height:0;overflow-y:auto;padding:22px 30px 132px;display:flex;flex-direction:column;gap:18px}
 
 .nx-cats{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;border-bottom:1px solid var(--nx-line);flex:none}
+/* Вкладки и переключатели категории идут одной группой: на широком экране это
+   та же строка, что и кнопка проекта, на узком — вторая строка целиком. */
+.nx-cats-main{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex:1;min-width:0}
 .nx-cats-tabs{display:flex;align-items:center;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:none}
 .nx-cats-tabs::-webkit-scrollbar{display:none}
 .nx-cat{position:relative;flex:none;padding:10px 14px 13px;font-size:14px;font-weight:500;color:var(--nx-muted);white-space:nowrap;
@@ -329,7 +332,11 @@
  .nx-root,.nx-root.panel-collapsed{grid-template-columns:minmax(0,1fr)}
  .nx-panel{display:none}
  .nx-main{grid-column:1}
- .nx-main-scroll{padding:14px 16px 110px;gap:14px}
+ .nx-main-scroll{padding:10px 16px 110px;gap:10px}
+ /* Строка «Все сайты · 9 сайтов» повторяет выбранную вкладку и счётчик в
+    проводнике, а стоит 37 px первого экрана — на узком экране её нет.
+    Заголовки разделов («Корзина», «Заметки») остаются. */
+ .nx-head.bare{display:none}
  .nx-mobile-top{display:flex;align-items:center;gap:10px;flex:none}
  .nx-mobile-top .nx-icon-btn{background:var(--nx-surface);box-shadow:var(--nx-shadow-sm)}
  .nx-mobile-card{flex:1;min-width:0;display:flex;align-items:center;gap:10px;height:46px;padding:0 8px 0 14px;
@@ -613,17 +620,20 @@
 /* ── переключатель вида на узком экране ───────────────────────── */
 .nx-mobile-views{display:none}
 @media (max-width:900px){
- .nx-mobile-views{display:flex;gap:4px;align-self:flex-start;flex:none;padding:4px;border-radius:13px;
+ .nx-mobile-views{display:flex;gap:3px;align-self:center;flex:none;padding:3px;border-radius:12px;
   background:var(--nx-surface);box-shadow:var(--nx-shadow-sm)}
- .nx-mobile-views button{width:40px;height:34px;display:grid;place-items:center;border-radius:10px;color:var(--nx-muted);
+ .nx-mobile-views button{width:34px;height:30px;display:grid;place-items:center;border-radius:9px;color:var(--nx-muted);
   transition:background .15s,color .15s}
  .nx-mobile-views button.on{background:var(--nx-accent-soft);color:var(--nx-accent)}
  /* Узкая полоса не вмещает кнопку проекта, вкладки и режимы в один ряд,
     поэтому вкладки переносятся на свою строку во всю ширину. */
- .nx-cats{flex-wrap:wrap;row-gap:2px}
- .nx-cats-tabs{order:2;flex:1 0 100%}
- .nx-cats-side{order:1;margin-left:auto}
- .nx-project-chip{order:0;align-self:center;margin-bottom:0;max-width:150px;padding:6px 8px 6px 9px}
+ .nx-cats{flex-wrap:wrap;row-gap:2px;gap:8px}
+ /* Первая строка — проект и раскладка, вторая — вкладки с переключателями. */
+ .nx-cats-main{order:2;flex:1 0 100%;gap:8px}
+ .nx-mobile-views{order:1;margin-left:auto}
+ .nx-cats-side{gap:6px}
+ /* Кнопка проекта уступает место переключателям: имя обрежется, а ряд не поедет. */
+ .nx-project-chip{order:0;align-self:center;margin-bottom:0;max-width:130px;min-width:0;padding:6px 8px 6px 9px}
  .nx-project-chip b{font-size:12.5px}
  .nx-grid.layout-table{grid-template-columns:repeat(2,minmax(0,1fr))}
  .nx-grid.layout-icon{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}

@@ -553,6 +553,20 @@ export function App() {
   }
 
   const showCategoryBar = section === 'sites';
+  // Переключатель раскладки на узком экране стоит в одной строке с кнопкой
+  // проекта, а не отдельной полосой: на 390 px каждая строка сверху — это
+  // минус одна плитка на первом экране. Вне «Быстрого доступа» строки с
+  // категориями нет, поэтому там он идёт сам по себе.
+  const mobileViews = narrow ? (
+    <div className="nx-mobile-views" role="group" aria-label="Вид сетки на узком экране">
+      <button type="button" className={mobileView === 'table' ? 'on' : ''} aria-pressed={mobileView === 'table'}
+        aria-label="Таблица в два столбца" title="Таблица в два столбца" onClick={() => setMobileView('table')}><Table2 size={17} /></button>
+      <button type="button" className={mobileView === 'rows' ? 'on' : ''} aria-pressed={mobileView === 'rows'}
+        aria-label="Строки с подробным описанием" title="Строки с подробным описанием" onClick={() => setMobileView('rows')}><Rows3 size={17} /></button>
+      <button type="button" className={mobileView === 'icons' ? 'on' : ''} aria-pressed={mobileView === 'icons'}
+        aria-label="Иконки в четыре столбца" title="Иконки в четыре столбца" onClick={() => setMobileView('icons')}><Grid3X3 size={17} /></button>
+    </div>
+  ) : null;
   const quickVisible = quickOpen && !dockOpen;
   const pinnedSites = pinned.map(id => sites.find(site => site.id === id)).filter(Boolean) as Site[];
   const showExplorer = ui.projects !== false;
@@ -760,6 +774,7 @@ export function App() {
                   <ChevronRight size={15} aria-hidden="true" />
                 </button>
               )}
+              <div className="nx-cats-main">
               <div className="nx-cats-tabs" role="tablist" aria-label="Категории проекта">
                 <button type="button" role="tab" aria-selected={!categoryId} className={'nx-cat' + (categoryId ? '' : ' on')} onClick={() => { setCategoryId(null); setGroupId(null); }}>Все</button>
                 {projectCategories.map(category => (
@@ -779,19 +794,12 @@ export function App() {
                   <button type="button" className="nx-icon-btn" aria-label={`Добавить группу в «${activeCategory.name}»`} title="Добавить группу" onClick={() => addGroup(activeCategory.id)}><SlidersHorizontal size={17} /></button>
                 )}
               </div>
+              </div>
+              {mobileViews}
             </nav>
           )}
 
-          {narrow && (
-            <div className="nx-mobile-views" role="group" aria-label="Вид сетки на узком экране">
-              <button type="button" className={mobileView === 'table' ? 'on' : ''} aria-pressed={mobileView === 'table'}
-                aria-label="Таблица в два столбца" title="Таблица в два столбца" onClick={() => setMobileView('table')}><Table2 size={17} /></button>
-              <button type="button" className={mobileView === 'rows' ? 'on' : ''} aria-pressed={mobileView === 'rows'}
-                aria-label="Строки с подробным описанием" title="Строки с подробным описанием" onClick={() => setMobileView('rows')}><Rows3 size={17} /></button>
-              <button type="button" className={mobileView === 'icons' ? 'on' : ''} aria-pressed={mobileView === 'icons'}
-                aria-label="Иконки в четыре столбца" title="Иконки в четыре столбца" onClick={() => setMobileView('icons')}><Grid3X3 size={17} /></button>
-            </div>
-          )}
+          {!showCategoryBar && mobileViews}
 
           {favoriteBar.length > 0 && (
             <section className="nx-favbar" aria-label="Избранное во всех проектах">

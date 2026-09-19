@@ -319,6 +319,60 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-tile')).toHaveCount(total);
   });
 
+  test('mobile keeps the chrome above the grid within its budget', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Бюджет хрома касается узкого экрана.');
+    await page.goto('/');
+    await page.waitForSelector('.nx-grid');
+
+    const measure = () => page.evaluate(() => {
+      const tile = document.querySelector('.nx-main .nx-tile')!.getBoundingClientRect();
+      const rows = new Set<number>();
+      for (const el of document.querySelectorAll('.nx-mobile-top, .nx-cats > *, .nx-head')) {
+        const r = el.getBoundingClientRect();
+        if (r.height && r.top < tile.top) rows.add(Math.round(r.top));
+      }
+      return { first: Math.round(tile.top), height: innerHeight, rows: rows.size,
+        scrollWidth: document.documentElement.scrollWidth, inner: innerWidth };
+    });
+
+    const start = await measure();
+    // Было 273 px — 32 % экрана; держим ниже четверти и без горизонтальной прокрутки.
+    expect(start.first).toBeLessThan(start.height * 0.25);
+    expect(start.scrollWidth).toBe(start.inner);
+
+    // Худший случай: самое длинное имя проекта и выбранная категория,
+    // из-за которой в строке появляется ещё одна кнопка.
+    for (let step = 0; step < 6; step += 1) {
+      const name = await page.locator('.nx-project-chip b').textContent();
+      if (name?.includes('Развлеч')) break;
+      await page.locator('.nx-project-chip').click();
+      await page.waitForTimeout(340);
+    }
+    await page.locator('.nx-cats-tabs .nx-cat').nth(1).click();
+    const worst = await measure();
+    expect(worst.first).toBeLessThan(worst.height * 0.25);
+    expect(worst.scrollWidth).toBe(worst.inner);
+  });
+
+  test('mobile puts the arrangement switcher next to the project button', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Переключатель раскладки живёт только на узком экране.');
+    await page.goto('/');
+    const chip = page.locator('.nx-project-chip');
+    const views = page.getByRole('group', { name: 'Вид сетки на узком экране' });
+    const chipBox = (await chip.boundingBox())!;
+    const viewsBox = (await views.boundingBox())!;
+    // Одна строка: вертикальные центры совпадают, а по горизонтали не пересекаются.
+    expect(Math.abs((chipBox.y + chipBox.height / 2) - (viewsBox.y + viewsBox.height / 2))).toBeLessThan(6);
+    expect(viewsBox.x).toBeGreaterThan(chipBox.x + chipBox.width);
+
+    // Вне «Быстрого доступа» строки категорий нет, но переключатель остаётся.
+    await page.locator('.nx-quick').getByRole('button', { name: 'Корзина' }).click();
+    await expect(page.locator('.nx-cats')).toHaveCount(0);
+    await expect(views).toBeVisible();
+    // Заголовок раздела на узком экране остаётся, исчезает только строка со счётчиком.
+    await expect(page.getByRole('heading', { name: 'Корзина' })).toBeVisible();
+  });
+
   test('the favourites strip stays the same in every project and opens a site', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'На узком экране полосы нет: там дорога высота.');
     await page.addInitScript(() => {
