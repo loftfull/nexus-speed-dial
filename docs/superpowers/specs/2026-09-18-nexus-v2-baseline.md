@@ -113,8 +113,13 @@ Depth is **not** produced by:
 ## Data and identity rules
 
 - Every persisted site receives a stable ID at creation/import time.
+- A site has three different concepts and they must not be conflated:
+  - `id` — stable object identity used by mutations, references, drag/drop and history;
+  - `domain` — display hostname used by branding/icon lookup;
+  - `url` — exact http(s) destination, including path/query/hash.
+- New and imported records preserve the exact `url`. Legacy domain-only records migrate safely and continue to open through `domain` fallback.
 - Projects, dock pins, selection, drag payloads, history resolution, delete/edit/favorite operations use IDs wherever possible.
-- Same-domain records are valid distinct objects when their IDs differ.
+- Same-domain records are valid distinct objects when their IDs or exact URLs differ; importing one GitHub page must not suppress another GitHub page.
 - Import must preserve IDs when valid and generate missing IDs before apply.
 - Backup evolution should move toward parse → validate → normalize → preview → atomic apply.
 
