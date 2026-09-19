@@ -31,7 +31,7 @@ test.describe('Nexus shell', () => {
     await page.getByRole('button', { name: 'Добавить сайт' }).first().click();
     await page.getByLabel('Название').fill('GitHub issue 123');
     await page.getByLabel('Адрес сайта').fill('https://github.com/openai/openai/issues/123?tab=readme#top');
-    await page.getByRole('button', { name: 'Добавить сайт' }).click();
+    await page.locator('.site-form').getByRole('button', { name: 'Добавить сайт' }).click();
 
     const destination = 'https://github.com/openai/openai/issues/123?tab=readme#top';
     await expect.poll(() => page.evaluate(title => {
