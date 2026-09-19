@@ -351,13 +351,19 @@ export function App() {
       { id: 'add-project', title: 'Новый проект', hint: 'Отдельное пространство', keywords: 'создать проект', icon: 'project' },
       { id: 'add-category', title: 'Новая категория', hint: 'Внутри текущего проекта', keywords: 'создать категорию', icon: 'category' },
       { id: 'settings', title: 'Настройки', hint: 'Оформление, панели, данные', shortcut: 'Ctrl ,', keywords: 'параметры опции', icon: 'settings' },
-      { id: 'toggle-panel', title: panelOpen ? 'Скрыть проводник' : 'Показать проводник', hint: 'Боковая панель', keywords: 'сайдбар панель дерево', icon: 'panel' },
       { id: 'toggle-dock', title: dockOpen ? 'Скрыть док-панель' : 'Показать док-панель', hint: 'Закреплённые сайты', keywords: 'док закреплённые', icon: 'dock' },
       { id: 'empty-trash', title: 'Очистить корзину', hint: `В корзине ${countSites(trash.length)}`, keywords: 'удалить корзину', icon: 'trash' },
     ];
+    // Проводника на узком экране нет вовсе, поэтому и команды о нём там нет.
+    if (!narrow) {
+      list.splice(4, 0, {
+        id: 'toggle-panel', title: panelOpen ? 'Скрыть проводник' : 'Показать проводник',
+        hint: 'Боковая панель', keywords: 'сайдбар панель дерево', icon: 'panel',
+      });
+    }
     if (query) list.unshift({ id: 'clear-filter', title: 'Сбросить фильтр сетки', hint: `Сейчас: «${query}»`, keywords: 'очистить фильтр', icon: 'clear' });
     return list;
-  }, [panelOpen, dockOpen, trash.length, query]);
+  }, [panelOpen, dockOpen, trash.length, query, narrow]);
 
   const paletteItems = useMemo(() => buildPaletteItems({
     sites, projects, categories, groups,
