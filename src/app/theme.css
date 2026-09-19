@@ -3,12 +3,15 @@
    поэтому прежние файлы стилей на неё не влияют. */
 
 :root{
- --nx-canvas:#eceef1;
+ /* Полотно почти белое: у Stripe #f6f9fc, у Apple #f5f5f7, у Cal #f8f9fa —
+    серым бывает не полотно, а утопленная поверхность. Прежние #eceef1 были
+    на три с лишним ступени светлоты темнее и давали «серый» вид. */
+ --nx-canvas:#f5f6f8;
  --nx-surface:#ffffff;
- --nx-sunken:#f4f6f8;
- --nx-line:#e5e9ef;
- --nx-text:#222831;
- --nx-muted:#626a76;
+ --nx-sunken:#eef0f4;
+ --nx-line:#e4e7ee;
+ --nx-text:#1c2026;
+ --nx-muted:#5f6773;
  --nx-accent:#1a5ed0;
  --nx-accent-soft:#e7effc;
  --nx-chip-on:rgba(255,255,255,.6);
@@ -583,19 +586,27 @@
 
 /* ── подложка рабочего пространства ───────────────────────────────
    Обои задаются на <html>, поэтому их видно и за модальными окнами. */
-:root[data-wallpaper="aurora"] .nx-root{background:radial-gradient(circle at 72% -8%,#dcecff,#eef2f6 52%,#e9eef4)}
-:root[data-wallpaper="warm"] .nx-root{background:radial-gradient(circle at 24% -6%,#fff1dd,#f6f3ee 48%,#eceef1)}
-:root[data-wallpaper="mint"] .nx-root{background:radial-gradient(circle at 80% 4%,#ddf6ee,#f0f6f4 45%,#e9eef2)}
+/* Обои — подложка рабочего экрана, а не витрина: цвет едва намечен у верхней
+   кромки и быстро уходит в полотно. Плотный градиент во весь экран спорил бы
+   с фирменными знаками сайтов. */
+:root[data-wallpaper="aurora"] .nx-root{background:radial-gradient(120% 70% at 72% -12%,#e8f1ff,#f5f6f8 58%)}
+:root[data-wallpaper="warm"] .nx-root{background:radial-gradient(120% 70% at 24% -10%,#fdf1e2,#f7f6f4 56%)}
+:root[data-wallpaper="mint"] .nx-root{background:radial-gradient(120% 70% at 80% -8%,#e4f6f0,#f4f7f6 54%)}
+/* Бумага: тёплое полотно как опора, карточки поднимаются на белое —
+   приём Intercom («never replace cream with pure white; lift cards onto white»). */
+:root[data-wallpaper="paper"] .nx-root{background:#f7f4ef}
 :root[data-wallpaper="plain"] .nx-root{background:var(--nx-canvas)}
 :root[data-theme="dark"][data-wallpaper="aurora"] .nx-root{background:radial-gradient(circle at 72% -8%,#152338,#0e1217 55%,#0e1217)}
 :root[data-theme="dark"][data-wallpaper="warm"] .nx-root{background:radial-gradient(circle at 24% -6%,#2a1f14,#0e1217 52%,#0e1217)}
 :root[data-theme="dark"][data-wallpaper="mint"] .nx-root{background:radial-gradient(circle at 80% 4%,#0f2a24,#0e1217 50%,#0e1217)}
+:root[data-theme="dark"][data-wallpaper="paper"] .nx-root{background:#12100d}
 :root[data-theme="dark"][data-wallpaper="plain"] .nx-root{background:var(--nx-canvas)}
 .nx-wall-dot{width:13px;height:13px;border-radius:var(--nx-r-xs);flex:none;box-shadow:inset 0 0 0 1px rgba(20,28,45,.12)}
 .nx-wall-dot.wall-aurora{background:linear-gradient(135deg,#dcecff,#eef2f6)}
 .nx-wall-dot.wall-warm{background:linear-gradient(135deg,#fff1dd,#f6f3ee)}
 .nx-wall-dot.wall-mint{background:linear-gradient(135deg,#ddf6ee,#f0f6f4)}
-.nx-wall-dot.wall-plain{background:#eceef1}
+.nx-wall-dot.wall-paper{background:linear-gradient(135deg,#f7f4ef,#efe9e0)}
+.nx-wall-dot.wall-plain{background:#f5f6f8}
 
 /* ── компактный режим и отключённые анимации ──────────────────── */
 .nx-root.compact{font-size:var(--nx-fs-3)}

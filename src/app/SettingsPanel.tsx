@@ -31,10 +31,14 @@ const SECTIONS: { id: SectionId; label: string; icon: ControlIcon }[] = [
   { id: 'data', label: 'Данные', icon: Database },
 ];
 
-const ACCENTS = ['#2f6fe4', '#6d51e0', '#0f9d76', '#e0851f', '#c9364f', '#0f8ab8'];
+// Графит в наборе не случайно: у Figma, Cal и Intercom главное действие
+// красится почти чёрным, и это читается дороже цветной кнопки.
+const ACCENTS = ['#2f6fe4', '#6d51e0', '#0f9d76', '#e0851f', '#c9364f', '#1c2026'];
 const CITIES = ['Москва', 'Санкт-Петербург', 'Берлин', 'Лондон'];
 const UNITS = ['Цельсий (°C)', 'Фаренгейт (°F)'];
-const WALLPAPERS: [string, string][] = [['aurora', 'Аврора'], ['warm', 'Тёплые'], ['mint', 'Мята'], ['plain', 'Однотонные']];
+const WALLPAPERS: [string, string][] = [
+  ['aurora', 'Аврора'], ['warm', 'Тёплые'], ['mint', 'Мята'], ['paper', 'Бумага'], ['plain', 'Однотонные'],
+];
 const PANEL_WIDTHS = ['240px', '292px', '340px'];
 const MOBILE_VIEWS: [MobileMode, string, string, ControlIcon][] = [
   ['table', 'Таблица', 'Два столбца, под названием — краткое описание', Columns2],

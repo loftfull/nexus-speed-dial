@@ -221,10 +221,15 @@ test.describe('Nexus shell', () => {
 
     await settings.getByRole('button', { name: 'Плитки' }).click();
     const address = settings.getByRole('switch', { name: 'Адрес' });
+    // Адрес показан по умолчанию, поэтому проверяем переключатель в обе стороны.
+    const wide = testInfo.project.name !== 'mobile';
+    await expect(address).toHaveAttribute('aria-checked', 'true');
+    await address.click();
+    await expect(address).toHaveAttribute('aria-checked', 'false');
+    // На узком экране состав подписи задаёт мобильная раскладка, а не этот переключатель.
+    if (wide) await expect(page.locator('.nx-tile-sub').first()).toBeHidden();
     await address.click();
     await expect(address).toHaveAttribute('aria-checked', 'true');
-    // На узком экране состав подписи задаёт мобильная раскладка, а не этот переключатель.
-    const wide = testInfo.project.name !== 'mobile';
     if (wide) await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
 
     await page.reload();
@@ -843,6 +848,8 @@ test.describe('Nexus shell', () => {
     // A list row puts the icon beside the text; the address follows its own switch.
     const tile = page.locator('.nx-tile').first();
     await expect(tile.locator('.nx-tile-face')).toHaveCSS('flex-direction', 'row');
+    await expect(tile.locator('.nx-tile-sub')).toBeVisible();
+    await page.getByRole('switch', { name: 'Адрес' }).click();
     await expect(tile.locator('.nx-tile-sub')).toBeHidden();
     await page.getByRole('switch', { name: 'Адрес' }).click();
     await expect(tile.locator('.nx-tile-sub')).toBeVisible();

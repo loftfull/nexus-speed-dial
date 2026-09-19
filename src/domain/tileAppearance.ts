@@ -143,7 +143,10 @@ const BASE: TileAppearance = {
   hoverLift: 2, hoverScale: 100, hoverShadow: 140, pressedScale: 98,
   transitionMs: 180, easing: 'standard', focusRing: 'standard',
   loadAnimation: 'fade', dragFeedback: true,
-  showTitle: true, showDescription: false, showDomain: false, showCategory: false, showFavorite: true,
+  // Адрес показан по умолчанию: карточка должна быть заполнена содержанием,
+  // а не воздухом. В разобранных системах строка списка всегда несёт вторую
+  // строку — заголовок и пояснение.
+  showTitle: true, showDescription: false, showDomain: true, showCategory: false, showFavorite: true,
 };
 
 /**
