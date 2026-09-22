@@ -1483,4 +1483,15 @@ test.describe('Рабочий стол проектов', () => {
     await expect(lastProject).toBeVisible();
   });
 
+  test('заголовок папок не обещает несуществующее меню проекта', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Смысл control достаточно проверить на desktop.');
+    await page.goto('/');
+
+    await expect(page.getByRole('button', { name: 'Действия с проектом' })).toHaveCount(0);
+    const add = page.getByRole('button', { name: 'Добавить сайт в проект' });
+    await expect(add).toBeVisible();
+    await add.click();
+    await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
+  });
+
 });
