@@ -1230,6 +1230,20 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 
 /* ── ряд проектов ─────────────────────────────────────────────── */
 .nx-projects{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:12px;flex:none}
+@media (min-width:681px){
+ .nx-projects:has(.nx-project-card:nth-child(10)){
+  grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(128px,160px);
+  justify-content:start;overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;
+  scroll-snap-type:inline proximity;padding:2px 2px 8px;
+  scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--nx-accent) 28%,transparent) transparent
+ }
+ .nx-projects:has(.nx-project-card:nth-child(10)) .nx-project-card{scroll-snap-align:start}
+ .nx-projects:has(.nx-project-card:nth-child(10))::-webkit-scrollbar{height:6px}
+ .nx-projects:has(.nx-project-card:nth-child(10))::-webkit-scrollbar-track{background:transparent}
+ .nx-projects:has(.nx-project-card:nth-child(10))::-webkit-scrollbar-thumb{
+  background:color-mix(in srgb,var(--nx-accent) 28%,transparent);border-radius:999px
+ }
+}
 .nx-project-card{display:flex;flex-direction:column;align-items:flex-start;gap:3px;
  padding:14px 14px 13px;border-radius:var(--nx-r-lg);text-align:left;
  background:color-mix(in srgb,var(--nx-node,#7b8794) 10%,var(--nx-surface));
