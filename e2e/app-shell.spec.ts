@@ -1419,4 +1419,68 @@ test.describe('Рабочий стол проектов', () => {
     await expect(page.locator('.nx-board')).toHaveCount(0);
     await expect(page.locator('.nx-tile').first()).toBeVisible();
   });
+  test('двадцать проектов остаются одной прокручиваемой полосой', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Плотную проектную полосу проверяем на широком экране.');
+
+    await page.addInitScript(() => {
+      const projects = Array.from({ length: 20 }, (_, index) => ({
+        id: `stress-project-${index}`,
+        name: index === 19 ? 'Очень длинное название последнего проекта' : `Проект ${index + 1}`,
+        color: `hsl(${(index * 37) % 360} 62% 52%)`,
+        icon: String(index + 1),
+        siteIds: [],
+        createdAt: index,
+        updatedAt: index,
+      }));
+      const categories = projects.map((project, index) => ({
+        id: `stress-category-${index}`,
+        name: `Категория ${index + 1}`,
+        projectId: project.id,
+      }));
+      const sites = projects.flatMap((project, projectIndex) =>
+        Array.from({ length: 10 }, (_, siteIndex) => ({
+          id: `stress-site-${projectIndex}-${siteIndex}`,
+          title: `Сайт ${projectIndex + 1}.${siteIndex + 1}`,
+          desc: 'Проверка плотного рабочего пространства',
+          domain: `site-${projectIndex}-${siteIndex}.example`,
+          url: `https://site-${projectIndex}-${siteIndex}.example/path`,
+          color: '#2f6fe4',
+          icon: 'С',
+          category: categories[projectIndex].name,
+          categoryId: categories[projectIndex].id,
+        })),
+      );
+      localStorage.setItem('nexus-projects', JSON.stringify(projects));
+      localStorage.setItem('nexus-categories', JSON.stringify(categories));
+      localStorage.setItem('nexus-groups', JSON.stringify([]));
+      localStorage.setItem('nexus-sites', JSON.stringify(sites));
+      localStorage.removeItem('nexus-active-project');
+      localStorage.removeItem('nexus-active-category');
+    });
+
+    await page.goto('/');
+    await expect(page.locator('.nx-board-total b')).toHaveText('200');
+
+    const rail = page.locator('.nx-projects');
+    await expect(rail.locator('.nx-project-card')).toHaveCount(21);
+    const geometry = await rail.evaluate(element => {
+      const cards = [...element.querySelectorAll<HTMLElement>('.nx-project-card')];
+      const rows = new Set(cards.map(card => Math.round(card.getBoundingClientRect().top)));
+      return {
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+        height: element.getBoundingClientRect().height,
+        rows: rows.size,
+      };
+    });
+
+    expect(geometry.rows).toBe(1);
+    expect(geometry.scrollWidth).toBeGreaterThan(geometry.clientWidth);
+    expect(geometry.height).toBeLessThan(190);
+
+    const lastProject = rail.getByRole('button', { name: /Очень длинное название последнего проекта/ });
+    await lastProject.scrollIntoViewIfNeeded();
+    await expect(lastProject).toBeVisible();
+  });
+
 });
