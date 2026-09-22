@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Briefcase, ChevronRight, Clock3, CloudSun, Folder, GraduationCap, Home, Layers3,
-  LayoutGrid, MoreVertical, Plus, Search, ShoppingBag, Star,
+  LayoutGrid, Plus, Search, ShoppingBag, Star,
 } from './icons.generated';
 import { SiteIcon } from './SiteIcon';
 import { boardColumns, boardCrumbs, projectCards } from '../domain/dashboard';
@@ -162,8 +162,8 @@ export function HomeBoard(props: HomeBoardProps) {
               </p>
             )}
           </div>
-          <button type="button" className="nx-round nx-folders-more" aria-label="Действия с проектом" title="Действия с проектом" onClick={onAddSite}>
-            <MoreVertical size={18} />
+          <button type="button" className="nx-round nx-folders-more" aria-label="Добавить сайт в проект" title="Добавить сайт в проект" onClick={onAddSite}>
+            <Plus size={18} />
           </button>
         </header>
 
