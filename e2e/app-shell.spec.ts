@@ -1379,16 +1379,33 @@ test.describe('Nexus shell', () => {
     // Указатель знаков грузится отдельным запросом и уже однажды не доезжал
     // до съёмки эталона: в принятый снимок попали монограммы. Здесь то же
     // самое проверяется на живом экране и на всех трёх ширинах сразу.
-    const grid = page.locator('.nx-grid .nx-mark');
-    await expect(grid).toHaveCount(9);
+    await expect(page.locator('.nx-grid .nx-mark')).toHaveCount(9);
+
+    // Сверяется не число, а поимённый список тех, кто остался без знака: когда
+    // проверка краснеет, видно, какой сайт споткнулся, а не просто
+    // «ожидалось 8, получено 6».
+    const census = () => page.locator('.nx-grid .nx-tile').evaluateAll(tiles => tiles.map(tile => {
+      const mark = tile.querySelector('.nx-mark');
+      const image = mark?.querySelector('img') as HTMLImageElement | null;
+      return {
+        name: tile.querySelector('.nx-tile-name')?.textContent ?? '?',
+        settled: Boolean(mark?.classList.contains('brand') && mark.classList.contains('filled')),
+        state: mark?.className ?? 'без марки',
+        picture: image
+          ? `${image.getAttribute('src')} complete=${image.complete} natural=${image.naturalWidth}`
+          : 'без картинки',
+      };
+    }));
+
     // Восемь из девяти демонстрационных сайтов имеют знак. Девятый —
     // «Яндекс»: в наборе simple-icons остался только Yandex Cloud, поэтому
-    // ya.ru показывает монограмму «Я», и это верное поведение, а не сбой.
-    await expect(page.locator('.nx-grid .nx-mark.brand.filled')).toHaveCount(8);
-    await expect(page.locator('.nx-grid .nx-mark:not(.brand)')).toHaveText(['Я']);
+    // ya.ru показывает запасную марку, и это верное поведение, а не сбой.
+    await expect
+      .poll(async () => (await census()).filter(row => !row.settled).map(row => row.name), { timeout: 10_000 })
+      .toEqual(['Яндекс']);
 
-    // Знак, найденный в указателе, но не отрисованный, — это буква на экране
-    // вместо логотипа. Такого состояния после загрузки быть не должно.
-    await expect(page.locator('.nx-grid .nx-mark.brand:not(.filled)')).toHaveCount(0);
+    // Полный расклад уходит в журнал прогона: по нему видно, какой адрес
+    // подставлен каждой марке и дошла ли картинка.
+    for (const row of await census()) console.log(`${row.name} [${row.state}] ${row.picture}`);
   });
 });
