@@ -3,11 +3,44 @@ import { test, expect, type Page } from '@playwright/test';
 const screenshotOptions = { maxDiffPixels: 250 } as const;
 
 /**
+ * Перепись марок на экране: сколько их всего, сколько встало фирменным знаком
+ * и сколько знак нашли, но картинку ещё не отрисовали.
+ *
+ * Зелёный снимок сам по себе не доказывает, что эталон верный: он доказывает
+ * совпадение с эталоном, каким бы тот ни был. Мобильная главная уже была
+ * принята с монограммами вместо логотипов — снимок успевал сняться раньше
+ * указателя фирменных знаков. Перепись закрывает именно эту дыру: она
+ * проверяет содержимое кадра до того, как он станет эталоном.
+ */
+type MarkCensus = { total: number; brand: number; pending: number };
+
+/**
+ * Домашний экран демонстрационного набора: девять сайтов, у восьми есть
+ * фирменный знак. У «Яндекса» его нет — в установленном наборе simple-icons
+ * остался только Yandex Cloud, поэтому ya.ru честно показывает монограмму «Я».
+ * Число упадёт, если указатель знаков не доедет или отдастся с ошибкой.
+ */
+const HOME_MARKS: MarkCensus = { total: 9, brand: 8, pending: 0 };
+
+async function markCensus(page: Page): Promise<MarkCensus> {
+  return page.evaluate(() => {
+    const marks = [...document.querySelectorAll('.nx-mark, .nx-dock-mark')];
+    const has = (element: Element, name: string) => element.classList.contains(name);
+    return {
+      total: marks.length,
+      // `brand` — знак найден в указателе, `filled` — картинка отрисована.
+      brand: marks.filter(element => has(element, 'brand') && has(element, 'filled')).length,
+      pending: marks.filter(element => has(element, 'brand') && !has(element, 'filled')).length,
+    };
+  });
+}
+
+/**
  * Знаки сайтов грузятся асинхронно, поэтому снимок ждёт, пока каждая картинка
  * либо станет готовой, либо отвалится к монограмме. Иначе эталон зависел бы
  * от того, успела ли сеть.
  */
-async function settle(page: Page) {
+async function settle(page: Page): Promise<MarkCensus> {
   // .nx-board — раскладка «рабочий стол проектов», которая стала главной по
   // умолчанию: плиток на ней нет, и ожидание .nx-tile висело до таймаута на
   // каждом снимке домашнего экрана.
@@ -42,6 +75,7 @@ async function settle(page: Page) {
   ).catch(() => {});
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(250);
+  return markCensus(page);
 }
 
 async function prepareVisualPage(page: Page) {
@@ -63,7 +97,8 @@ test.describe('Nexus visual baselines', () => {
     test.skip(testInfo.project.name !== 'desktop', 'Desktop baseline only.');
     await prepareVisualPage(page);
     await page.goto('/');
-    await settle(page);
+    // Эталон снимается только с отрисованными фирменными знаками.
+    expect(await settle(page)).toEqual(HOME_MARKS);
     await expect(page).toHaveScreenshot('desktop-home.png', { ...screenshotOptions, fullPage: true });
   });
 
@@ -83,8 +118,10 @@ test.describe('Nexus visual baselines', () => {
     await settle(page);
     await page.keyboard.press('Control+k');
     await expect(page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' })).toBeFocused();
-    // В палитре свои знаки сайтов: она тоже должна устояться.
-    await settle(page);
+    // В палитре свои знаки сайтов: она тоже должна устояться. Состав списка
+    // здесь другой, поэтому сверяется не число знаков, а отсутствие
+    // недоотрисованных: ни один найденный знак не должен остаться буквой.
+    expect((await settle(page)).pending).toBe(0);
     await expect(page).toHaveScreenshot('desktop-palette.png', { ...screenshotOptions, fullPage: true });
   });
 
@@ -98,7 +135,7 @@ test.describe('Nexus visual baselines', () => {
     await prepareVisualPage(page);
     await page.goto('/');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await settle(page);
+    expect(await settle(page)).toEqual(HOME_MARKS);
     await expect(page).toHaveScreenshot('desktop-home-dark.png', { ...screenshotOptions, fullPage: true });
   });
 
@@ -114,7 +151,7 @@ test.describe('Nexus visual baselines', () => {
     test.skip(testInfo.project.name !== 'mobile', 'Mobile baseline only.');
     await prepareVisualPage(page);
     await page.goto('/');
-    await settle(page);
+    expect(await settle(page)).toEqual(HOME_MARKS);
     await expect(page).toHaveScreenshot('mobile-home.png', { ...screenshotOptions, fullPage: true });
   });
 
