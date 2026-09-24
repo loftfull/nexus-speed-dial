@@ -16,6 +16,25 @@ async function settle(page: Page) {
   // не её, а состояния самого знака: готовая картинка получает класс `ready`,
   // а неудачная исчезает совсем и остаётся монограмма. Пока есть знак с
   // неотрисованной картинкой, снимок делать рано.
+  // Сначала дожидаемся, пока указатель фирменных знаков вообще доедет.
+  // Прежняя проверка ждала готовности картинок, но пока указатель не пришёл,
+  // элементов <img> на плитках нет совсем — ждать нечего, проверка проходит
+  // мгновенно, и в эталон попадали монограммы вместо логотипов. Именно так
+  // разошлись снимки мобильной главной: в одном прогоне буквы, в другом знаки.
+  await page.waitForFunction(
+    () => {
+      const marks = document.querySelectorAll('.nx-mark, .nx-dock-mark').length;
+      const images = document.querySelectorAll('.nx-mark img, .nx-dock-mark img').length;
+      const window_ = window as typeof window & { __nxMarks?: number; __nxStable?: number };
+      if (window_.__nxMarks === images) window_.__nxStable = (window_.__nxStable ?? 0) + 1;
+      else { window_.__nxMarks = images; window_.__nxStable = 0; }
+      // Счёт картинок не меняется три опроса подряд — состав марок устоялся.
+      return marks === 0 || (window_.__nxStable ?? 0) >= 3;
+    },
+    undefined,
+    { timeout: 10_000, polling: 150 },
+  ).catch(() => {});
+
   await page.waitForFunction(
     () => document.querySelectorAll('.nx-mark img:not(.ready), .nx-dock-mark img:not(.ready)').length === 0,
     undefined,
