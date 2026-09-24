@@ -150,7 +150,7 @@ const BASE: TileAppearance = {
   // Адрес показан по умолчанию: карточка должна быть заполнена содержанием,
   // а не воздухом. В разобранных системах строка списка всегда несёт вторую
   // строку — заголовок и пояснение.
-  showTitle: true, showDescription: false, showDomain: true, showCategory: false, showFavorite: true,
+  showTitle: true, showDescription: true, showDomain: true, showCategory: false, showFavorite: true,
 };
 
 /**

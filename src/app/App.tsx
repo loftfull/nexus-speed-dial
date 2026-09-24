@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   Check, ChevronDown, ChevronRight, ChevronUp, Clock3, CloudSun, Droplets, ExternalLink, Home, Layers3, LayoutGrid,
-  Briefcase, Cloud, CloudRain, GraduationCap, ShoppingBag, Snowflake, Sun,
-  Grid3X3, MoreHorizontal, Pencil, Plus, Rows3, RotateCw, Search, Settings as SettingsIcon, SlidersHorizontal,
-  Star, StickyNote, SquareStack, Table2, Tag, Trash2, Wind, X,
+  Briefcase, Cloud, CloudRain, GraduationCap, Moon, ShoppingBag, Snowflake, Sun,
+  ChevronLeft, Grid3X3, Keyboard, MoreHorizontal, Palette, Pencil, Plus, Rows3, RotateCw, Save, Search, Settings as SettingsIcon, SlidersHorizontal, Upload,
+  Database, Star, StickyNote, SquareStack, Table2, Tag, Trash2, Wind, X,
 } from './icons.generated';
 
 import './theme.css';
 
 import { appReducer, createInitialAppState, persistAppState } from '../domain/appStore';
+import { getStorageUsage } from '../domain/storage';
+import { sortSites, type SortKey } from '../domain/sortSites';
 import type { AppearanceState, MobileMode } from '../domain/appStore';
 import { seedSites } from '../domain/seed';
 import { readStorage, writeStorage } from '../domain/storage';
@@ -27,13 +29,13 @@ import type { Category, Project, SiteGroup, SiteRecord as Site } from '../domain
 import { Tile } from './Tile';
 import type { TileLayout } from './Tile';
 import { applyWallpaperPhoto, readWallpaperPhoto } from '../domain/wallpaper';
-import { HomeBoard } from './HomeBoard';
+import { Crumb } from './Breadcrumbs';
 import { SiteIcon } from './SiteIcon';
 import type { ControlIcon } from './SettingControls';
 import { AddSiteModal } from '../components/AddSiteModal';
 import { CalendarPopover } from '../components/CalendarPopover';
 import { MobileSections } from '../components/MobileSections';
-import { SettingsPanel } from './SettingsPanel';
+import { SettingsPanel, type SectionId as SettingsSectionId } from './SettingsPanel';
 import { ActionDialog } from './ActionDialog';
 import { CommandPalette } from './CommandPalette';
 import { TileGrid, focusableInTile } from './TileGrid';
@@ -63,6 +65,21 @@ const SECTION_PALETTE_ICON: Record<SectionId, string> = {
   sites: 'home', favorites: 'star', recent: 'clock', notes: 'note', trash: 'trash', sessions: 'session',
 };
 const PROJECT_GLYPHS = [Home, Briefcase, GraduationCap, Star, Layers3, ShoppingBag];
+const SORTS: [SortKey, string][] = [
+  ['name', 'По названию'],
+  ['recent', 'По последнему открытию'],
+  ['added', 'По добавлению'],
+];
+/** Сколько пространств видно до нажатия «Ещё». */
+const SPACES_SHOWN = 5;
+/** Инструменты боковой панели: каждый ведёт в свой раздел настроек. */
+const TOOLS: [SettingsSectionId, string, ControlIcon][] = [
+  ['data', 'Импорт', Upload],
+  ['data', 'Резервная копия', Save],
+  ['general', 'Настройки', SettingsIcon],
+  ['look', 'Внешний вид', Palette],
+  ['keys', 'Горячие клавиши', Keyboard],
+];
 const PAGE = 24;
 export const DOCK_DRAG_TYPE = 'application/x-nexus-site';
 
@@ -100,31 +117,36 @@ export function App() {
   const [section, setSection] = useState<SectionId>('sites');
   const [projectId, setProjectId] = useState<string | null>(() => readStorage('nexus-active-project', null as string | null));
   const [categoryId, setCategoryId] = useState<string | null>(() => readStorage('nexus-active-category', null as string | null));
+  // Настройка задаёт вид только для нового профиля: если пользователь уже
+  // переключал вид руками, его выбор важнее умолчания.
   const [view, setView] = useState<'all' | 'groups'>(() => readStorage('nexus-view-mode', 'all' as 'all' | 'groups'));
   const [query, setQuery] = useState('');
-  /**
-   * Раскладка главной. «Доска» — рабочий стол проектов, «сетка» — прежняя
-   * плоская сетка плиток. Доска живёт только в разделе сайтов и только
-   * когда не идёт поиск: во время поиска нужен плоский список результатов,
-   * а не структура проекта.
-   */
-  const boardLayout = section === 'sites' && ui.homeLayout !== 'grid' && !query.trim();
 
   const [limit, setLimit] = useState(PAGE);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSectionId>('general');
+  const [allSpaces, setAllSpaces] = useState(false);
+  const carousel = useRef<HTMLDivElement>(null);
+  /** Лента категорий прокручивается на ширину видимой части, а не на пиксели. */
+  const scrollCarousel = (direction: 1 | -1) => {
+    const row = carousel.current;
+    if (row) row.scrollBy({ left: direction * Math.max(220, row.clientWidth * 0.8), behavior: 'smooth' });
+  };
+  const patchUi = (patch: Partial<typeof ui>) => setUi(current => ({ ...current, ...patch }));
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<Site | null>(null);
   const [actionDialog, setActionDialog] = useState<AppActionDialog | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const [panelOpen, setPanelOpen] = useState(() => readStorage('nexus-panel-open', true));
-  const [dockOpen, setDockOpen] = useState(() => readStorage('nexus-dock-open', false));
+  // Док открыт с самого начала: снизу теперь одна полоса, и прятать её
+  // означало бы прятать часы, погоду и закреплённые сайты разом.
+  const [dockOpen, setDockOpen] = useState(() => readStorage('nexus-dock-open', true));
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [forecastOpen, setForecastOpen] = useState(false);
   const [openProjects, setOpenProjects] = useState<string[]>(() => readStorage('nexus-open-projects', [] as string[]));
   const [openCategories, setOpenCategories] = useState<string[]>(() => readStorage('nexus-open-categories', [] as string[]));
   const [groupId, setGroupId] = useState<string | null>(() => readStorage('nexus-active-group', null as string | null));
-  const [quickOpen, setQuickOpen] = useState(() => readStorage('nexus-quick-open', true));
   const [pinned, setPinned] = useState<string[]>(() => readStorage('nexus-dock-pins', [] as string[]));
   const [pinEdit, setPinEdit] = useState(false);
   const [dragOverDock, setDragOverDock] = useState(false);
@@ -144,6 +166,11 @@ export function App() {
     [categories, activeProjectId],
   );
   const activeCategory = projectCategories.find(item => item.id === categoryId) ?? null;
+  const categoryGroups = useMemo(
+    () => (activeCategory ? groups.filter(item => item.categoryId === activeCategory.id) : []),
+    [groups, activeCategory],
+  );
+  const activeGroup = categoryGroups.find(item => item.id === groupId) ?? null;
 
   useEffect(() => { setMobileView(ui.mobileMode ?? 'table'); }, [ui.mobileMode]);
   useEffect(() => () => window.clearTimeout(swapTimer.current), []);
@@ -154,7 +181,6 @@ export function App() {
   useEffect(() => { writeStorage('nexus-view-mode', view); }, [view]);
   useEffect(() => { writeStorage('nexus-panel-open', panelOpen); }, [panelOpen]);
   useEffect(() => { writeStorage('nexus-dock-open', dockOpen); }, [dockOpen]);
-  useEffect(() => { writeStorage('nexus-quick-open', quickOpen); }, [quickOpen]);
   useEffect(() => { writeStorage('nexus-open-projects', openProjects); }, [openProjects]);
   useEffect(() => { writeStorage('nexus-open-categories', openCategories); }, [openCategories]);
   useEffect(() => { writeStorage('nexus-active-group', groupId); }, [groupId]);
@@ -384,8 +410,16 @@ export function App() {
   }, [sites, section, projectCategories, activeProjectId, categoryId, groupId]);
 
   const found = useMemo(
-    () => (ui.searchLocal === false || !query ? scoped : filterSites(scoped, query, {}, 'Быстрый доступ', () => [])),
-    [scoped, query, ui.searchLocal],
+    () => {
+      const list = ui.searchLocal === false || !query
+        ? scoped
+        : filterSites(scoped, query, {}, 'Быстрый доступ', () => []);
+      // Во время поиска порядок задаёт релевантность, а не выбранная
+      // сортировка: переставить найденное по алфавиту значит спрятать
+      // лучшее совпадение где-то в середине.
+      return query ? list : sortSites(list, ui.sortBy ?? 'name');
+    },
+    [scoped, query, ui.searchLocal, ui.sortBy],
   );
 
   // ─── Сессии ───────────────────────────────────────────────────────────────
@@ -456,10 +490,10 @@ export function App() {
   // Избранное живёт над сеткой и одинаково в любом проекте — как ряд избранных
   // вкладок в Arc. На узком экране полосы нет: там дорог каждый пиксель высоты.
   const favoriteBar = useMemo(() => {
-    if (narrow || ui.favoritesBar === false || section !== 'sites' || boardLayout) return [];
+    if (narrow || ui.favoritesBar === false || section !== 'sites') return [];
     const limit = ui.favoritesCount ?? 8;
     return sites.filter(site => site.favorite).slice(0, limit);
-  }, [sites, narrow, ui.favoritesBar, ui.favoritesCount, section, boardLayout]);
+  }, [sites, narrow, ui.favoritesBar, ui.favoritesCount, section]);
 
   // ─── Палитра ──────────────────────────────────────────────────────────────
   // Окно поиска открывается только по вызову и ищет по всему хранилищу, а не по
@@ -739,33 +773,6 @@ export function App() {
     );
   } else if (section === 'notes') {
     body = <NotesWorkspace sites={sites.filter(site => site.note)} onEdit={setEditing} />;
-  } else if (boardLayout) {
-    // Раскладка «рабочий стол проектов»: своя композиция целиком, а не сетка
-    // с довесками. Полоса избранного, вкладки категорий и счётчик сверху ей
-    // не нужны — их роль здесь играют ряд проектов и доска папок.
-    body = (
-      <HomeBoard
-        projects={projects} categories={categories} groups={groups} sites={sites}
-        recent={railRecent} activeProjectId={activeProjectId} categoryId={categoryId}
-        time={time} dateLine={dateLine}
-        logos={ui.siteIcons !== false}
-        weather={ui.weather ? { temp: weather.temp, city: ui.weatherCity } : null}
-        totalSites={sites.length}
-        folderSites={ui.folderSites ?? 4}
-        onOpenSite={openSite}
-        onSelectProject={selectProject}
-        onSelectCategory={value => { setCategoryId(value); setGroupId(null); }}
-        onAddProject={addProject}
-        onAddCategory={addCategory}
-        onAddSite={() => setAddOpen(true)}
-        onSearch={() => setPaletteOpen(true)}
-        onOpenCalendar={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}
-        onOpenForecast={() => { setCalendarOpen(false); setForecastOpen(value => !value); }}
-        calendarOpen={calendarOpen}
-        forecastOpen={forecastOpen}
-        onToggleLayout={() => setUi(current => ({ ...current, homeLayout: 'grid' }))}
-      />
-    );
   } else {
     body = grid;
   }
@@ -784,7 +791,7 @@ export function App() {
     target?.focus();
   };
 
-  const showCategoryBar = section === 'sites' && !boardLayout;
+  const showCategoryBar = section === 'sites';
   // Переключатель раскладки на узком экране стоит в одной строке с кнопкой
   // проекта, а не отдельной полосой: на 390 px каждая строка сверху — это
   // минус одна плитка на первом экране. Вне «Быстрого доступа» строки с
@@ -799,7 +806,6 @@ export function App() {
         aria-label="Иконки в четыре столбца" title="Иконки в четыре столбца" onClick={() => setMobileView('icons')}><Grid3X3 size={17} /></button>
     </div>
   ) : null;
-  const quickVisible = quickOpen && !dockOpen;
   const pinnedSites = pinned.map(id => sites.find(site => site.id === id)).filter(Boolean) as Site[];
   const showExplorer = ui.projects !== false;
 
@@ -816,6 +822,21 @@ export function App() {
     setSwapping(true);
     swapTimer.current = window.setTimeout(() => setSwapping(false), 340);
   };
+
+  /**
+   * Видимые пространства: первые пять плюс выбранное, если оно не попало в
+   * это число. Без второго слагаемого только что созданное пространство
+   * пряталось за «Ещё» — человек заводил его и не находил на экране.
+   */
+  const shownProjects = useMemo(() => {
+    if (allSpaces) return projects;
+    const head = projects.slice(0, SPACES_SHOWN);
+    const active = projects.find(item => item.id === activeProjectId);
+    return active && !head.includes(active) ? [...head, active] : head;
+  }, [projects, allSpaces, activeProjectId]);
+  // Пересчитывается при каждой правке хранилища: показатель обязан быть живым,
+  // иначе он хуже, чем ничего.
+  const usage = useMemo(() => getStorageUsage(), [sites, projects, categories, groups, sessions, ui, tile, appearance]);
 
   const rootClass = [
     'nx-root',
@@ -844,99 +865,72 @@ export function App() {
             {panelOpen && <span className="nx-panel-brand"><b>Nexus</b><span>Speed Dial</span></span>}
           </button>
 
+          {/* Разделы приложения. В макете они стоят первыми и выглядят как
+              навигация, а не как кнопки на доке: именно отсюда переключаются
+              между быстрым доступом, избранным, заметками и корзиной. */}
+          <nav className="nx-nav" aria-label="Разделы">
+            {SECTIONS.map(item => {
+              const Glyph = item.icon;
+              const on = section === item.id;
+              return (
+                <button key={item.id} type="button" className={'nx-link' + (on ? ' on' : '')}
+                  aria-current={on ? 'page' : undefined} title={item.label}
+                  onClick={() => setSection(item.id)}>
+                  <Glyph size={18} weight={on ? 'duotone' : 'regular'} />
+                  {panelOpen && <span>{item.label}</span>}
+                </button>
+              );
+            })}
+          </nav>
+
           {showExplorer && (
           <div className="nx-section">
             {panelOpen
-              ? <span className="nx-label nx-label-row">Проекты<button type="button" aria-label="Добавить проект" title="Добавить проект" onClick={addProject}><Plus size={14} /></button></span>
-              : <button type="button" className="nx-link nx-link-ghost" aria-label="Добавить проект" title="Добавить проект" onClick={addProject}><Plus size={17} /></button>}
+              ? <span className="nx-label nx-label-row">Пространства<button type="button" aria-label="Добавить пространство" title="Добавить пространство" onClick={addProject}><Plus size={14} /></button></span>
+              : <button type="button" className="nx-link nx-link-ghost" aria-label="Добавить пространство" title="Добавить пространство" onClick={addProject}><Plus size={17} /></button>}
 
-            {projects.map((project, index) => {
+            {/* Плоский список, а не дерево: категории и группы показывает сама
+                рабочая область — цепочкой крошек, каруселью и чипами. Дерево
+                в панели повторяло бы то же самое второй раз. */}
+            {shownProjects.map((project, index) => {
               const Glyph = PROJECT_GLYPHS[index % PROJECT_GLYPHS.length];
               const current = activeProjectId === project.id && section === 'sites';
-              const expanded = openProjects.includes(project.id);
-              const inside = categories.filter(item => item.projectId === project.id);
-              const tint = projectColor(project);
               return (
-                <div className="nx-tree-node" key={project.id}>
-                  <button type="button" className={'nx-link nx-tree-row' + (current ? ' on' : '')}
-                    style={{ '--nx-node': tint } as React.CSSProperties}
-                    title={project.name} aria-label={`Проект «${project.name}»`}
-                    aria-expanded={panelOpen ? expanded : undefined}
-                    onClick={() => {
-                      selectProject(project.id);
-                      // Only one branch stays unfolded, so a deep tree never buries the rest.
-                      setOpenProjects(open => (open.includes(project.id) ? [] : [project.id]));
-                      setOpenCategories([]);
-                    }}>
-                    {panelOpen && <ChevronRight size={14} className={'nx-tree-caret' + (expanded ? ' open' : '')} aria-hidden="true" />}
-                    <Glyph size={17} weight={current ? 'duotone' : 'regular'} />
-                    {panelOpen && <span>{project.name}</span>}
-                    {panelOpen && treeCounts.byProject.get(project.id) ? <i>{treeCounts.byProject.get(project.id)}</i> : null}
-                  </button>
-
-                  {panelOpen && expanded && (
-                    <div className="nx-tree-children">
-                      {inside.length === 0 && <span className="nx-tree-empty">Категорий пока нет</span>}
-                      {inside.map(category => {
-                        const catOpen = openCategories.includes(category.id);
-                        const inner = groups.filter(group => group.categoryId === category.id);
-                        const catTint = categoryColor(category);
-                        return (
-                          <div key={category.id}>
-                            <button type="button" className={'nx-link nx-tree-row' + (categoryId === category.id && !groupId ? ' on' : '')}
-                              style={{ '--nx-node': catTint } as React.CSSProperties}
-                              title={category.name} aria-label={`Категория «${category.name}»`}
-                              aria-expanded={catOpen} onClick={() => {
-                                setSection('sites');
-                                setProjectId(project.id);
-                                setCategoryId(category.id);
-                                setGroupId(null);
-                                setOpenCategories(open => (open.includes(category.id) ? [] : [category.id]));
-                              }}>
-                              <ChevronRight size={13} className={'nx-tree-caret' + (catOpen ? ' open' : '')} aria-hidden="true" />
-                              <Tag size={15} weight={categoryId === category.id && !groupId ? 'duotone' : 'regular'} />
-                              <span>{category.name}</span>
-                              {treeCounts.byCategory.get(category.id) ? <i>{treeCounts.byCategory.get(category.id)}</i> : null}
-                            </button>
-                            {catOpen && (
-                              <div className="nx-tree-children">
-                                {inner.length === 0 && <span className="nx-tree-empty">Групп пока нет</span>}
-                                {inner.map(group => (
-                                  <button type="button" key={group.id} className={'nx-link nx-tree-row' + (groupId === group.id ? ' on' : '')}
-                                    style={{ '--nx-node': groupColor(group) } as React.CSSProperties}
-                                    title={group.name} aria-label={`Группа «${group.name}»`}
-                                    onClick={() => {
-                                      setSection('sites');
-                                      setProjectId(project.id);
-                                      setCategoryId(category.id);
-                                      setGroupId(current => (current === group.id ? null : group.id));
-                                    }}>
-                                    <span className="nx-tree-spacer" aria-hidden="true" />
-                                    <Layers3 size={15} weight={groupId === group.id ? 'duotone' : 'regular'} />
-                                    <span>{group.name}</span>
-                                    {treeCounts.byGroup.get(group.id) ? <i>{treeCounts.byGroup.get(group.id)}</i> : null}
-                                  </button>
-                                ))}
-                                <button type="button" className="nx-link nx-tree-row nx-link-ghost" onClick={() => addGroup(category.id)}>
-                                  <span className="nx-tree-spacer" aria-hidden="true" />
-                                  <Plus size={15} /><span>Группа</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                      <button type="button" className="nx-link nx-tree-row nx-link-ghost" onClick={() => { selectProject(project.id); addCategory(); }}>
-                        <span className="nx-tree-spacer" aria-hidden="true" />
-                        <Plus size={15} /><span>Категория</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <button key={project.id} type="button" className={'nx-link' + (current ? ' on' : '')}
+                  style={{ '--nx-node': projectColor(project) } as React.CSSProperties}
+                  title={project.name} aria-label={`Пространство «${project.name}»`}
+                  aria-current={current ? 'true' : undefined}
+                  onClick={() => selectProject(project.id)}>
+                  <Glyph size={18} weight={current ? 'duotone' : 'regular'} />
+                  {panelOpen && <span>{project.name}</span>}
+                  {panelOpen && treeCounts.byProject.get(project.id) ? <i>{treeCounts.byProject.get(project.id)}</i> : null}
+                </button>
               );
             })}
+
+            {panelOpen && projects.length > SPACES_SHOWN && (
+              <button type="button" className="nx-link nx-link-ghost" aria-expanded={allSpaces}
+                onClick={() => setAllSpaces(value => !value)}>
+                <ChevronDown size={18} className={'nx-tree-caret' + (allSpaces ? ' open' : '')} aria-hidden="true" />
+                <span>{allSpaces ? 'Свернуть' : `Ещё ${projects.length - SPACES_SHOWN}`}</span>
+              </button>
+            )}
           </div>
           )}
+
+          {/* Инструменты ведут прямо в нужный раздел настроек. «Справки» здесь
+              нет намеренно: раздела помощи в приложении не существует, а
+              кнопка без действия в этом проекте запрещена отдельной проверкой. */}
+          <div className="nx-section">
+            {panelOpen && <span className="nx-label">Инструменты</span>}
+            {TOOLS.map(([id, label, Glyph]) => (
+              <button key={label} type="button" className="nx-link" title={label}
+                onClick={() => { setSettingsSection(id); setSettingsOpen(true); }}>
+                <Glyph size={18} />
+                {panelOpen && <span>{label}</span>}
+              </button>
+            ))}
+          </div>
 
           {panelRecent.length > 0 && (
             <section className="nx-section nx-recent-block" aria-label="Недавно открытые">
@@ -955,43 +949,87 @@ export function App() {
           )}
         </div>
 
+        {/* Подвал панели. В макете тут стояла карточка с лозунгом; вместо неё
+            показатель, который действительно может понадобиться: сколько
+            места занято в хранилище браузера. Потолок там около пяти
+            мегабайт, и упереться в него — реальный сценарий. */}
         <div className="nx-panel-foot">
-          <div className="nx-when">
-            {/* На доске время уже стоит в её шапке. Два одинаковых времени на
-                одном экране — это не запас, а недосмотр, поэтому здесь часы
-                остаются только в раскладке «сетка». Погода ниже живёт всегда. */}
-            {!boardLayout && (
-              <button type="button" data-calendar-trigger className="nx-when-date"
-                aria-expanded={calendarOpen} aria-label={`Открыть календарь, сегодня ${dateLine}`}
-                onClick={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}>
-                <b>{time}</b>
-                {panelOpen && <span>{dateShort}</span>}
-              </button>
-            )}
-            {ui.weather && (
-              <button type="button" data-forecast-trigger className="nx-when-temp"
-                aria-expanded={forecastOpen} aria-label={`Прогноз на пять дней, сейчас ${weather.temp}`}
-                title="Прогноз на 5 дней"
-                onClick={() => { setCalendarOpen(false); setForecastOpen(value => !value); }}>
-                <CloudSun size={16} aria-hidden="true" />{weather.temp}
-              </button>
-            )}
-          </div>
-
-          <button type="button" className={'nx-link' + (quickOpen ? ' on' : '')} aria-pressed={quickOpen} aria-controls="nx-quick"
-            title="Панель быстрого доступа" aria-label="Панель быстрого доступа"
-            onClick={() => setQuickOpen(value => !value)}>
-            <LayoutGrid size={17} />{panelOpen && <span>Быстрый доступ</span>}
-          </button>
-
-          <button type="button" className="nx-link" title="Настройки"
-            aria-label={panelOpen ? undefined : 'Настройки'} onClick={() => setSettingsOpen(true)}>
-            <SettingsIcon size={17} />{panelOpen && <span>Настройки</span>}
-          </button>
+          {panelOpen ? (
+            <button type="button" className="nx-usage" title="Открыть раздел «Данные»"
+              onClick={() => { setSettingsSection('data'); setSettingsOpen(true); }}>
+              <span className="nx-usage-top">
+                <b>Хранилище</b>
+                <small>{usage.label}</small>
+              </span>
+              <span className="nx-usage-bar" aria-hidden="true">
+                <span style={{ width: `${usage.percent}%` }} />
+              </span>
+            </button>
+          ) : (
+            <button type="button" className="nx-link" title={`Хранилище: ${usage.label}`}
+              aria-label={`Хранилище: ${usage.label}`}
+              onClick={() => { setSettingsSection('data'); setSettingsOpen(true); }}>
+              <Database size={17} />
+            </button>
+          )}
         </div>
       </aside>
 
       <main className="nx-main">
+        {/* Верхняя строка. Цепочка крошек здесь не просто показывает путь, а
+            переключает ветки: каждое звено раскрывается списком соседей.
+            Кнопок окна (свернуть, развернуть, закрыть) нет намеренно —
+            это страница новой вкладки, а не отдельное окно, и рисовать
+            органы управления, которые ничем не управляют, нельзя. */}
+        {section === 'sites' && !narrow && (
+          <header className="nx-topbar">
+            <button type="button" className="nx-top-home" aria-label="В начало"
+              title="В начало: всё пространство целиком"
+              onClick={() => { setCategoryId(null); setGroupId(null); }}>
+              <Home size={18} weight="duotone" />
+            </button>
+
+            <nav className="nx-crumbs-row" aria-label="Путь">
+              <Crumb kind="space" current={activeProject ? { id: activeProject.id, name: activeProject.name } : null}
+                options={projects.map(item => ({ id: item.id, name: item.name, count: treeCounts.byProject.get(item.id) }))}
+                onPick={selectProject} />
+              <ChevronRight size={15} className="nx-crumb-sep" aria-hidden="true" />
+              <Crumb kind="category" current={activeCategory ? { id: activeCategory.id, name: activeCategory.name } : null}
+                options={projectCategories.map(item => ({ id: item.id, name: item.name, count: treeCounts.byCategory.get(item.id) }))}
+                onPick={value => { setCategoryId(value); setGroupId(null); }}
+                onClear={() => { setCategoryId(null); setGroupId(null); }} />
+              {activeCategory && (
+                <>
+                  <ChevronRight size={15} className="nx-crumb-sep" aria-hidden="true" />
+                  <Crumb kind="group" current={activeGroup ? { id: activeGroup.id, name: activeGroup.name } : null}
+                    options={categoryGroups.map(item => ({ id: item.id, name: item.name, count: treeCounts.byGroup.get(item.id) }))}
+                    onPick={value => setGroupId(value)}
+                    onClear={() => setGroupId(null)} />
+                </>
+              )}
+            </nav>
+
+            <div className="nx-top-actions">
+              <button type="button" className="nx-top-search" onClick={() => setPaletteOpen(true)}
+                aria-haspopup="dialog" aria-label="Поиск и команды">
+                <Search size={17} aria-hidden="true" />
+                <span>Ctrl + K</span>
+              </button>
+              <button type="button" className="nx-icon-btn" title="Сменить тему"
+                aria-label={`Сменить тему, сейчас ${appearance.theme === 'dark' ? 'тёмная' : 'светлая'}`}
+                onClick={() => setAppearance({ ...appearance, theme: appearance.theme === 'dark' ? 'light' : 'dark' })}>
+                {appearance.theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
+              </button>
+              <button type="button" className={'nx-icon-btn' + (dockOpen ? ' on' : '')}
+                aria-pressed={dockOpen} aria-controls="nx-dock"
+                title="Нижняя панель" aria-label="Нижняя панель"
+                onClick={() => setDockOpen(value => !value)}>
+                <LayoutGrid size={18} />
+              </button>
+            </div>
+          </header>
+        )}
+
         <div className="nx-main-scroll">
           <div className="nx-mobile-top">
             <button type="button" className="nx-icon-btn" aria-label="Разделы" onClick={() => setMobileNav(true)}><Layers3 size={18} /></button>
@@ -1009,72 +1047,117 @@ export function App() {
                 </button>
               )}
             </div>
-            <button type="button" className={'nx-icon-btn' + (quickOpen ? ' on' : '')} aria-pressed={quickOpen} aria-controls="nx-quick"
-              aria-label="Панель быстрого доступа" title="Панель быстрого доступа"
-              onClick={() => setQuickOpen(value => !value)}><LayoutGrid size={18} /></button>
+            <button type="button" className={'nx-icon-btn' + (dockOpen ? ' on' : '')} aria-pressed={dockOpen} aria-controls="nx-dock"
+              aria-label="Нижняя панель" title="Нижняя панель"
+              onClick={() => setDockOpen(value => !value)}><LayoutGrid size={18} /></button>
+            <button type="button" className="nx-icon-btn" aria-label="Поиск и команды" title="Поиск и команды"
+              aria-haspopup="dialog" onClick={() => setPaletteOpen(true)}><Search size={18} /></button>
             <button type="button" className="nx-icon-btn" aria-label="Настройки" onClick={() => setSettingsOpen(true)}><SettingsIcon size={18} /></button>
           </div>
 
           {showCategoryBar && (
-            <nav className="nx-cats" aria-label="Категории проекта">
-              {activeProject && (
-                <button type="button" className="nx-project-chip" data-project-switch
-                  style={{ '--nx-node': projectColor(activeProject) } as React.CSSProperties}
-                  title={projects.length > 1 ? 'Следующий проект' : 'Текущий проект'}
-                  disabled={projects.length < 2}
-                  aria-label={`Сменить проект, сейчас «${activeProject.name}»`}
-                  onClick={cycleProject}>
-                  <span className="nx-project-dot" aria-hidden="true" />
-                  <b>{activeProject.name}</b>
-                  <ChevronRight size={15} aria-hidden="true" />
-                </button>
-              )}
-              <div className="nx-cats-main">
-              <div className="nx-cats-tabs" role="tablist" aria-label="Категории проекта">
-                <button type="button" role="tab" aria-selected={!categoryId} className={'nx-cat' + (categoryId ? '' : ' on')} onClick={() => { setCategoryId(null); setGroupId(null); }}>Все</button>
-                {projectCategories.map(category => (
-                  <button key={category.id} type="button" role="tab" aria-selected={categoryId === category.id}
-                    className={'nx-cat' + (categoryId === category.id ? ' on' : '')} onClick={() => { setCategoryId(category.id); setGroupId(null); }}>
-                    {category.name}
+            <>
+              {/* Карусель категорий: карточка с иконкой вместо строчки текста.
+                  Категорий у пространства бывает десяток, в строку они не
+                  влезают, поэтому лента прокручивается стрелками. */}
+              <nav className="nx-carousel" aria-label="Категории пространства">
+                <button type="button" className="nx-carousel-arrow" aria-label="Левее"
+                  onClick={() => scrollCarousel(-1)}><ChevronLeft size={18} /></button>
+                <div className="nx-carousel-row" ref={carousel}>
+                  <button type="button" className={'nx-cat-card' + (categoryId ? '' : ' on')}
+                    aria-current={categoryId ? undefined : 'true'}
+                    onClick={() => { setCategoryId(null); setGroupId(null); }}>
+                    <LayoutGrid size={22} weight={categoryId ? 'regular' : 'duotone'} aria-hidden="true" />
+                    <span>Все</span>
                   </button>
-                ))}
-                <button type="button" className="nx-cat-add" aria-label="Добавить категорию" title="Добавить категорию" onClick={addCategory}><Plus size={16} /></button>
-              </div>
-              <div className="nx-cats-side">
-                <div className="nx-seg" role="group" aria-label="Вид категории">
-                  <button type="button" className={view === 'all' ? 'on' : ''} aria-pressed={view === 'all'} aria-label="Все сайты категории" title="Все сайты категории" onClick={() => setView('all')}><LayoutGrid size={17} /></button>
-                  <button type="button" className={view === 'groups' ? 'on' : ''} aria-pressed={view === 'groups'} aria-label="Группы категории" title="Группы категории" onClick={() => setView('groups')}><Layers3 size={17} /></button>
+                  {projectCategories.map(category => (
+                    <button key={category.id} type="button"
+                      className={'nx-cat-card' + (categoryId === category.id ? ' on' : '')}
+                      style={{ '--nx-node': categoryColor(category) } as React.CSSProperties}
+                      aria-current={categoryId === category.id ? 'true' : undefined}
+                      onClick={() => { setCategoryId(category.id); setGroupId(null); }}>
+                      <Tag size={22} weight={categoryId === category.id ? 'duotone' : 'regular'} aria-hidden="true" />
+                      <span>{category.name}</span>
+                    </button>
+                  ))}
+                  <button type="button" className="nx-cat-card add" onClick={addCategory}
+                    aria-label="Добавить категорию">
+                    <Plus size={22} aria-hidden="true" />
+                    <span>Категория</span>
+                  </button>
                 </div>
-                {activeCategory && (
-                  <button type="button" className="nx-icon-btn" aria-label={`Добавить группу в «${activeCategory.name}»`} title="Добавить группу" onClick={() => addGroup(activeCategory.id)}><SlidersHorizontal size={17} /></button>
-                )}
+                <button type="button" className="nx-carousel-arrow" aria-label="Правее"
+                  onClick={() => scrollCarousel(1)}><ChevronRight size={18} /></button>
+              </nav>
+
+              {/* Заголовок содержимого: где мы, сколько здесь, как показать.
+                  На узком экране его нет: активную категорию видно по самой
+                  карусели, а каждая строка сверху там стоит одной плитки. */}
+              {!narrow && (
+              <div className="nx-content-head">
+                <div className="nx-content-title">
+                  <h1>{activeCategory ? activeCategory.name : 'Все сайты'}{activeGroup ? ` / ${activeGroup.name}` : ''}</h1>
+                  <p>{countSites(found.length)}</p>
+                </div>
+                <div className="nx-content-tools">
+                  <div className="nx-seg" role="group" aria-label="Вид списка">
+                    <button type="button" className={view === 'all' ? 'on' : ''} aria-pressed={view === 'all'}
+                      aria-label="Сеткой" title="Сеткой" onClick={() => setView('all')}><LayoutGrid size={17} /></button>
+                    <button type="button" className={view === 'groups' ? 'on' : ''} aria-pressed={view === 'groups'}
+                      aria-label="По группам" title="По группам" onClick={() => setView('groups')}><Rows3 size={17} /></button>
+                  </div>
+                  <label className="nx-sort">
+                    <span className="nx-sr">Сортировка</span>
+                    <select value={ui.sortBy ?? 'name'} aria-label="Сортировка"
+                      onChange={event => patchUi({ sortBy: event.target.value as SortKey })}>
+                      {SORTS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                    </select>
+                    <ChevronDown size={14} aria-hidden="true" />
+                  </label>
+                </div>
               </div>
-              </div>
+              )}
+
+              {/* Чипы групп со счётчиками — видно, чем набрана категория. */}
+              {!narrow && activeCategory && categoryGroups.length > 0 && (
+                <div className="nx-chips" role="group" aria-label="Группы категории">
+                  <button type="button" className={'nx-chip' + (groupId ? '' : ' on')}
+                    aria-pressed={!groupId} onClick={() => setGroupId(null)}>
+                    <LayoutGrid size={15} aria-hidden="true" />
+                    <span>Все группы</span>
+                  </button>
+                  {categoryGroups.map(group => (
+                    <button key={group.id} type="button"
+                      className={'nx-chip' + (groupId === group.id ? ' on' : '')}
+                      style={{ '--nx-node': groupColor(group) } as React.CSSProperties}
+                      aria-pressed={groupId === group.id}
+                      onClick={() => setGroupId(current => (current === group.id ? null : group.id))}>
+                      <Layers3 size={15} aria-hidden="true" />
+                      <span>{group.name}</span>
+                      <i>{treeCounts.byGroup.get(group.id) ?? 0}</i>
+                    </button>
+                  ))}
+                  <button type="button" className="nx-chip add" onClick={() => addGroup(activeCategory.id)}
+                    aria-label={`Добавить группу в «${activeCategory.name}»`}>
+                    <Plus size={15} aria-hidden="true" />
+                    <span>Группа</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Переключатель раскладки на узком экране идёт следом за лентой
+                  категорий, а не отдельной строкой выше: на 390 px каждая
+                  строка сверху стоит одной плитки первого экрана. */}
               {mobileViews}
-            </nav>
+            </>
           )}
 
           {!showCategoryBar && mobileViews}
 
-          {favoriteBar.length > 0 && (
-            <section className="nx-favbar" aria-label="Избранное во всех проектах">
-              <span className="nx-label">Избранное</span>
-              <div className="nx-favbar-row">
-                {favoriteBar.map(site => (
-                  <button key={site.id ?? site.domain} type="button" className="nx-favchip"
-                    title={`${site.title} · ${site.domain}`} onClick={() => openSite(site)}>
-                    <SiteIcon title={site.title} domain={site.domain} color={site.color}
-                      logos={ui.siteIcons !== false} className="nx-mark nx-favchip-mark" />
-                    {ui.favoritesLabels !== false && <span>{site.title}</span>}
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
 
-          {/* Строка «Все сайты · 9 сайтов» — принадлежность сетки. На доске
-              счётчики стоят на самих карточках проектов и папок. */}
-          {!boardLayout && (
+          {/* Заголовок с именем раздела нужен там, где нет строки крошек:
+              на главной путь и счётчик показывает собственная шапка. */}
+          {!showCategoryBar && (
             <div className={'nx-head' + (heading ? '' : ' bare')}>
               <div>
                 {heading && <h1>{heading}</h1>}
@@ -1087,20 +1170,6 @@ export function App() {
         </div>
 
         <div className="nx-bottom">
-          <div className={'nx-quick' + (quickVisible ? ' open' : '')}
-            id="nx-quick" role="toolbar" aria-label="Панель быстрого доступа" aria-hidden={!quickVisible}>
-            {SECTIONS.map(item => (
-              <button key={item.id} type="button" className={section === item.id ? 'on' : ''} aria-label={item.label} title={item.label} onClick={() => setSection(item.id)}>
-                <item.icon size={19} />
-              </button>
-            ))}
-            <span className="nx-dock-sep" />
-            <button type="button" className={query ? 'on' : ''} aria-label="Поиск и команды"
-              title="Поиск и команды (Ctrl K)" aria-haspopup="dialog" aria-expanded={paletteOpen}
-              onClick={() => setPaletteOpen(true)}><Search size={19} /></button>
-            <button type="button" aria-label="Добавить сайт" title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}><Plus size={19} /></button>
-            <button type="button" className="wide-only" aria-label="Свернуть панель быстрого доступа" title="Свернуть панель быстрого доступа" onClick={() => setQuickOpen(false)}><ChevronDown size={19} /></button>
-          </div>
 
           <div
             className={'nx-dock' + (dockOpen ? ' open' : '') + (dragOverDock ? ' drop' : '')}
@@ -1145,13 +1214,42 @@ export function App() {
                 </button>
               </>
             )}
+
+            <button type="button" className="nx-dock-add" aria-label="Добавить сайт"
+              title="Добавить сайт (Ctrl N)" onClick={() => setAddOpen(true)}>
+              <Plus size={20} />
+            </button>
+
+            {/* Погода и часы живут здесь, а не сбоку и не в шапке: док и так
+                всегда на экране, а отдельный рельс под два показателя отнимал
+                у сетки почти три сотни точек ширины. */}
+            <span className="nx-dock-sep" />
+            {ui.weather && (
+              <button type="button" data-forecast-trigger className="nx-dock-weather"
+                aria-expanded={forecastOpen} aria-label={`Прогноз на пять дней, сейчас ${weather.temp}`}
+                title="Прогноз на 5 дней"
+                onClick={() => { setCalendarOpen(false); setForecastOpen(value => !value); }}>
+                <CloudSun size={22} aria-hidden="true" />
+                <span><b>{weather.temp}</b><small>{ui.weatherCity}</small></span>
+              </button>
+            )}
+            <button type="button" data-calendar-trigger className="nx-dock-clock"
+              aria-expanded={calendarOpen} aria-label={`Открыть календарь, сегодня ${dateLine}`}
+              onClick={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}>
+              <b>{time}</b>
+              <small>{dateShort}</small>
+            </button>
+            <button type="button" className="nx-dock-gear" aria-label="Настройки" title="Настройки"
+              onClick={() => { setSettingsSection('general'); setSettingsOpen(true); }}>
+              <SettingsIcon size={19} />
+            </button>
           </div>
 
           <button type="button" className={'nx-dock-handle' + (dockOpen ? ' on' : '')}
             aria-expanded={dockOpen} aria-controls="nx-dock"
             aria-label={dockOpen ? 'Скрыть док-панель' : 'Показать док-панель'}
             title={dockOpen ? 'Скрыть док-панель' : 'Показать док-панель'}
-            onClick={() => setDockOpen(value => { const next = !value; if (next) setQuickOpen(false); return next; })}>
+            onClick={() => setDockOpen(value => !value)}>
             <ChevronUp size={16} />
           </button>
         </div>
@@ -1160,49 +1258,6 @@ export function App() {
             пустого полотна: место есть, а смысла в нём нет. Здесь стоит то,
             ради чего на стартовую страницу и смотрят между делом — время,
             погода и последнее, куда заходили. */}
-        {ui.rail !== false && !boardLayout && (
-          <aside className="nx-rail" aria-label="Виджеты">
-            <button type="button" data-calendar-trigger className="nx-rail-card nx-rail-clock"
-              aria-expanded={calendarOpen} aria-label={`Открыть календарь, сегодня ${dateLine}`}
-              onClick={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}>
-              <b>{time}</b>
-              <small>{dateLine}</small>
-            </button>
-
-            {ui.weather && (
-              <button type="button" data-forecast-trigger className="nx-rail-card nx-rail-weather"
-                aria-expanded={forecastOpen} aria-label={`Прогноз на пять дней, сейчас ${weather.temp}`}
-                onClick={() => { setCalendarOpen(false); setForecastOpen(value => !value); }}>
-                <CloudSun size={30} aria-hidden="true" />
-                <span className="nx-rail-weather-main">
-                  <b>{weather.temp}</b>
-                  <small>{ui.weatherCity}</small>
-                </span>
-                <ChevronRight size={16} aria-hidden="true" />
-              </button>
-            )}
-
-            {railRecent.length > 0 && (
-              <section className="nx-rail-card nx-rail-recent">
-                <h2 className="nx-rail-title">Недавние</h2>
-                <ul>
-                  {railRecent.map(site => (
-                    <li key={site.id ?? site.domain}>
-                      <button type="button" onClick={() => openSite(site)} title={site.title}>
-                        <SiteIcon title={site.title} domain={site.domain} color={site.color}
-                          logos={ui.siteIcons !== false} className="nx-dock-mark" />
-                        <span className="nx-rail-recent-text">
-                          <b>{site.title}</b>
-                          <small>{site.domain}</small>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          </aside>
-        )}
       </main>
 
       {paletteOpen && (
@@ -1318,7 +1373,7 @@ export function App() {
           sites={sites} setSites={setSites} categories={categories} setCategories={setCategories}
           groups={groups} setGroups={setGroups} ui={ui} setUi={setUi} tile={tile} setTile={setTile}
           appearance={appearance} setAppearance={setAppearance} projects={projects} setProjects={setProjects}
-          sessions={sessions} setSessions={setSessions}
+          sessions={sessions} setSessions={setSessions} initialSection={settingsSection}
           onApplyBackup={backup => dispatch({ type: 'backup/apply', value: backup })} />
       )}
     </div>

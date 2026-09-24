@@ -1,25 +1,35 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page, type TestInfo } from '@playwright/test';
+
+/**
+ * Разделы живут в боковой панели на широком экране и в выдвижном листе на
+ * узком. Помощник прячет эту разницу, чтобы проверки говорили о поведении,
+ * а не о том, где сейчас нарисована кнопка.
+ */
+async function openSection(page: Page, info: TestInfo, name: string) {
+  if (info.project.name !== 'mobile') {
+    await page.locator('.nx-nav').getByRole('button', { name, exact: true }).click();
+    return;
+  }
+  await page.getByRole('button', { name: 'Разделы' }).click();
+  await page.locator('.mobile-sections-card').getByRole('button', { name, exact: true }).click();
+}
+
+/** Кнопка вызова поиска: в верхней строке на широком, в шапке на узком. */
+function paletteButton(page: Page, info: TestInfo) {
+  const host = info.project.name !== 'mobile' ? '.nx-topbar' : '.nx-mobile-top';
+  return page.locator(host).getByRole('button', { name: 'Поиск и команды' });
+}
 
 test.describe('Nexus shell', () => {
-  // Раскладка главной по умолчанию — «рабочий стол проектов». Проверки ниже
-  // написаны про сетку плиток, поэтому здесь она включается явно; сама доска
-  // проверяется отдельным блоком «Рабочий стол проектов» в конце файла.
-  test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      const raw = localStorage.getItem('nexus-ui');
-      const ui = raw ? JSON.parse(raw) as Record<string, unknown> : {};
-      ui.homeLayout = 'grid';
-      localStorage.setItem('nexus-ui', JSON.stringify(ui));
-    });
-  });
-
-  test('shows the project grid and can open the add-site form', async ({ page }) => {
+  test('shows the project grid and can open the add-site form', async ({ page }, testInfo) => {
     await page.goto('/');
-    // The category tabs name the scope, so the page itself carries only the count.
-    await expect(page.locator('.nx-head p')).not.toBeEmpty();
     const shown = await page.locator('.nx-tile').count();
     expect(shown).toBeGreaterThan(0);
-    await expect(page.locator('.nx-head p')).toContainText(String(shown));
+    // Счётчик стоит в заголовке содержимого, а он живёт только на широком
+    // экране: на телефоне эта строка стоила бы одной плитки первого экрана.
+    if (testInfo.project.name !== 'mobile') {
+      await expect(page.locator('.nx-content-title p')).toContainText(String(shown));
+    }
 
     await page.getByRole('button', { name: 'Добавить сайт' }).first().click();
     await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
@@ -127,7 +137,7 @@ test.describe('Nexus shell', () => {
 
   test('the add-site dialog is a centred card and closes with Escape', async ({ page }) => {
     await page.goto('/');
-    await page.locator('.nx-quick').getByRole('button', { name: 'Добавить сайт' }).click();
+    await page.locator('.nx-dock').getByRole('button', { name: 'Добавить сайт' }).click();
     const form = page.locator('.site-form');
     await expect(form).toBeVisible();
 
@@ -144,20 +154,21 @@ test.describe('Nexus shell', () => {
     await expect(form).toHaveCount(0);
   });
 
-  test('category tabs scope the grid and switch between all sites and groups', async ({ page }) => {
+  test('category tabs scope the grid and switch between all sites and groups', async ({ page }, testInfo) => {
     await page.goto('/');
-    const tabs = page.locator('.nx-cats-tabs');
-    await expect(tabs.getByRole('tab', { name: 'Все' })).toHaveAttribute('aria-selected', 'true');
+    const tabs = page.locator('.nx-carousel-row');
+    await expect(tabs.getByRole('button', { name: 'Все' })).toHaveAttribute('aria-current', 'true');
 
     const all = await page.locator('.nx-tile').count();
-    await tabs.getByRole('tab', { name: 'Соцсети' }).click();
-    await expect(page.locator('.nx-cats-tabs').getByRole('tab', { name: 'Соцсети' })).toHaveAttribute('aria-selected', 'true');
+    await tabs.getByRole('button', { name: 'Соцсети' }).click();
+    await expect(page.locator('.nx-carousel-row').getByRole('button', { name: 'Соцсети' })).toHaveAttribute('aria-current', 'true');
     const scoped = await page.locator('.nx-tile').count();
     expect(scoped).toBeGreaterThan(0);
     expect(scoped).toBeLessThan(all);
     await expect(page.locator('.nx-group')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Группы категории' }).click();
+    test.skip(testInfo.project.name === 'mobile', 'Сегмент вида живёт в заголовке содержимого на широком экране.');
+    await page.getByRole('button', { name: 'По группам' }).click();
     const blocks = page.locator('.nx-group');
     expect(await blocks.count()).toBeGreaterThan(1);
     expect(await page.locator('.nx-group .nx-tile').count()).toBe(scoped);
@@ -167,7 +178,7 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-group').first()).toBeVisible();
   });
 
-  test('a tile opens in a new tab and lands in the recent section', async ({ page }) => {
+  test('a tile opens in a new tab and lands in the recent section', async ({ page }, testInfo) => {
     await page.addInitScript(() => {
       Object.defineProperty(window, 'open', {
         configurable: true,
@@ -192,11 +203,11 @@ test.describe('Nexus shell', () => {
     expect(opened?.[1]).toBe('_blank');
     expect(opened?.[2]).toBe('noopener,noreferrer');
 
-    await page.locator('.nx-quick').getByRole('button', { name: 'Недавние' }).click();
+    await openSection(page, testInfo, 'Недавние');
     await expect(page.locator('.nx-tile-name').filter({ hasText: title! }).first()).toBeVisible();
   });
 
-  test('tile actions hide behind a menu and move a site to the trash', async ({ page }) => {
+  test('tile actions hide behind a menu and move a site to the trash', async ({ page }, testInfo) => {
     await page.goto('/');
     const first = page.locator('.nx-tile').first();
     const title = (await first.locator('.nx-tile-name').textContent())?.trim();
@@ -208,7 +219,7 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-tile')).toHaveCount(before - 1);
 
     // Sections live in the quick-access panel now.
-    await page.locator('.nx-quick').getByRole('button', { name: 'Корзина' }).click();
+    await openSection(page, testInfo, 'Корзина');
     await expect(page.locator('.nx-tile-name').filter({ hasText: title! }).first()).toBeVisible();
   });
 
@@ -228,6 +239,9 @@ test.describe('Nexus shell', () => {
     // The panel is not modal: the grid stays visible and keeps working next to it.
     await expect(page.locator('.nx-tile').first()).toBeVisible();
 
+    // Кнопка в доке открывает настройки на «Общих», поэтому «Оформление»
+    // раскрывается явно — раньше оно было развёрнуто по умолчанию.
+    await settings.getByRole('button', { name: 'Оформление' }).click();
     await settings.getByLabel('Тема').selectOption('dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
@@ -249,7 +263,7 @@ test.describe('Nexus shell', () => {
     if (wide) await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
   });
 
-  test('search engine setting drives what the palette opens', async ({ page }) => {
+  test('search engine setting drives what the palette opens', async ({ page }, testInfo) => {
     await page.addInitScript(() => {
       Object.defineProperty(window, 'open', {
         configurable: true, writable: true,
@@ -266,7 +280,7 @@ test.describe('Nexus shell', () => {
     await settings.getByLabel('Поисковая система').selectOption('Яндекс');
     await settings.getByRole('button', { name: 'Закрыть настройки' }).click();
 
-    await page.locator('.nx-quick').getByRole('button', { name: 'Поиск и команды' }).click();
+    await paletteButton(page, testInfo).click();
     const field = page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' });
     await field.fill('как сверстать сетку');
     await page.getByRole('option', { name: /Искать/ }).click();
@@ -274,11 +288,11 @@ test.describe('Nexus shell', () => {
     expect(String(opened?.[0])).toContain('yandex');
   });
 
-  test('the search window exists only on call: Ctrl K and the panel button', async ({ page }) => {
+  test('the search window exists only on call: Ctrl K and the panel button', async ({ page }, testInfo) => {
     await page.goto('/');
     // Нигде на странице нет постоянного поля поиска — только вызов.
     await expect(page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' })).toHaveCount(0);
-    await expect(page.locator('.nx-quick input')).toHaveCount(0);
+    await expect(page.locator('.nx-topbar input')).toHaveCount(0);
     await expect(page.locator('.nx-palette')).toHaveCount(0);
 
     await page.keyboard.press('Control+k');
@@ -287,7 +301,7 @@ test.describe('Nexus shell', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('.nx-palette')).toHaveCount(0);
 
-    await page.locator('.nx-quick').getByRole('button', { name: 'Поиск и команды' }).click();
+    await paletteButton(page, testInfo).click();
     await expect(field).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.locator('.nx-palette')).toHaveCount(0);
@@ -309,7 +323,9 @@ test.describe('Nexus shell', () => {
 
     await page.keyboard.press('Control+k');
     await page.getByRole('combobox', { name: 'Поиск по всем закладкам и командам' }).fill('wildberries');
-    const first = page.getByRole('option').first();
+    // Именно в палитре: у списка сортировки над сеткой тоже есть option,
+    // и без привязки первым находился «По названию».
+    const first = page.locator('.nx-palette').getByRole('option').first();
     await expect(first).toContainText('Wildberries');
     await expect(first).toContainText('Покупки → Магазины');
     await page.keyboard.press('Enter');
@@ -344,7 +360,7 @@ test.describe('Nexus shell', () => {
     const measure = () => page.evaluate(() => {
       const tile = document.querySelector('.nx-main .nx-tile')!.getBoundingClientRect();
       const rows = new Set<number>();
-      for (const el of document.querySelectorAll('.nx-mobile-top, .nx-cats > *, .nx-head')) {
+      for (const el of document.querySelectorAll('.nx-mobile-top, .nx-carousel, .nx-content-head, .nx-chips, .nx-head')) {
         const r = el.getBoundingClientRect();
         if (r.height && r.top < tile.top) rows.add(Math.round(r.top));
       }
@@ -357,34 +373,30 @@ test.describe('Nexus shell', () => {
     expect(start.first).toBeLessThan(start.height * 0.25);
     expect(start.scrollWidth).toBe(start.inner);
 
-    // Худший случай: самое длинное имя проекта и выбранная категория,
-    // из-за которой в строке появляется ещё одна кнопка.
-    for (let step = 0; step < 6; step += 1) {
-      const name = await page.locator('.nx-project-chip b').textContent();
-      if (name?.includes('Развлеч')) break;
-      await page.locator('.nx-project-chip').click();
-      await page.waitForTimeout(340);
-    }
-    await page.locator('.nx-cats-tabs .nx-cat').nth(1).click();
+    // Худший случай: самая длинная категория из ленты. Пространство на узком
+    // экране меняют из листа разделов, а не из строки над сеткой, поэтому
+    // здесь проверяется то, что действительно стоит над плитками.
+    const cards = page.locator('.nx-carousel-row .nx-cat-card');
+    await cards.nth(await cards.count() - 2).click();
     const worst = await measure();
     expect(worst.first).toBeLessThan(worst.height * 0.25);
     expect(worst.scrollWidth).toBe(worst.inner);
   });
 
-  test('mobile puts the arrangement switcher next to the project button', async ({ page }, testInfo) => {
+  test('на узком экране переключатель раскладки идёт под лентой категорий', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'Переключатель раскладки живёт только на узком экране.');
     await page.goto('/');
-    const chip = page.locator('.nx-project-chip');
     const views = page.getByRole('group', { name: 'Вид сетки на узком экране' });
-    const chipBox = (await chip.boundingBox())!;
+    const carousel = page.locator('.nx-carousel');
     const viewsBox = (await views.boundingBox())!;
-    // Одна строка: вертикальные центры совпадают, а по горизонтали не пересекаются.
-    expect(Math.abs((chipBox.y + chipBox.height / 2) - (viewsBox.y + viewsBox.height / 2))).toBeLessThan(6);
-    expect(viewsBox.x).toBeGreaterThan(chipBox.x + chipBox.width);
+    const carouselBox = (await carousel.boundingBox())!;
+    // Переключатель идёт под лентой категорий, а не занимает отдельную
+    // строку выше неё: на 390 px каждая строка сверху — минус одна плитка.
+    expect(viewsBox.y).toBeGreaterThanOrEqual(carouselBox.y + carouselBox.height - 2);
 
     // Вне «Быстрого доступа» строки категорий нет, но переключатель остаётся.
-    await page.locator('.nx-quick').getByRole('button', { name: 'Корзина' }).click();
-    await expect(page.locator('.nx-cats')).toHaveCount(0);
+    await openSection(page, testInfo, 'Корзина');
+    await expect(page.locator('.nx-carousel')).toHaveCount(0);
     await expect(views).toBeVisible();
     // Заголовок раздела на узком экране остаётся, исчезает только строка со счётчиком.
     await expect(page.getByRole('heading', { name: 'Корзина' })).toBeVisible();
@@ -466,7 +478,7 @@ test.describe('Nexus shell', () => {
     expect(last).toContain('Открыть');
 
     // Сужаем список: бегущий фокус должен переехать на существующую плитку.
-    await page.locator('.nx-cats-tabs .nx-cat').nth(1).click();
+    await page.locator('.nx-carousel-row .nx-cat-card').nth(1).click();
     await expect.poll(() => page.locator('.nx-main .nx-grid [tabindex="0"]').count()).toBe(2);
     const survivors = await page.locator('.nx-main .nx-grid .nx-tile').count();
     expect(survivors).toBeGreaterThan(0);
@@ -497,12 +509,12 @@ test.describe('Nexus shell', () => {
       };
     });
 
-    await page.locator('.nx-quick').getByRole('button', { name: 'Корзина' }).click();
+    await openSection(page, testInfo, 'Корзина');
     const trash = (await shape())!;
     expect(trash.title).toBe('Корзина пуста');
     expect(trash.action).toBe('К сайтам');
 
-    await page.locator('.nx-quick').getByRole('button', { name: 'Недавние' }).click();
+    await openSection(page, testInfo, 'Недавние');
     const recent = (await shape())!;
     expect(recent.title).toBe('Пока ничего не открывали');
     expect(recent.action).toBe('К сайтам');
@@ -542,7 +554,7 @@ test.describe('Nexus shell', () => {
     await page.waitForSelector('.nx-grid');
     const total = await page.locator('.nx-main .nx-tile').count();
 
-    await page.locator('.nx-quick').getByRole('button', { name: 'Сессии' }).click();
+    await openSection(page, testInfo, 'Сессии');
     // Пустое состояние предлагает действие, а не просто сообщает о пустоте.
     const save = page.getByRole('button', { name: /Сохранить текущие сайты/ });
     await expect(save).toBeVisible();
@@ -585,84 +597,39 @@ test.describe('Nexus shell', () => {
     await page.getByRole('option', { name: /Сохранить сессию/ }).click();
     await page.getByLabel('Название сессии').fill('Из палитры');
     await page.locator('.nx-action-dialog').getByRole('button', { name: 'Сохранить' }).click();
-    await page.locator('.nx-quick').getByRole('button', { name: 'Сессии' }).click();
+    await openSection(page, testInfo, 'Сессии');
     await expect(page.locator('.nx-session b')).toHaveText('Из палитры');
   });
 
-  test('the favourites strip stays the same in every project and opens a site', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'На узком экране полосы нет: там дорога высота.');
-    await page.addInitScript(() => {
-      Object.defineProperty(window, 'open', {
-        configurable: true, writable: true,
-        value: (...args: unknown[]) => {
-          (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen = args;
-          return null;
-        },
-      });
-    });
+  test('избранное живёт в доке, а не отдельной полосой над сеткой', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Док на узком экране свой.');
     await page.goto('/');
-    const bar = page.getByRole('region', { name: 'Избранное во всех проектах' });
-    // Figma и Notion отмечены звездой и лежат в «Работе», а открыт проект «Дом».
-    await expect(bar.getByRole('button', { name: /Figma/ })).toBeVisible();
-    await expect(page.locator('.nx-tile', { hasText: 'Figma' })).toHaveCount(0);
 
-    // Полоса не зависит от того, какое дерево открыто.
-    await page.getByRole('button', { name: 'Проект «Покупки»' }).first().click();
-    await expect(bar.getByRole('button', { name: /Figma/ })).toBeVisible();
-
-    await bar.getByRole('button', { name: /Figma/ }).click();
-    const opened = await page.evaluate(() => (window as typeof window & { __nexusLastOpen?: unknown[] }).__nexusLastOpen);
-    expect(String(opened?.[0])).toContain('figma.com');
+    // Полосы избранного над сеткой больше нет: её роль взял док, куда сайты
+    // перетаскивают мышью. Две полосы под одну задачу — лишняя высота.
+    await expect(page.locator('.nx-favbar')).toHaveCount(0);
+    await expect(page.locator('.nx-dock')).toHaveClass(/open/);
   });
 
-  test('the favourites strip obeys its three settings', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'На узком экране полосы нет.');
+  test('нижняя панель одна: док открыт сразу и складывается язычком', async ({ page }) => {
     await page.goto('/');
-    const bar = page.getByRole('region', { name: 'Избранное во всех проектах' });
-    await expect(bar).toBeVisible();
-    const chip = bar.getByRole('button').first();
-    await expect(chip).toContainText('Figma');
-
-    await page.getByRole('button', { name: 'Настройки' }).first().click();
-    const settings = page.locator('.nx-settings');
-    await settings.getByRole('button', { name: 'Панели', exact: true }).click();
-    await settings.getByRole('switch', { name: 'Названия на полосе' }).click();
-    await expect(chip).not.toContainText('Figma');
-
-    await settings.getByRole('switch', { name: 'Полоса избранного' }).click();
-    await expect(bar).toHaveCount(0);
-    // Выключенная полоса гасит свои настройки, а не оставляет их мёртвыми.
-    await expect(settings.getByRole('switch', { name: 'Названия на полосе' })).toBeDisabled();
-    await expect(settings.getByLabel('Сколько показывать')).toBeDisabled();
-  });
-
-  test('the quick-access panel and the dock are separate and never share the bar', async ({ page }) => {
-    await page.goto('/');
-    const quick = page.locator('.nx-quick');
     const dock = page.locator('.nx-dock');
-    await expect(quick).toHaveClass(/open/);
-    await expect(dock).not.toHaveClass(/open/);
+    // Панели быстрого доступа больше нет: разделы переехали в боковое окно,
+    // и держать внизу две полосы значило бы дважды тратить одну и ту же высоту.
+    await expect(page.locator('.nx-quick')).toHaveCount(0);
+    await expect(dock).toHaveClass(/open/);
 
-    // The half-hidden handle at the bottom edge calls the dock and folds the quick panel away.
-    const handle = page.getByRole('button', { name: 'Показать док-панель' });
-    const handleBox = (await handle.boundingBox())!;
+    // Язычок наполовину утоплен за нижнюю кромку — он зовёт, но не мешает.
+    const handle = page.getByRole('button', { name: 'Скрыть док-панель' });
+    const box = (await handle.boundingBox())!;
     const viewport = page.viewportSize()!;
-    expect(handleBox.y).toBeLessThan(viewport.height);
-    expect(handleBox.y + handleBox.height).toBeGreaterThan(viewport.height);
+    expect(box.y).toBeLessThan(viewport.height);
+    expect(box.y + box.height).toBeGreaterThan(viewport.height);
 
     await handle.click();
-    await expect(dock).toHaveClass(/open/);
-    await expect(quick).not.toHaveClass(/open/);
-    await page.getByRole('button', { name: 'Скрыть док-панель' }).click();
     await expect(dock).not.toHaveClass(/open/);
-
-    // The quick-access panel has its own separate toggle: in the side window on
-    // desktop, in the compact header below 900px.
-    const quickToggle = page.getByRole('button', { name: 'Панель быстрого доступа' }).first();
-    await quickToggle.click();
-    await expect(quick).toHaveClass(/open/);
-    await quickToggle.click();
-    await expect(quick).not.toHaveClass(/open/);
+    await page.getByRole('button', { name: 'Показать док-панель' }).click();
+    await expect(dock).toHaveClass(/open/);
   });
 
   test('the side panel collapses to icons and remembers it', async ({ page }, testInfo) => {
@@ -679,7 +646,7 @@ test.describe('Nexus shell', () => {
 
   test('a site is dragged onto the dock and removed from it again', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Показать док-панель' }).click();
+    // Док открыт с самого начала — отдельно звать его больше не нужно.
     const dock = page.locator('.nx-dock');
     await expect(dock.locator('.nx-dock-pin')).toHaveCount(0);
 
@@ -723,7 +690,7 @@ test.describe('Nexus shell', () => {
       }),
     }));
     await page.goto('/');
-    const when = page.locator('.nx-when');
+    const when = page.locator('.nx-dock');
     await expect(when).toContainText(/\d{1,2}:\d{2}/);
     // The row carries no calendar icon of its own any more.
     await expect(when.locator('[data-calendar-trigger]')).toHaveCount(1);
@@ -739,42 +706,45 @@ test.describe('Nexus shell', () => {
     await expect(forecast.locator('li').first()).toContainText('Сегодня');
   });
 
-  test('the explorer tree opens a project, then its category, then folds back', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'The side panel is replaced by the sections sheet below 900px.');
+  test('цепочка крошек уводит вглубь и сужает сетку', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Крошки живут на широком экране.');
     await page.goto('/');
-    const tree = page.locator('.nx-panel');
-    // Collapsed: only project names are listed.
-    await expect(tree.locator('.nx-tree-children')).toHaveCount(0);
 
-    await tree.getByRole('button', { name: 'Дом' }).click();
-    await expect(tree.getByRole('button', { name: 'Соцсети' })).toBeVisible();
-
-    await tree.getByRole('button', { name: 'Соцсети' }).click();
-    await expect(tree.getByRole('button', { name: 'Чаты' })).toBeVisible();
-
-    // A group narrows the grid to its own sites.
+    // Дерева в панели больше нет: иерархию показывает сама рабочая область.
+    await expect(page.locator('.nx-tree-children')).toHaveCount(0);
     const all = await page.locator('.nx-tile').count();
-    await tree.getByRole('button', { name: 'Чаты' }).click();
-    const scoped = await page.locator('.nx-tile').count();
-    expect(scoped).toBeGreaterThan(0);
-    expect(scoped).toBeLessThan(all);
 
-    // Pressing the project again folds the whole branch away.
-    await tree.getByRole('button', { name: 'Дом' }).click();
-    await expect(tree.locator('.nx-tree-children')).toHaveCount(0);
+    // Второе звено — категория. Список соседей раскрывается прямо из звена.
+    await page.locator('.nx-crumb-btn').nth(1).click();
+    await page.getByRole('option', { name: /Соцсети/ }).click();
+    await expect(page.locator('.nx-content-title h1')).toHaveText('Соцсети');
+    const inCategory = await page.locator('.nx-tile').count();
+    expect(inCategory).toBeLessThan(all);
+
+    // Третье звено появляется только на глубине и сужает выборку ещё раз.
+    await page.locator('.nx-crumb-btn').nth(2).click();
+    await page.getByRole('option', { name: /Чаты/ }).click();
+    const inGroup = await page.locator('.nx-tile').count();
+    expect(inGroup).toBeGreaterThan(0);
+    expect(inGroup).toBeLessThan(inCategory);
+
+    // «Все категории» возвращает к полному списку пространства.
+    await page.locator('.nx-crumb-btn').nth(1).click();
+    await page.getByRole('option', { name: 'Все категории' }).click();
+    await expect.poll(() => page.locator('.nx-tile').count()).toBe(all);
   });
 
-  test('the project name appears once on the page, in the switcher and not as a heading', async ({ page }) => {
+  test('имя пространства названо один раз — в цепочке крошек', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Крошки живут на широком экране.');
     await page.goto('/');
-    const chip = page.locator('[data-project-switch]');
-    const project = (await chip.locator('b').textContent())!.trim();
-    expect(project).toBeTruthy();
-    // The switcher is the only place the main area names the project: no heading,
-    // no repeat in the subtitle.
-    await expect(page.locator('.nx-head h1')).toHaveCount(0);
-    await expect(page.locator('.nx-head p')).toContainText('Все сайты');
-    await expect(page.locator('.nx-head')).not.toContainText(project);
-    expect(await page.locator('.nx-main').getByText(project, { exact: true }).count()).toBe(1);
+    const crumb = page.locator('.nx-crumb-btn').first();
+    const space = (await crumb.locator('b').textContent())!.trim();
+    expect(space).toBeTruthy();
+
+    // Заголовок содержимого говорит о выборке, а не повторяет пространство.
+    await expect(page.locator('.nx-content-title h1')).toContainText('Все сайты');
+    await expect(page.locator('.nx-content-head')).not.toContainText(space);
+    expect(await page.locator('.nx-main').getByText(space, { exact: true }).count()).toBe(1);
   });
 
   test('mobile keeps the clock, the weather and the calendar in one compact card', async ({ page }, testInfo) => {
@@ -797,12 +767,12 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-panel')).toBeHidden();
     await expect(page.locator('.nx-rail')).toBeHidden();
     await page.getByRole('button', { name: 'Разделы' }).click();
-    await expect(page.getByText('Разделы и проекты')).toBeVisible();
+    await expect(page.getByText(/Разделы и (проекты|пространства)/)).toBeVisible();
     await page.locator('.mobile-sections-card').getByRole('button', { name: 'Заметки', exact: true }).click();
     await expect(page.locator('.nx-head h1')).toHaveText('Заметки');
   });
 
-  test('project creation uses the Nexus dialog instead of window.prompt', async ({ page }) => {
+  test('project creation uses the Nexus dialog instead of window.prompt', async ({ page }, testInfo) => {
     await page.addInitScript(() => {
       Object.defineProperty(window, 'prompt', {
         configurable: true,
@@ -815,29 +785,29 @@ test.describe('Nexus shell', () => {
     });
     await page.goto('/');
 
-    const sidebarAddProject = page.locator('.nx-panel').getByRole('button', { name: 'Добавить проект' }).first();
-    if (await sidebarAddProject.isVisible()) {
-      await sidebarAddProject.click();
+    // Ветвление по ширине прогона, а не по isVisible(): та не ждёт появления
+    // элемента и на медленной первой отрисовке уводила десктоп в мобильную ветку.
+    if (testInfo.project.name !== 'mobile') {
+      await page.locator('.nx-panel').getByRole('button', { name: 'Добавить пространство' }).first().click();
     } else {
       await page.getByRole('button', { name: 'Разделы' }).click();
-      await page.locator('.mobile-sections-card').getByRole('button', { name: 'Добавить проект' }).click();
+      await page.locator('.mobile-sections-card').getByRole('button', { name: 'Добавить пространство' }).click();
     }
     const dialog = page.getByRole('dialog', { name: 'Новый проект' });
     await expect(dialog).toBeVisible();
     await dialog.getByRole('textbox', { name: 'Название проекта' }).fill('Проект E2E');
     await dialog.getByRole('button', { name: 'Создать' }).click();
 
-    const sidebarProject = page.locator('.nx-panel').getByRole('button', { name: 'Проект «Проект E2E»' });
-    if (await sidebarProject.isVisible()) {
-      await expect(sidebarProject).toBeVisible();
+    if (testInfo.project.name !== 'mobile') {
+      await expect(page.locator('.nx-panel').getByRole('button', { name: 'Пространство «Проект E2E»' })).toBeVisible();
     } else {
       await page.getByRole('button', { name: 'Разделы' }).click();
-      await expect(page.locator('.mobile-sections-card').getByRole('button', { name: 'Проект «Проект E2E»' })).toBeVisible();
+      await expect(page.locator('.mobile-sections-card').getByRole('button', { name: /Проект E2E/ })).toBeVisible();
     }
     expect(await page.evaluate(() => (window as typeof window & { __nexusNativePrompt?: boolean }).__nexusNativePrompt)).toBeFalsy();
   });
 
-  test('trash clearing uses the Nexus destructive dialog instead of window.confirm', async ({ page }) => {
+  test('trash clearing uses the Nexus destructive dialog instead of window.confirm', async ({ page }, testInfo) => {
     await page.addInitScript(() => {
       Object.defineProperty(window, 'confirm', {
         configurable: true,
@@ -853,7 +823,7 @@ test.describe('Nexus shell', () => {
     const first = page.locator('.nx-tile').first();
     await first.getByRole('button', { name: /Действия для/ }).click();
     await first.getByRole('menuitem', { name: 'Удалить' }).click();
-    await page.locator('.nx-quick').getByRole('button', { name: 'Корзина' }).click();
+    await openSection(page, testInfo, 'Корзина');
     await page.getByRole('button', { name: 'Очистить корзину' }).click();
 
     const dialog = page.getByRole('dialog', { name: 'Очистить корзину?' });
@@ -943,64 +913,56 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-root')).not.toHaveClass(/compact/);
   });
 
-  // ── проводник ──────────────────────────────────────────────────────────
-  test('the selected project and category get a coloured icon, not just a highlight', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'The explorer lives in the side window.');
+  // ── боковая панель ─────────────────────────────────────────────────────
+  test('выбранное пространство получает цветную иконку, а не только подсветку', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Панель живёт на широком экране.');
     await page.goto('/');
-    const project = page.locator('.nx-panel .nx-tree-row', { hasText: 'Работа' }).first();
-    await project.click();
+    const space = page.locator('.nx-panel .nx-link', { hasText: 'Работа' }).first();
+    await space.click();
 
-    const tint = await project.evaluate(el => getComputedStyle(el).getPropertyValue('--nx-node').trim());
+    const tint = await space.evaluate(el => getComputedStyle(el).getPropertyValue('--nx-node').trim());
     expect(tint).toMatch(/^#[0-9a-f]{6}$/i);
-    const iconColour = await project.locator('svg').nth(1).evaluate(el => getComputedStyle(el).color);
-    const muted = await page.locator('.nx-panel .nx-tree-row:not(.on) svg').first().evaluate(el => getComputedStyle(el).color);
+    const iconColour = await space.locator('svg').first().evaluate(el => getComputedStyle(el).color);
+    const muted = await page.locator('.nx-panel .nx-link:not(.on) svg').first().evaluate(el => getComputedStyle(el).color);
     expect(iconColour).not.toBe(muted);
-
-    const category = page.locator('.nx-panel .nx-tree-row', { hasText: 'Инструменты' }).first();
-    await category.click();
-    await expect(category).toHaveClass(/ on/);
-    const categoryIcon = await category.locator('svg').nth(1).evaluate(el => getComputedStyle(el).color);
-    expect(categoryIcon).not.toBe(muted);
   });
 
-  test('the explorer keeps a single branch open', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'The explorer lives in the side window.');
+  test('категории лежат в карусели и активна ровно одна', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Карусель живёт на широком экране.');
     await page.goto('/');
-    await page.getByRole('button', { name: 'Проект «Дом»' }).click();
-    await expect(page.getByRole('button', { name: 'Категория «Соцсети»' })).toBeVisible();
-    await page.getByRole('button', { name: 'Проект «Работа»' }).click();
-    // Opening another project folds the first one away instead of stacking branches.
-    await expect(page.getByRole('button', { name: 'Категория «Соцсети»' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Категория «Инструменты»' })).toBeVisible();
+
+    // Дерева в панели нет: категории показывает карусель, и выбранной может
+    // быть только одна — стопки раскрытых веток, как в проводнике, больше нет.
+    const cards = page.locator('.nx-carousel-row .nx-cat-card');
+    await expect(cards.filter({ has: page.locator('[aria-current="true"]') })).toHaveCount(0);
+    await expect(page.locator('.nx-carousel-row .nx-cat-card.on')).toHaveCount(1);
+
+    await cards.nth(1).click();
+    await expect(page.locator('.nx-carousel-row .nx-cat-card.on')).toHaveCount(1);
+    const name = (await cards.nth(1).locator('span').textContent())!.trim();
+    await expect(page.locator('.nx-content-title h1')).toHaveText(name);
   });
 
-  // ── кнопка проекта ─────────────────────────────────────────────────────
-  test('the project button before «Все» steps through the projects', async ({ page }, testInfo) => {
+  test('смена пространства перестраивает карусель категорий', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Крошки и карусель живут на широком экране.');
     await page.goto('/');
-    const chip = page.locator('[data-project-switch]');
-    const tabs = page.locator('.nx-cats-tabs');
-    // It stands before the first tab.
-    const chipBox = (await chip.boundingBox())!;
-    const allTab = (await tabs.getByRole('tab', { name: 'Все' }).boundingBox())!;
-    // Wide: left of the tab. Narrow: the tabs wrap to their own line, so above it.
-    if (Math.abs(chipBox.y - allTab.y) < 6) expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(allTab.x + 1);
-    else expect(chipBox.y).toBeLessThan(allTab.y);
+    const crumb = page.locator('.nx-crumb-btn').first();
+    const carousel = page.locator('.nx-carousel-row');
 
-    const first = (await chip.locator('b').textContent())!.trim();
-    const firstTabs = (await tabs.textContent())!;
-    await chip.click();
-    await expect.poll(async () => (await chip.locator('b').textContent())!.trim()).not.toBe(first);
-    const second = (await chip.locator('b').textContent())!.trim();
-    // Everything tied to the project follows: the tabs above the grid and, on a
-    // wide screen, the branch the side window has open.
-    expect((await tabs.textContent())!).not.toBe(firstTabs);
-    if (testInfo.project.name !== 'mobile') {
-      await expect(page.locator('.nx-panel .nx-tree-row.on').first()).toContainText(second);
-    }
+    const first = (await crumb.locator('b').textContent())!.trim();
+    const firstCategories = (await carousel.textContent())!;
+
+    // Соседние пространства раскрываются прямо из первого звена цепочки.
+    await crumb.click();
+    const other = page.getByRole('option').filter({ hasNotText: first }).first();
+    await other.click();
+
+    await expect.poll(async () => (await crumb.locator('b').textContent())!.trim()).not.toBe(first);
+    // За пространством следует всё, что от него зависит: набор категорий другой.
+    expect((await carousel.textContent())!).not.toBe(firstCategories);
   });
 
-  // ── мобильные раскладки ────────────────────────────────────────────────
-  const columns = (page: import('@playwright/test').Page) =>
+  const columns = (page: Page) =>
     page.locator('.nx-grid').first().evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
 
   test('mobile opens as a two-column table and switches to rows and icons', async ({ page }, testInfo) => {
@@ -1324,132 +1286,44 @@ test.describe('Nexus shell', () => {
       await head.click();
     }
   });
-});
 
-/**
- * Рабочий стол проектов — раскладка главной по умолчанию.
- *
- * Проверяется не оформление, а композиция: что на экране стоят карточки
- * проектов и колонки папок, что счётчики не врут и что постоянной строки
- * поиска на главной нет.
- */
-test.describe('Рабочий стол проектов', () => {
-  test('главная открывается доской, а не сеткой плиток', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'Доска складывается в один столбец; её состав проверяется на широком экране.');
-    await page.goto('/');
-
-    await expect(page.locator('.nx-board')).toBeVisible();
-    await expect(page.locator('.nx-project-card').first()).toBeVisible();
-    await expect(page.locator('.nx-folder').first()).toBeVisible();
-    // Плоской сетки плиток на доске нет: её место занимают колонки папок.
-    await expect(page.locator('.nx-board .nx-grid')).toHaveCount(0);
-  });
-
-  test('в шапке только показания и действия — без приветствия и девиза', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'На узком экране показания живут в мобильной шапке.');
-    await page.goto('/');
-
-    // Ни обращения, ни баннера: место на стартовой странице отдано данным.
-    await expect(page.locator('.nx-banner')).toHaveCount(0);
-    await expect(page.locator('.nx-board-hello, .nx-hero')).toHaveCount(0);
-    await expect(page.getByText(/Добр(ое|ый) (утро|день|вечер)/)).toHaveCount(0);
-
-    // Зато стоят часы с датой и счётчик сайтов.
-    await expect(page.locator('.nx-board-clock b')).toHaveText(/^\d{2}:\d{2}$/);
-    await expect(page.locator('.nx-board-total b')).toHaveText(/^\d+$/);
-  });
-
-  test('сцена из поставки стоит фоном и доезжает до экрана', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('html')).toHaveAttribute('data-wallpaper', 'lake');
-    const background = await page.locator('.nx-root').evaluate(el => getComputedStyle(el).backgroundImage);
-    expect(background).toMatch(/lake[-.\w]*\.webp/);
-
-    // Адрес берётся из самих стилей, а не пишется в тесте руками: сборка
-    // выходит под префиксом (base в vite.config) и с хешем в имени, и
-    // зашитый путь проверял бы выдумку вместо того, что на самом деле
-    // запрашивает браузер.
-    const source = background.match(/url\(["']?([^"')]+)["']?\)/)?.[1];
-    expect(source).toBeTruthy();
-    const answer = await page.request.get(source!);
-    expect(answer.status()).toBe(200);
-    expect((await answer.body()).byteLength).toBeGreaterThan(10_000);
-  });
-
-  test('счётчик на карточке проекта совпадает с проводником', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'Проводник виден только на широком экране.');
-    await page.goto('/');
-
-    const card = page.locator('.nx-project-card').first();
-    const name = (await card.locator('b').innerText()).trim();
-    const onCard = (await card.locator('small').innerText()).match(/\d+/)?.[0];
-
-    // То же число показывает дерево слева. Первая версия читала project.siteIds
-    // и показывала ноль при непустом проекте — этот тест ловит возврат ошибки.
-    const inTree = await page.locator('.nx-tree-row', { hasText: name }).first().locator('i').innerText();
-    expect(onCard).toBe(inTree.trim());
-    expect(Number(onCard)).toBeGreaterThan(0);
-  });
-
-  test('на главной нет постоянной строки поиска — только вызов', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'На узком экране свой верх.');
-    await page.goto('/');
-
-    await expect(page.locator('.nx-board input[type="text"], .nx-board input[type="search"]')).toHaveCount(0);
-    await page.locator('.nx-board').getByRole('button', { name: 'Поиск и команды' }).click();
-    await expect(page.getByRole('dialog')).toBeVisible();
-  });
-
-  test('карточка проекта переключает доску на свой проект', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'Ряд проектов сжимается на узком экране.');
-    await page.goto('/');
-
-    const second = page.locator('.nx-project-card').nth(1);
-    const name = (await second.locator('b').innerText()).trim();
-    await second.click();
-    await expect(page.locator('.nx-folders-title h2')).toHaveText(name);
-  });
-
-  test('настройка возвращает прежнюю сетку плиток', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'Настройки проверяются один раз на широком экране.');
-    await page.goto('/');
-    await expect(page.locator('.nx-board')).toBeVisible();
-
-    await page.locator('.nx-board').getByRole('button', { name: 'Сменить раскладку главной' }).click();
-    await expect(page.locator('.nx-board')).toHaveCount(0);
-    await expect(page.locator('.nx-tile').first()).toBeVisible();
-  });
-  test('двадцать проектов остаются одной прокручиваемой полосой', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'Плотную проектную полосу проверяем на широком экране.');
+  /**
+   * Перенесено с прежней доски проектов (коммиты d4dfda5 и 7b8f7b7).
+   *
+   * Предмет тех проверок исчез вместе с доской, но требования пережили смену
+   * раскладки: на плотном пространстве навигация обязана оставаться
+   * проходимой, а кнопка — не обещать того, чего не делает. Проверяются они
+   * теперь на боковой панели и карусели.
+   */
+  test('двадцать пространств и двести сорок сайтов не ломают навигацию', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Плотное пространство проверяем на широком экране.');
 
     await page.addInitScript(() => {
       const projects = Array.from({ length: 20 }, (_, index) => ({
         id: `stress-project-${index}`,
-        name: index === 19 ? 'Очень длинное название последнего проекта' : `Проект ${index + 1}`,
+        name: index === 19 ? 'Очень длинное название последнего пространства' : `Пространство ${index + 1}`,
         color: `hsl(${(index * 37) % 360} 62% 52%)`,
         icon: String(index + 1),
-        siteIds: [],
-        createdAt: index,
-        updatedAt: index,
+        siteIds: [], createdAt: index, updatedAt: index,
       }));
-      const categories = projects.map((project, index) => ({
-        id: `stress-category-${index}`,
-        name: `Категория ${index + 1}`,
-        projectId: project.id,
-      }));
-      const sites = projects.flatMap((project, projectIndex) =>
-        Array.from({ length: 10 }, (_, siteIndex) => ({
-          id: `stress-site-${projectIndex}-${siteIndex}`,
-          title: `Сайт ${projectIndex + 1}.${siteIndex + 1}`,
+      const categories = projects.flatMap((project, index) => (
+        Array.from({ length: 12 }, (_, inner) => ({
+          id: `stress-category-${index}-${inner}`,
+          name: `Категория ${index + 1}.${inner + 1}`,
+          projectId: project.id,
+        }))
+      ));
+      const sites = categories.flatMap((category, index) => (
+        Array.from({ length: 1 }, (_, inner) => ({
+          id: `stress-site-${index}-${inner}`,
+          title: `Сайт ${index + 1}.${inner + 1}`,
           desc: 'Проверка плотного рабочего пространства',
-          domain: `site-${projectIndex}-${siteIndex}.example`,
-          url: `https://site-${projectIndex}-${siteIndex}.example/path`,
-          color: '#2f6fe4',
-          icon: 'С',
-          category: categories[projectIndex].name,
-          categoryId: categories[projectIndex].id,
-        })),
-      );
+          domain: `site-${index}-${inner}.example`,
+          url: `https://site-${index}-${inner}.example/path`,
+          color: '#2f6fe4', icon: 'С',
+          category: category.name, categoryId: category.id,
+        }))
+      ));
       localStorage.setItem('nexus-projects', JSON.stringify(projects));
       localStorage.setItem('nexus-categories', JSON.stringify(categories));
       localStorage.setItem('nexus-groups', JSON.stringify([]));
@@ -1459,39 +1333,43 @@ test.describe('Рабочий стол проектов', () => {
     });
 
     await page.goto('/');
-    await expect(page.locator('.nx-board-total b')).toHaveText('200');
 
-    const rail = page.locator('.nx-projects');
-    await expect(rail.locator('.nx-project-card')).toHaveCount(21);
-    const geometry = await rail.evaluate(element => {
-      const cards = [...element.querySelectorAll<HTMLElement>('.nx-project-card')];
+    // Панель не растягивается на двадцать строк: видно горстку и «Ещё».
+    const spaces = page.locator('.nx-panel .nx-section').first().locator('.nx-link');
+    expect(await spaces.count()).toBeLessThanOrEqual(8);
+    await page.locator('.nx-panel').getByRole('button', { name: /Ещё \d+/ }).click();
+    await expect.poll(() => spaces.count()).toBeGreaterThan(19);
+
+    // Карусель остаётся одной строкой и прокручивается, а не переносится.
+    const row = page.locator('.nx-carousel-row');
+    const geometry = await row.evaluate(element => {
+      const cards = [...element.querySelectorAll<HTMLElement>('.nx-cat-card')];
       const rows = new Set(cards.map(card => Math.round(card.getBoundingClientRect().top)));
-      return {
-        clientWidth: element.clientWidth,
-        scrollWidth: element.scrollWidth,
-        height: element.getBoundingClientRect().height,
-        rows: rows.size,
-      };
+      return { rows: rows.size, clientWidth: element.clientWidth, scrollWidth: element.scrollWidth,
+        height: Math.round(element.getBoundingClientRect().height) };
     });
-
     expect(geometry.rows).toBe(1);
     expect(geometry.scrollWidth).toBeGreaterThan(geometry.clientWidth);
     expect(geometry.height).toBeLessThan(190);
 
-    const lastProject = rail.getByRole('button', { name: /Очень длинное название последнего проекта/ });
-    await lastProject.scrollIntoViewIfNeeded();
-    await expect(lastProject).toBeVisible();
+    // И страница при этом не едет вбок.
+    const overflow = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, inner: innerWidth }));
+    expect(overflow.scroll).toBe(overflow.inner);
   });
 
-  test('заголовок папок не обещает несуществующее меню проекта', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'Смысл control достаточно проверить на desktop.');
+  test('ни одна кнопка не обещает того, чего не делает', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Смысл контролов достаточно проверить на широком экране.');
     await page.goto('/');
 
+    // «Действия с проектом» открывало форму добавления сайта — такого
+    // обещания на экране больше нет вовсе.
     await expect(page.getByRole('button', { name: 'Действия с проектом' })).toHaveCount(0);
-    const add = page.getByRole('button', { name: 'Добавить сайт в проект' });
-    await expect(add).toBeVisible();
-    await add.click();
-    await expect(page.getByRole('heading', { name: 'Добавить сайт' })).toBeVisible();
-  });
+    // «Справки» нет, пока нет раздела помощи: кнопка без действия хуже её отсутствия.
+    await expect(page.locator('.nx-panel').getByRole('button', { name: 'Справка' })).toHaveCount(0);
 
+    // А то, что обещано, — делается: инструмент ведёт в свой раздел настроек.
+    await page.locator('.nx-panel').getByRole('button', { name: 'Резервная копия' }).click();
+    await expect(page.locator('.nx-settings')).toBeVisible();
+    await expect(page.locator('.nx-settings').getByRole('button', { name: 'Экспорт данных' })).toBeVisible();
+  });
 });

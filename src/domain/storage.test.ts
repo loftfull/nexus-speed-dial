@@ -22,4 +22,12 @@ describe('storage adapter', () => {
     storage.setItem('sites', '1234567890');
     expect(getStorageUsage(storage, 100).percent).toBe(15);
   });
+
+  it('подписывает потолок в мегабайтах, а не в килобайтах под видом мегабайт', () => {
+    const storage = memoryStorage();
+    storage.setItem('a', 'x'.repeat(1024));
+    // Пять мегабайт — это 5 МБ, а не 5120: делить надо дважды.
+    expect(getStorageUsage(storage).label).toMatch(/из 5 МБ$/);
+    expect(getStorageUsage(storage, 10 * 1024 * 1024).label).toMatch(/из 10 МБ$/);
+  });
 });

@@ -18,7 +18,7 @@ import { dataUrlBytes, readWallpaperPhoto, saveWallpaperPhoto, shrinkImage } fro
 import { BrowserImportPanel } from '../components/BrowserImportPanel';
 import { ActionDialog } from './ActionDialog';
 
-type SectionId = 'general' | 'look' | 'tiles' | 'panel' | 'mobile' | 'search' | 'weather' | 'privacy' | 'keys' | 'data';
+export type SectionId = 'general' | 'look' | 'tiles' | 'panel' | 'mobile' | 'search' | 'weather' | 'privacy' | 'keys' | 'data';
 const SECTIONS: { id: SectionId; label: string; icon: ControlIcon }[] = [
   { id: 'general', label: 'Общие', icon: SettingsIcon },
   { id: 'look', label: 'Оформление', icon: Palette },
@@ -70,11 +70,17 @@ export type SettingsProps = {
   tile: TileState; setTile: (value: TileState | ((current: TileState) => TileState)) => void;
   appearance: AppearanceState; setAppearance: (value: AppearanceState | ((current: AppearanceState) => AppearanceState)) => void;
   onApplyBackup: (backup: NexusBackup) => void;
+  /**
+   * Раздел, раскрытый при открытии. Панель «Инструменты» в боковом окне
+   * ведёт прямо к нужному складню — «Резервная копия» должна открывать
+   * «Данные», а не заставлять искать его глазами.
+   */
+  initialSection?: SectionId;
 };
 
 export function SettingsPanel(props: SettingsProps) {
-  const { onClose, ui, setUi, tile, setTile, appearance, setAppearance } = props;
-  const [open, setOpen] = useState<SectionId | null>('look');
+  const { onClose, ui, setUi, tile, setTile, appearance, setAppearance, initialSection } = props;
+  const [open, setOpen] = useState<SectionId | null>(initialSection ?? 'look');
   const photoInput = useRef<HTMLInputElement>(null);
   const [hasPhoto, setHasPhoto] = useState(() => readWallpaperPhoto() !== null);
   const [photoNote, setPhotoNote] = useState<string | null>(null);
@@ -111,7 +117,7 @@ export function SettingsPanel(props: SettingsProps) {
   /** Puts one fold back to the values a fresh install starts with. */
   const resetSection = (section: SectionId) => {
     switch (section) {
-      case 'general': patchUi({ compact: false, animations: true, newTab: true, homeLayout: 'board', folderSites: 4, rail: true }); break;
+      case 'general': patchUi({ compact: false, animations: true, newTab: true, sortBy: 'name', defaultView: 'all', rail: true }); break;
       case 'look': setAppearance({ ...DEFAULT_APPEARANCE }); break;
       case 'tiles': setTile({ ...DEFAULT_TILE }); patchUi({ siteIcons: true }); break;
       case 'panel': patchUi({ sidebarWidth: '292px', projects: true, weather: true, favoritesBar: true, favoritesCount: 8, favoritesLabels: true, panelRecent: true, panelRecentCount: 6, panelRecentLabels: true }); break;
@@ -169,15 +175,15 @@ export function SettingsPanel(props: SettingsProps) {
   function renderSection(section: SectionId) {
     return <>
         {section === 'general' && (
-          <Group title="Главный экран" hint="Доска показывает проекты и папки целиком; сетка — плоский список плиток.">
-            <Pick icon={LayoutGrid} label="Раскладка главной"
-              options={[['board', 'Рабочий стол проектов'], ['grid', 'Сетка плиток']]}
-              value={ui.homeLayout ?? 'board'}
-              onChange={value => patchUi({ homeLayout: value as 'board' | 'grid' })} />
-            <Pick icon={FolderTree} label="Сайтов в папке"
-              options={[['3', '3'], ['4', '4'], ['6', '6'], ['8', '8']]}
-              value={String(ui.folderSites ?? 4)}
-              onChange={value => patchUi({ folderSites: Number(value) })} />
+          <Group title="Главный экран" hint="Как по умолчанию отсортирована и показана сетка сайтов.">
+            <Pick icon={ListFilter} label="Сортировка по умолчанию"
+              options={[['name', 'По названию'], ['recent', 'По последнему открытию'], ['added', 'По добавлению']]}
+              value={ui.sortBy ?? 'name'}
+              onChange={value => patchUi({ sortBy: value as 'name' | 'recent' | 'added' })} />
+            <Pick icon={LayoutGrid} label="Вид по умолчанию"
+              options={[['all', 'Сеткой'], ['groups', 'По группам']]}
+              value={ui.defaultView ?? 'all'}
+              onChange={value => patchUi({ defaultView: value as 'all' | 'groups' })} />
             <Switch icon={CloudSun} label="Виджеты справа в сетке" value={ui.rail !== false}
               why="Часы, погода и недавние. В раскладке «рабочий стол» не используются"
               onChange={value => patchUi({ rail: value })} />

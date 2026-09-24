@@ -40,9 +40,9 @@ export function MobileSections({
 
   return (
     <div className="overlay mobile-sheet">
-      <section className="mobile-sections-card" role="dialog" aria-label="Разделы и проекты">
+      <section className="mobile-sections-card" role="dialog" aria-label="Разделы и пространства">
         <header>
-          <b>Разделы и проекты</b>
+          <b>Разделы и пространства</b>
           <button aria-label="Закрыть разделы" onClick={onClose}><X /></button>
         </header>
         {items.map(([label, Icon]) => (
@@ -62,8 +62,8 @@ export function MobileSections({
           </button>
         ))}
         {onAddProject && (
-          <button className="mobile-project-add" aria-label="Добавить проект" onClick={() => { onAddProject(); onClose(); }}>
-            <Plus size={18} />Добавить проект<ChevronRight size={15} />
+          <button className="mobile-project-add" aria-label="Добавить пространство" onClick={() => { onAddProject(); onClose(); }}>
+            <Plus size={18} />Добавить пространство<ChevronRight size={15} />
           </button>
         )}
       </section>

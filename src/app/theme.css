@@ -82,7 +82,7 @@
     приклеенной к рамке колонкой и становится карточкой, лежащей на сцене.
     Именно этот отрыв от краёв отличает макеты с «плавающими» панелями от
     обычной двухколоночной вёрстки. */
- box-sizing:border-box;padding:12px;gap:12px;
+ box-sizing:border-box;
  display:grid;grid-template-columns:var(--nx-panel-w) minmax(0,1fr);
  height:100vh;background:var(--nx-canvas);color:var(--nx-text);transition:grid-template-columns .22s ease;
  /* Inter: в разобранных системах это либо сама гарнитура, либо названный
@@ -100,11 +100,13 @@
 .nx-label{font-size:var(--nx-fs-1);font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--nx-muted)}
 
 /* ── боковое окно слева ───────────────────────────────────────── */
+/* Панель прижата к краю и непрозрачна. Плавающей карточкой она была,
+   пока фон оставался градиентом; над фотографией сплошная колонка держит
+   длинный список разделов и пространств лучше — взгляд не спорит со
+   сценой, проступающей между карточками. */
 .nx-panel{grid-column:1;background:var(--nx-surface);display:flex;flex-direction:column;
- padding:20px 18px;overflow:hidden;transition:padding .2s;
- border-radius:var(--nx-r-xl);
- box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 1px 2px rgba(16,24,40,.05),
-  0 18px 42px -18px rgba(16,24,40,.28)}
+ padding:16px 12px 12px;overflow:hidden;transition:padding .2s;
+ border-right:1px solid var(--nx-line)}
 .nx-panel-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;
  display:flex;flex-direction:column;gap:14px}
 .nx-panel.collapsed{padding:22px 15px}
@@ -189,7 +191,7 @@
    закрыл обои, ради которых сцена и делалась.
    Две колонки: содержимое прокручивается, рельс стоит на месте. */
 .nx-main{grid-column:2;display:grid;grid-template-columns:minmax(0,1fr) auto;
- min-width:0;overflow:hidden;background:transparent}
+ grid-template-rows:auto minmax(0,1fr);min-width:0;overflow:hidden;background:transparent}
 /* Док и его язычок лежат поверх обеих колонок, иначе рельс сдвинул бы их влево. */
 .nx-main > .nx-bottom{grid-column:1 / -1}
 
@@ -449,7 +451,7 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 /* ── мобильная раскладка ──────────────────────────────────────── */
 .nx-mobile-top{display:none}
 @media (max-width:900px){
- .nx-root,.nx-root.panel-collapsed{grid-template-columns:minmax(0,1fr);padding:0;gap:0}
+ .nx-root,.nx-root.panel-collapsed{grid-template-columns:minmax(0,1fr)}
  .nx-panel{display:none}
  .nx-main{grid-column:1}
  .nx-main-scroll{padding:10px 16px 110px;gap:10px}
@@ -1382,4 +1384,155 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  .nx-projects{grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:9px}
  .nx-project-card b{white-space:normal;line-height:1.2}
  .nx-folder-cols{grid-template-columns:1fr}
+}
+
+
+/* ── боковая панель: разделы, пространства, инструменты ───────── */
+.nx-nav{display:flex;flex-direction:column;gap:2px}
+.nx-section{display:flex;flex-direction:column;gap:2px}
+.nx-panel .nx-label{padding:14px 10px 6px}
+
+/* Показатель хранилища вместо лозунга: у localStorage около пяти
+   мегабайт потолка, и упереться в него — реальный сценарий. */
+.nx-usage{display:flex;flex-direction:column;gap:7px;width:100%;padding:10px 11px;
+ border-radius:var(--nx-r-md);background:var(--nx-sunken);text-align:left;
+ transition:background .15s ease}
+.nx-usage:hover{background:var(--nx-accent-soft)}
+.nx-usage-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.nx-usage-top b{font-size:var(--nx-fs-2);font-weight:600}
+.nx-usage-top small{font-size:var(--nx-fs-1);color:var(--nx-muted);font-variant-numeric:tabular-nums}
+.nx-usage-bar{display:block;height:4px;border-radius:999px;background:var(--nx-line);overflow:hidden}
+.nx-usage-bar > span{display:block;height:100%;border-radius:999px;background:var(--nx-accent);
+ transition:width .3s var(--nx-tile-easing,ease)}
+
+/* ── верхняя строка: крошки-селекторы ─────────────────────────── */
+/* Строка идёт поперёк обеих колонок рабочей области: без этого она вставала
+   в сетку отдельной колонкой и сдвигала всё содержимое вбок. */
+.nx-main > .nx-topbar{grid-column:1 / -1}
+.nx-topbar{flex:none;display:flex;align-items:center;gap:10px;padding:12px 18px 4px;min-width:0}
+.nx-top-home{width:40px;height:40px;flex:none;border-radius:var(--nx-r-md);display:grid;place-items:center;
+ background:var(--nx-surface);color:var(--nx-text);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 6px 16px -10px rgba(16,24,40,.35);
+ transition:color .15s ease,transform .15s ease}
+.nx-top-home:hover{color:var(--nx-accent);transform:translateY(-1px)}
+.nx-crumbs-row{display:flex;align-items:center;gap:4px;min-width:0;flex:1;overflow:hidden}
+.nx-crumb-sep{flex:none;color:var(--nx-muted);opacity:.7}
+.nx-crumb{position:relative;min-width:0}
+.nx-crumb-btn{display:flex;align-items:center;gap:8px;max-width:100%;padding:9px 12px;
+ border-radius:var(--nx-r-md);background:var(--nx-surface);color:var(--nx-text);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 6px 16px -10px rgba(16,24,40,.35);
+ transition:box-shadow .15s ease,color .15s ease}
+.nx-crumb-btn b{font-size:var(--nx-fs-3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-crumb-btn:hover,.nx-crumb-btn.on{color:var(--nx-accent);
+ box-shadow:inset 0 0 0 1px var(--nx-accent),0 6px 16px -10px rgba(16,24,40,.35)}
+.nx-crumb-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:224px;max-height:320px;
+ overflow-y:auto;padding:6px;border-radius:var(--nx-r-lg);background:var(--nx-surface);
+ box-shadow:inset 0 0 0 1px var(--nx-line),var(--nx-shadow-lg);
+ display:flex;flex-direction:column;gap:1px}
+.nx-crumb-item{display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;border-radius:var(--nx-r-sm);
+ text-align:left;color:var(--nx-text);transition:background .12s ease}
+.nx-crumb-item:hover{background:var(--nx-sunken)}
+.nx-crumb-item.on{color:var(--nx-accent)}
+.nx-crumb-item > span{flex:1;min-width:0;font-size:var(--nx-fs-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-crumb-item > i{font-style:normal;font-size:var(--nx-fs-1);color:var(--nx-muted);font-variant-numeric:tabular-nums}
+.nx-crumb-empty{padding:10px 9px;font-size:var(--nx-fs-2);color:var(--nx-muted)}
+.nx-top-actions{display:flex;align-items:center;gap:8px;flex:none}
+/* Подпись Ctrl+K прямо на кнопке: так вызов запоминается без чтения справки. */
+.nx-top-search{display:flex;align-items:center;gap:9px;padding:9px 14px 9px 12px;border-radius:var(--nx-r-md);
+ background:var(--nx-surface);color:var(--nx-muted);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 6px 16px -10px rgba(16,24,40,.35);
+ transition:color .15s ease,box-shadow .15s ease}
+.nx-top-search span{font-size:var(--nx-fs-2);font-weight:600;font-variant-numeric:tabular-nums}
+.nx-top-search:hover{color:var(--nx-accent);box-shadow:inset 0 0 0 1px var(--nx-accent),0 6px 16px -10px rgba(16,24,40,.35)}
+
+/* ── карусель категорий ───────────────────────────────────────── */
+.nx-carousel{flex:none;display:flex;align-items:center;gap:8px;min-width:0}
+.nx-carousel-arrow{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;
+ background:var(--nx-surface);color:var(--nx-muted);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 6px 16px -10px rgba(16,24,40,.35);
+ transition:color .15s ease}
+.nx-carousel-arrow:hover{color:var(--nx-accent)}
+/* Полоса прокрутки скрыта: стрелки уже говорят, что лента едет, а вторая
+   подсказка о том же съедала бы высоту у карточек. */
+.nx-carousel-row{flex:1;min-width:0;display:flex;gap:10px;overflow-x:auto;scroll-behavior:smooth;
+ scrollbar-width:none;padding:2px}
+.nx-carousel-row::-webkit-scrollbar{display:none}
+.nx-cat-card{flex:none;width:106px;display:flex;flex-direction:column;align-items:center;gap:7px;
+ padding:12px 8px;border-radius:var(--nx-r-lg);background:var(--nx-surface);
+ color:var(--nx-node,var(--nx-muted));
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 8px 20px -12px rgba(16,24,40,.32);
+ transition:transform .16s var(--nx-tile-easing,ease),box-shadow .16s ease,background .16s ease}
+.nx-cat-card span{font-size:var(--nx-fs-2);font-weight:600;color:var(--nx-text);max-width:100%;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-cat-card:hover{transform:translateY(-2px)}
+.nx-cat-card.on{background:var(--nx-accent-soft);
+ box-shadow:inset 0 0 0 2px var(--nx-accent),0 8px 20px -12px rgba(16,24,40,.32)}
+.nx-cat-card.on span{color:var(--nx-accent)}
+.nx-cat-card.add{color:var(--nx-muted);
+ background:color-mix(in srgb,var(--nx-surface) 55%,transparent);
+ -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)}
+.nx-cat-card.add span{color:var(--nx-muted)}
+
+/* ── заголовок содержимого ────────────────────────────────────── */
+.nx-content-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px}
+/* Заголовок стоит прямо на сцене, поэтому у него своё стекло: тёмный текст
+   на горах читался через раз, а фон пользователь может поставить любой. */
+.nx-content-title{display:flex;flex-direction:column;padding:6px 14px;border-radius:var(--nx-r-md);
+ background:color-mix(in srgb,var(--nx-surface) 84%,transparent);
+ -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
+.nx-content-title h1{font-size:var(--nx-fs-5);font-weight:700;letter-spacing:-.3px}
+.nx-content-title p{margin-top:1px;font-size:var(--nx-fs-2);color:var(--nx-muted)}
+.nx-content-tools{display:flex;align-items:center;gap:8px;flex:none}
+.nx-sort{position:relative;display:flex;align-items:center;gap:6px;padding:0 10px 0 12px;height:36px;
+ border-radius:var(--nx-r-md);background:var(--nx-surface);color:var(--nx-text);
+ box-shadow:inset 0 0 0 1px var(--nx-line)}
+.nx-sort select{appearance:none;-webkit-appearance:none;border:0;outline:none;background:none;
+ font-size:var(--nx-fs-2);font-weight:600;padding-right:2px;cursor:pointer;color:inherit}
+.nx-sort:focus-within{box-shadow:inset 0 0 0 1px var(--nx-accent)}
+.nx-sort svg{color:var(--nx-muted);pointer-events:none}
+.nx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* ── чипы групп ───────────────────────────────────────────────── */
+.nx-chips{flex:none;display:flex;flex-wrap:wrap;gap:8px}
+.nx-chip{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:var(--nx-r-md);
+ background:var(--nx-surface);color:var(--nx-text);
+ box-shadow:inset 0 0 0 1px var(--nx-line);transition:box-shadow .15s ease,color .15s ease}
+.nx-chip span{font-size:var(--nx-fs-2);font-weight:600}
+.nx-chip i{font-style:normal;font-size:var(--nx-fs-1);color:var(--nx-muted);font-variant-numeric:tabular-nums;
+ padding:1px 6px;border-radius:999px;background:var(--nx-sunken)}
+.nx-chip svg{color:var(--nx-node,var(--nx-muted))}
+.nx-chip:hover{box-shadow:inset 0 0 0 1px var(--nx-accent);color:var(--nx-accent)}
+.nx-chip.on{background:var(--nx-accent-soft);color:var(--nx-accent);box-shadow:inset 0 0 0 1px var(--nx-accent)}
+.nx-chip.on i{background:var(--nx-surface)}
+.nx-chip.add{background:color-mix(in srgb,var(--nx-surface) 60%,transparent);color:var(--nx-muted)}
+
+/* ── док: сайты, погода, часы ─────────────────────────────────── */
+.nx-dock-weather{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:var(--nx-r-md);
+ color:var(--nx-muted);transition:background .15s ease}
+.nx-dock-weather:hover{background:var(--nx-sunken)}
+.nx-dock-weather > span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15}
+.nx-dock-weather b{font-size:var(--nx-fs-3);font-weight:700;color:var(--nx-text);font-variant-numeric:tabular-nums}
+.nx-dock-weather small{font-size:var(--nx-fs-1);color:var(--nx-muted);white-space:nowrap}
+.nx-dock-clock{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;
+ padding:5px 10px;border-radius:var(--nx-r-md);transition:background .15s ease}
+.nx-dock-clock:hover{background:var(--nx-sunken)}
+.nx-dock-clock b{font-size:var(--nx-fs-5);font-weight:700;letter-spacing:-.6px;font-variant-numeric:tabular-nums}
+.nx-dock-clock small{font-size:var(--nx-fs-1);color:var(--nx-muted);white-space:nowrap}
+.nx-dock-gear{width:38px;height:38px;flex:none;border-radius:var(--nx-r-md);display:grid;place-items:center;
+ color:var(--nx-muted);transition:color .15s ease,background .15s ease}
+.nx-dock-gear:hover{color:var(--nx-accent);background:var(--nx-sunken)}
+.nx-dock-add{width:38px;height:38px;flex:none;border-radius:var(--nx-r-md);display:grid;place-items:center;
+ color:var(--nx-muted);transition:color .15s ease,background .15s ease}
+.nx-dock-add:hover{color:var(--nx-accent);background:var(--nx-sunken)}
+
+/* Карусель на узком экране: карточки ниже и уже — лента остаётся лентой,
+   но не съедает первый экран, где каждая строка стоит одной плитки. */
+@media (max-width:900px){
+ .nx-carousel{gap:6px}
+ .nx-carousel-arrow{display:none}
+ .nx-carousel-row{gap:7px;padding:1px}
+ .nx-cat-card{width:78px;gap:4px;padding:8px 6px;border-radius:var(--nx-r-md)}
+ .nx-cat-card span{font-size:var(--nx-fs-1)}
 }

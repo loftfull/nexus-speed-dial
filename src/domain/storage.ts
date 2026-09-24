@@ -39,5 +39,8 @@ export function getStorageUsage(storage: StorageAdapter = browserStorage, limitB
   // Occupied but under a per cent still has to read as used space, not as zero.
   const percent = Math.min(100, exact > 0 && exact < 1 ? 1 : Math.round(exact));
   const kilobytes = Math.max(1, Math.round(bytes / 1024));
-  return { bytes, percent, label: `${kilobytes} КБ из ${Math.round(limitBytes / 1024)} МБ` };
+  // Делить надо дважды: limitBytes / 1024 — это килобайты, и подпись «МБ»
+  // превращала пятимегабайтный потолок в пятигигабайтный.
+  const megabytes = Math.round(limitBytes / 1024 / 1024);
+  return { bytes, percent, label: `${kilobytes} КБ из ${megabytes} МБ` };
 }

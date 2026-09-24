@@ -19,7 +19,7 @@ export type AppearanceState = { theme: string; accent: string; wallpaper: string
 export type MobileMode = 'table' | 'rows' | 'icons';
 export const MOBILE_MODES: MobileMode[] = ['table', 'rows', 'icons'];
 
-export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; remotePreviews?: boolean; siteIcons?: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: MobileMode; favoritesBar?: boolean; favoritesCount?: number; favoritesLabels?: boolean; panelRecent?: boolean; panelRecentCount?: number; panelRecentLabels?: boolean; rail?: boolean; homeLayout?: 'board' | 'grid'; folderSites?: number };
+export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; remotePreviews?: boolean; siteIcons?: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: MobileMode; favoritesBar?: boolean; favoritesCount?: number; favoritesLabels?: boolean; panelRecent?: boolean; panelRecentCount?: number; panelRecentLabels?: boolean; rail?: boolean; sortBy?: 'name' | 'recent' | 'added'; defaultView?: 'all' | 'groups' };
 
 export type AppState = {
   sites: SiteRecord[];
