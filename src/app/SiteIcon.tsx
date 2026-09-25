@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { loadBrandIndex, lookupBrand, brandMarkUrl, siteIconCandidates, type BrandIndex } from '../domain/brandMark';
 import { brandPlate, markPalette } from '../domain/markPalette';
 
@@ -66,29 +66,48 @@ export function SiteIcon({ title, domain, color, logos = true, className = 'nx-m
   const [brandFailed, setBrandFailed] = useState(false);
   useEffect(() => { setStep(0); setLoaded(false); setBrandFailed(false); }, [domain, logos, brand?.slug]);
 
+  const imageRef = useRef<HTMLImageElement | null>(null);
+
   const mark = brandFailed ? null : brand;
   const palette = mark ? brandPlate(mark.hex) : markPalette(domain, color);
   const source = mark ? brandMarkUrl(mark.slug) : candidates[step];
-  /**
-   * Событие load можно не успеть поймать. Пока знак подставлялся сразу, картинка
-   * всегда шла по сети и обработчик успевал встать. Теперь элемент появляется
-   * ровно в тот момент, когда пришёл указатель, а файл знака лежит рядом и
-   * отдаётся мгновенно: браузер успевает завершить загрузку до того, как
-   * обработчик навешен, onLoad не приходит вовсе, и марка навсегда остаётся
-   * буквой. Поэтому готовность проверяется ещё и по самому элементу.
-   */
-  const checkImage = (node: HTMLImageElement | null) => {
-    if (!node || !node.complete) return;
-    // complete истинно и для неудачной картинки, её отличает нулевая ширина.
-    if (node.naturalWidth > 0) setLoaded(true);
-    else failImage();
-  };
-
   const failImage = () => {
     setLoaded(false);
     if (mark) { setBrandFailed(true); return; }
     setStep(value => value + 1);
   };
+
+  /**
+   * Готовность картинки нельзя выводить из одного события load: его можно не
+   * успеть поймать. Файл знака лежит рядом с приложением и отдаётся мгновенно,
+   * поэтому загрузка успевает завершиться раньше, чем обработчик навешен, —
+   * и марка навсегда остаётся буквой при полностью загруженной картинке.
+   * Проверка по элементу в момент монтирования закрывала только половину
+   * случая: если в этот миг картинка ещё не готова, а событие потом потеряно,
+   * состояние снова застревает. Так и вышло на WebKit после того, как рядом
+   * появились файлы гарнитур и порядок загрузки сместился.
+   *
+   * Поэтому готовность спрашивается у самого изображения: decode() разрешается,
+   * когда картинка раскодирована и годна к показу, и отвергается при неудаче —
+   * независимо от того, поймано событие или нет.
+   */
+  useEffect(() => {
+    const node = imageRef.current;
+    if (!node || !source || loaded) return;
+    let alive = true;
+    const settle = () => {
+      if (!alive || !node.complete) return;
+      // complete истинно и для неудачной картинки, её отличает нулевая ширина.
+      if (node.naturalWidth > 0) setLoaded(true);
+      else failImage();
+    };
+    settle();
+    node.decode?.().then(settle, settle);
+    return () => { alive = false; };
+    // failImage пересоздаётся каждый раз и в зависимости не годится: она
+    // читает только mark, а он меняется вместе с source.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, loaded]);
 
   const style = {
     '--nx-mark-from': palette.from,
@@ -109,7 +128,7 @@ export function SiteIcon({ title, domain, color, logos = true, className = 'nx-m
           // не загружает, и на плитке навсегда остаётся буква. Поэтому пока
           // изображение не готово, оно прозрачное, но всё равно загружается.
           className={loaded ? 'ready' : ''}
-          ref={checkImage}
+          ref={imageRef}
           onLoad={() => setLoaded(true)}
           // Не загрузилось — пробуем следующий адрес, а когда они кончились,
           // остаётся монограмма: битая картинка на экран не попадает никогда.

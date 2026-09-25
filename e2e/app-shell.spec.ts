@@ -1436,7 +1436,12 @@ test.describe('Nexus shell', () => {
 
   test('гарнитуры лежат рядом с приложением, а не на чужом сервере', async ({ page }) => {
     const hosts = new Set<string>();
-    page.on('request', request => hosts.add(new URL(request.url()).hostname));
+    const fonts: string[] = [];
+    page.on('request', request => {
+      const url = new URL(request.url());
+      hosts.add(url.hostname);
+      if (url.pathname.endsWith('.woff2')) fonts.push(url.pathname);
+    });
     await page.goto('/');
     await page.evaluate(() => document.fonts.ready);
 
@@ -1446,19 +1451,13 @@ test.describe('Nexus shell', () => {
 
     // И гарнитура при этом действительно приезжает, а не откатывается к
     // системной: иначе проверка выше проходила бы и на пустом листе.
-    const faces = await page.evaluate(() => ({
-      inter: document.fonts.check('700 14px Inter'),
-      loaded: [...document.fonts]
-        .filter(face => face.status === 'loaded')
-        .map(face => `${face.family} ${face.weight}`)
-        .sort(),
-    }));
-    expect(faces.inter).toBe(true);
-    // Ровно шесть начертаний: три насыщенности × латиница и кириллица.
-    // Расширенные наборы объявлены, но не грузятся — за это отвечает
-    // unicode-range, и если он потеряется, число вырастет.
-    expect(faces.loaded).toEqual([
-      'Inter 400', 'Inter 400', 'Inter 600', 'Inter 600', 'Inter 700', 'Inter 700',
-    ]);
+    expect(await page.evaluate(() => document.fonts.check('700 14px Inter'))).toBe(true);
+    expect(fonts.length).toBeGreaterThan(0);
+
+    // Расширенные наборы объявлены, но не забираются: за это отвечает
+    // unicode-range. Сколько именно начертаний доедет, решает движок — WebKit
+    // и Chromium считают по-разному, — а вот забирать латиницу с диакритикой
+    // для русского интерфейса не должен ни один.
+    expect(fonts.filter(name => name.includes('-ext-'))).toEqual([]);
   });
 });
