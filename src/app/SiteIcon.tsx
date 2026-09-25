@@ -69,6 +69,27 @@ export function SiteIcon({ title, domain, color, logos = true, className = 'nx-m
   const mark = brandFailed ? null : brand;
   const palette = mark ? brandPlate(mark.hex) : markPalette(domain, color);
   const source = mark ? brandMarkUrl(mark.slug) : candidates[step];
+  /**
+   * Событие load можно не успеть поймать. Пока знак подставлялся сразу, картинка
+   * всегда шла по сети и обработчик успевал встать. Теперь элемент появляется
+   * ровно в тот момент, когда пришёл указатель, а файл знака лежит рядом и
+   * отдаётся мгновенно: браузер успевает завершить загрузку до того, как
+   * обработчик навешен, onLoad не приходит вовсе, и марка навсегда остаётся
+   * буквой. Поэтому готовность проверяется ещё и по самому элементу.
+   */
+  const checkImage = (node: HTMLImageElement | null) => {
+    if (!node || !node.complete) return;
+    // complete истинно и для неудачной картинки, её отличает нулевая ширина.
+    if (node.naturalWidth > 0) setLoaded(true);
+    else failImage();
+  };
+
+  const failImage = () => {
+    setLoaded(false);
+    if (mark) { setBrandFailed(true); return; }
+    setStep(value => value + 1);
+  };
+
   const style = {
     '--nx-mark-from': palette.from,
     '--nx-mark-to': palette.to,
@@ -88,14 +109,11 @@ export function SiteIcon({ title, domain, color, logos = true, className = 'nx-m
           // не загружает, и на плитке навсегда остаётся буква. Поэтому пока
           // изображение не готово, оно прозрачное, но всё равно загружается.
           className={loaded ? 'ready' : ''}
+          ref={checkImage}
           onLoad={() => setLoaded(true)}
           // Не загрузилось — пробуем следующий адрес, а когда они кончились,
           // остаётся монограмма: битая картинка на экран не попадает никогда.
-          onError={() => {
-            setLoaded(false);
-            if (mark) { setBrandFailed(true); return; }
-            setStep(value => value + 1);
-          }}
+          onError={failImage}
         />
       )}
       {!loaded && <span className="nx-mark-text">{monogram(title)}</span>}

@@ -1400,13 +1400,17 @@ test.describe('Nexus shell', () => {
     // Восемь из девяти демонстрационных сайтов имеют знак. Девятый —
     // «Яндекс»: в наборе simple-icons остался только Yandex Cloud, поэтому
     // ya.ru показывает запасную марку, и это верное поведение, а не сбой.
-    await expect
-      .poll(async () => (await census()).filter(row => !row.settled).map(row => row.name), { timeout: 10_000 })
-      .toEqual(['Яндекс']);
-
-    // Полный расклад уходит в журнал прогона: по нему видно, какой адрес
-    // подставлен каждой марке и дошла ли картинка.
-    for (const row of await census()) console.log(`${row.name} [${row.state}] ${row.picture}`);
+    try {
+      await expect
+        .poll(async () => (await census()).filter(row => !row.settled).map(row => row.name), { timeout: 10_000 })
+        .toEqual(['Яндекс']);
+    } finally {
+      // Полный расклад уходит в журнал прогона — и на зелёном, и на красном:
+      // по нему видно, какой адрес подставлен каждой марке и дошла ли картинка.
+      // Без этого падение сообщало только имена, и нельзя было отличить
+      // «указатель не пришёл» от «картинка не отрисовалась».
+      for (const row of await census()) console.log(`${row.name} [${row.state}] ${row.picture}`);
+    }
   });
 
   test('сайт, чей знак лежит в наборе, не узнаёт об открытии вкладки', async ({ page }) => {
