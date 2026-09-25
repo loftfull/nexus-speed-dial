@@ -1408,4 +1408,25 @@ test.describe('Nexus shell', () => {
     // подставлен каждой марке и дошла ли картинка.
     for (const row of await census()) console.log(`${row.name} [${row.state}] ${row.picture}`);
   });
+
+  test('сайт, чей знак лежит в наборе, не узнаёт об открытии вкладки', async ({ page }) => {
+    // Запасной уровень — иконка с самого сайта, и раньше он включался до
+    // того, как приходил указатель знаков: первый же кадр рассылал запрос
+    // на все девять сайтов, хотя восемь знаков лежали в сборке. Каждый такой
+    // запрос сообщает чужому серверу адрес и браузер пользователя.
+    const hosts = new Set<string>();
+    page.on('request', request => hosts.add(new URL(request.url()).hostname));
+    await page.goto('/');
+    await expect(page.locator('.nx-grid .nx-mark.brand.filled')).toHaveCount(8);
+
+    // Восемь сайтов со знаком в наборе не должны попасть в список вовсе.
+    const own = ['vk.com', 'mail.google.com', 'dribbble.com', 'google.com',
+      'spotify.com', 'telegram.org', 'web.whatsapp.com', 'youtube.com'];
+    expect([...hosts].filter(host => own.includes(host))).toEqual([]);
+
+    // А «Яндекс» знака в наборе не имеет, поэтому запасной уровень для него
+    // обязан сработать: иначе проверка выше проходила бы и с выключенными
+    // иконками сайтов.
+    await expect.poll(() => hosts.has('ya.ru'), { timeout: 10_000 }).toBe(true);
+  });
 });

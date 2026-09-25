@@ -49,7 +49,16 @@ export function SiteIcon({ title, domain, color, logos = true, className = 'nx-m
   const index = useBrandIndex();
   const brand = useMemo(() => (logos && index ? lookupBrand(index, domain) : null), [logos, index, domain]);
 
-  const candidates = useMemo(() => (logos ? siteIconCandidates(domain) : []), [logos, domain]);
+  // Пока указатель не пришёл, запасные адреса не строятся вовсе. Иначе первый
+  // же кадр уходил запросом на сам сайт — даже когда знак лежит рядом, в
+  // собранном наборе: открытие вкладки сообщало девяти чужим серверам, что
+  // пользователь её открыл, и локальные знаки вставали в очередь за этими
+  // запросами. Указатель локальный и приходит быстро, а при ошибке сети он
+  // отдаётся пустым — значит запасной уровень всё равно включается.
+  const candidates = useMemo(
+    () => (logos && index ? siteIconCandidates(domain) : []),
+    [logos, index, domain],
+  );
   const [step, setStep] = useState(0);
   const [loaded, setLoaded] = useState(false);
   // Файл знака может не отдаться — например, в урезанной сборке предпросмотра.

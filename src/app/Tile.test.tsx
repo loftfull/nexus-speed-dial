@@ -1,7 +1,8 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Tile, monogram } from './Tile';
+import { resetBrandIndex } from '../domain/brandMark';
 import type { SiteRecord } from '../domain/types';
 
 const site: SiteRecord = {
@@ -10,6 +11,25 @@ const site: SiteRecord = {
 };
 
 const handlers = () => ({ onOpen: vi.fn(), onFavorite: vi.fn(), onEdit: vi.fn(), onDelete: vi.fn() });
+
+/**
+ * Указатель фирменных знаков подменяется на заданные строки: без него плитка
+ * вообще не обращается к сайту, и проверки запасных уровней ждали бы вечно.
+ */
+function serveIndex(lines: string[] = []) {
+  const fetcher = vi.fn().mockResolvedValue({ ok: true, text: async () => lines.join('\n') });
+  vi.stubGlobal('fetch', fetcher);
+  resetBrandIndex();
+  return fetcher;
+}
+
+/** Картинка появляется только после указателя, поэтому её ждут. */
+const waitForImage = (container: HTMLElement) =>
+  waitFor(() => {
+    const image = container.querySelector('img');
+    expect(image).not.toBeNull();
+    return image as HTMLImageElement;
+  });
 
 describe('monogram', () => {
   it('берёт первую букву односложного названия', () => {
@@ -28,6 +48,9 @@ describe('monogram', () => {
 });
 
 describe('Tile', () => {
+  beforeEach(() => { serveIndex(); });
+  afterEach(() => { vi.unstubAllGlobals(); resetBrandIndex(); });
+
   it('открывает сайт по нажатию на плитку', async () => {
     const user = userEvent.setup();
     const props = handlers();
@@ -67,10 +90,27 @@ describe('Tile', () => {
     expect(screen.getByRole('menuitem', { name: /Убрать из избранного/ })).toBeInTheDocument();
   });
 
-  it('держит монограмму на экране, пока иконка сайта не загрузилась', () => {
+  it('не трогает сам сайт, пока не пришёл указатель знаков', () => {
+    // Иначе открытие вкладки сообщало бы каждому сайту из набора, что
+    // пользователь её открыл, — даже когда знак лежит рядом, в сборке.
     const { container } = render(<Tile site={site} useFavicons {...handlers()} />);
-    const image = container.querySelector('img') as HTMLImageElement;
-    // Сначала пробуется крупная иконка сайта, а не 16-пиксельный favicon.ico.
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('.nx-mark')).toHaveTextContent('F');
+  });
+
+  it('берёт знак из набора и вовсе не обращается к сайту', async () => {
+    serveIndex(['figma.com\tfigma\tF24E1E']);
+    const { container } = render(<Tile site={site} useFavicons {...handlers()} />);
+    const image = await waitForImage(container);
+    expect(image.getAttribute('src')).toContain('brands/figma.svg');
+    expect(image.getAttribute('src')).not.toContain('figma.com/');
+  });
+
+  it('держит монограмму на экране, пока иконка сайта не загрузилась', async () => {
+    const { container } = render(<Tile site={site} useFavicons {...handlers()} />);
+    const image = await waitForImage(container);
+    // Знака в наборе нет, поэтому пробуется крупная иконка самого сайта,
+    // а не 16-пиксельный favicon.ico.
     expect(image.src).toBe('https://figma.com/apple-touch-icon.png');
     // Незагруженная картинка не помечена ready и потому прозрачна, но остаётся
     // в разметке: скрытая через display:none она бы не загрузилась вовсе.
@@ -82,6 +122,7 @@ describe('Tile', () => {
   it('переходит к следующему адресу, когда иконка не загрузилась', async () => {
     const { container } = render(<Tile site={site} useFavicons {...handlers()} />);
     const image = () => container.querySelector('img') as HTMLImageElement;
+    await waitForImage(container);
     expect(image().src).toBe('https://figma.com/apple-touch-icon.png');
     await act(async () => { fireEvent.error(image()); });
     expect(image().src).toBe('https://figma.com/apple-touch-icon-precomposed.png');
@@ -92,10 +133,13 @@ describe('Tile', () => {
   it('после неудачного знака переходит к иконке с самого сайта', async () => {
     // Знак может не отдаться — например, в урезанной сборке предпросмотра.
     // Тогда должен работать следующий уровень, а не сразу монограмма.
+    serveIndex(['figma.com\tfigma\tF24E1E']);
     const { container } = render(<Tile site={site} useFavicons {...handlers()} />);
     const image = () => container.querySelector('img') as HTMLImageElement;
+    await waitForImage(container);
+    expect(image().src).toContain('brands/figma.svg');
     await act(async () => { fireEvent.error(image()); });
-    expect(image().src).toContain('apple-touch-icon-precomposed');
+    expect(image().src).toBe('https://figma.com/apple-touch-icon.png');
   });
 
   it('не запрашивает иконку сайта, когда логотипы выключены', () => {
