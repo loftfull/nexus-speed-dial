@@ -17,9 +17,11 @@
     "qa:reference": "node scripts/qa-reference.mjs",
     "qa:full": "npm run qa:unit && npm run qa:reference && npm run qa:e2e && npm run test:visual",
     "brands": "node scripts/build-brand-marks.mjs",
-    "prebuild": "npm run brands",
-    "predev": "npm run brands",
-    "prepreview": "npm run brands",
+    "fonts": "node scripts/build-fonts.mjs",
+    "pretest": "npm run fonts",
+    "prebuild": "npm run brands && npm run fonts",
+    "predev": "npm run brands && npm run fonts",
+    "prepreview": "npm run brands && npm run fonts",
     "icons": "node scripts/build-icons.mjs",
     "scale": "node scripts/check-scale.mjs"
   },
@@ -32,6 +34,8 @@
     "vite": "8.3.0"
   },
   "devDependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/manrope": "^5.3.0",
     "@phosphor-icons/core": "^2.1.1",
     "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^7.0.1",

@@ -1433,4 +1433,32 @@ test.describe('Nexus shell', () => {
     // иконками сайтов.
     await expect.poll(() => hosts.has('ya.ru'), { timeout: 10_000 }).toBe(true);
   });
+
+  test('гарнитуры лежат рядом с приложением, а не на чужом сервере', async ({ page }) => {
+    const hosts = new Set<string>();
+    page.on('request', request => hosts.add(new URL(request.url()).hostname));
+    await page.goto('/');
+    await page.evaluate(() => document.fonts.ready);
+
+    // Прежде страница ходила на fonts.googleapis.com и fonts.gstatic.com, то
+    // есть каждое открытие вкладки сообщало о себе шрифтовому сервису.
+    expect([...hosts].filter(host => host.includes('font'))).toEqual([]);
+
+    // И гарнитура при этом действительно приезжает, а не откатывается к
+    // системной: иначе проверка выше проходила бы и на пустом листе.
+    const faces = await page.evaluate(() => ({
+      inter: document.fonts.check('700 14px Inter'),
+      loaded: [...document.fonts]
+        .filter(face => face.status === 'loaded')
+        .map(face => `${face.family} ${face.weight}`)
+        .sort(),
+    }));
+    expect(faces.inter).toBe(true);
+    // Ровно шесть начертаний: три насыщенности × латиница и кириллица.
+    // Расширенные наборы объявлены, но не грузятся — за это отвечает
+    // unicode-range, и если он потеряется, число вырастет.
+    expect(faces.loaded).toEqual([
+      'Inter 400', 'Inter 400', 'Inter 600', 'Inter 600', 'Inter 700', 'Inter 700',
+    ]);
+  });
 });

@@ -7,3 +7,7 @@ playwright-report/
 
 # Фирменные знаки собираются из simple-icons на этапе сборки.
 public/brands/
+
+# Гарнитуры раскладываются из @fontsource на этапе сборки.
+src/assets/fonts/
+src/app/fonts.css
