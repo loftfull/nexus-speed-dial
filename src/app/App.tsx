@@ -11,6 +11,9 @@ import './theme.css';
 import { appReducer, createInitialAppState, persistAppState } from '../domain/appStore';
 import { getStorageUsage } from '../domain/storage';
 import { sortSites, type SortKey } from '../domain/sortSites';
+import {
+  WEATHER_TTL_MS, readWeatherCache, weatherCacheAge, writeWeatherCache, type Weather,
+} from '../domain/weatherCache';
 import type { AppearanceState, MobileMode } from '../domain/appStore';
 import { seedSites } from '../domain/seed';
 import { readStorage, writeStorage } from '../domain/storage';
@@ -93,8 +96,6 @@ const WEATHER_LABELS: Record<number, string> = {
   0: 'Ясно', 1: 'Преимущественно ясно', 2: 'Переменная облачность', 3: 'Пасмурно',
   61: 'Небольшой дождь', 63: 'Дождь', 71: 'Снег',
 };
-type ForecastDay = { key: string; label: string; code: number; hi: string; lo: string };
-type Weather = { temp: string; label: string; hi: string; lo: string; humidity: string; wind: string; ready: boolean; days: ForecastDay[] };
 const WEATHER_EMPTY: Weather = { temp: '—', label: 'Загрузка погоды…', hi: '', lo: '', humidity: '', wind: '', ready: false, days: [] };
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
@@ -236,6 +237,13 @@ export function App() {
     const [latitude, longitude] = WEATHER_PLACES[ui.weatherCity] ?? WEATHER_PLACES['Москва'];
     const unit = ui.weatherUnits === 'Фаренгейт (°F)' ? '&temperature_unit=fahrenheit' : '';
     let cancelled = false;
+
+    // Прогноз, снятый меньше срока назад, показывается сразу и запроса не
+    // требует. Без этого обновление «раз в полчаса» не соблюдалось вовсе:
+    // таймер живёт внутри страницы, а каждое открытие вкладки — новая
+    // страница, поэтому запрос уходил каждый раз.
+    const cached = readWeatherCache(ui.weatherCity, ui.weatherUnits, Date.now());
+
     const load = () => {
       setWeather(WEATHER_EMPTY);
       fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}`
@@ -246,7 +254,7 @@ export function App() {
           if (cancelled) return;
           const current = data?.current;
           if (current?.temperature_2m == null) throw new Error('weather-data');
-          setWeather({
+          const fresh: Weather = {
             temp: `${Math.round(current.temperature_2m)}°`,
             label: WEATHER_LABELS[current.weather_code as number] ?? 'Переменная облачность',
             hi: data?.daily?.temperature_2m_max?.[0] != null ? `${Math.round(data.daily.temperature_2m_max[0])}°` : '',
@@ -261,13 +269,28 @@ export function App() {
               hi: data.daily.temperature_2m_max?.[index] != null ? `${Math.round(data.daily.temperature_2m_max[index])}°` : '',
               lo: data.daily.temperature_2m_min?.[index] != null ? `${Math.round(data.daily.temperature_2m_min[index])}°` : '',
             })),
-          });
+          };
+          setWeather(fresh);
+          writeWeatherCache(fresh, ui.weatherCity, ui.weatherUnits, Date.now());
         })
         .catch(() => { if (!cancelled) setWeather({ ...WEATHER_EMPTY, label: 'Погода недоступна' }); });
     };
-    load();
-    const timer = ui.weatherAuto ? window.setInterval(load, 30 * 60 * 1000) : undefined;
-    return () => { cancelled = true; if (timer) window.clearInterval(timer); };
+
+    if (cached) setWeather(cached); else load();
+
+    // Обновление продолжает идти раз в срок, но считается от времени записи:
+    // вкладка, открытая через двадцать минут, ждёт десять, а не тридцать.
+    let timer: number | undefined;
+    if (ui.weatherAuto) {
+      const left = cached
+        ? Math.max(0, WEATHER_TTL_MS - weatherCacheAge(ui.weatherCity, ui.weatherUnits, Date.now()))
+        : WEATHER_TTL_MS;
+      timer = window.setTimeout(() => {
+        load();
+        timer = window.setInterval(load, WEATHER_TTL_MS);
+      }, left);
+    }
+    return () => { cancelled = true; if (timer) { window.clearTimeout(timer); window.clearInterval(timer); } };
   }, [ui.weather, ui.weatherCity, ui.weatherUnits, ui.weatherAuto]);
 
   useEffect(() => {

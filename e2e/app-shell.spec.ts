@@ -1460,4 +1460,37 @@ test.describe('Nexus shell', () => {
     // для русского интерфейса не должен ни один.
     expect(fonts.filter(name => name.includes('-ext-'))).toEqual([]);
   });
+
+  test('второе открытие вкладки не идёт за погодой заново', async ({ page }) => {
+    let asked = 0;
+    await page.route('https://api.open-meteo.com/**', async route => {
+      asked += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          current: { temperature_2m: 18, weather_code: 2, relative_humidity_2m: 54, wind_speed_10m: 6 },
+          daily: {
+            time: ['2026-09-25'], weather_code: [2],
+            temperature_2m_max: [20], temperature_2m_min: [11],
+          },
+        }),
+      });
+    });
+
+    await page.goto('/');
+    // Температура встала на место — значит прогноз получен и сохранён.
+    await expect(page.locator('.nx-dock-weather')).toContainText('18°');
+    expect(asked).toBe(1);
+
+    // Открытие вкладки — это новая страница, а таймер обновления живёт внутри
+    // страницы. Пока прогноз не сохранялся, запрос уходил при каждом открытии:
+    // десятки раз в день вместо двух в час.
+    await page.goto('/');
+    await expect(page.locator('.nx-dock-weather')).toContainText('18°');
+    expect(asked).toBe(1);
+
+    // И показывается он сразу, без «Загрузка погоды…» между кадрами.
+    await expect(page.locator('.nx-dock-weather')).not.toContainText('—');
+  });
 });
