@@ -1,0 +1,65 @@
+# Развёртывание страницы новой вкладки на GitHub Pages.
+#
+# Запускается только вручную. Причина: actions/deploy-pages падает, пока в
+# настройках репозитория не выбран источник «GitHub Actions» (Settings → Pages
+# → Source). Триггер по пушу красил бы каждый прогон до этого момента, а
+# красный прогон, который нельзя починить кодом, хуже отсутствия триггера.
+#
+# Когда источник выбран, достаточно добавить сюда push по рабочей ветке —
+# и адрес будет обновляться сам.
+#
+# Адрес складывается из имени владельца и репозитория:
+# https://loftfull.github.io/nexus-speed-dial/ — и ровно этот подкаталог
+# подставляет vite.config.ts, когда видит переменную GITHUB_ACTIONS.
+name: Pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Развёртывание одно на весь репозиторий: параллельные прогоны затирали бы
+# друг друга, поэтому новый ждёт, а не отменяет уже начатый.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      # Сборка идёт через prebuild, который раскладывает фирменные знаки и
+      # гарнитуры. Отдельно их звать не нужно.
+      - name: Build
+        run: npm run build
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v4
