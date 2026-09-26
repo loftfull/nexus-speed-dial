@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { appReducer, createInitialAppState, normalizeMobileMode } from './appStore';
+import type { StorageAdapter } from './storage';
+import { appReducer, createInitialAppState, normalizeMobileMode, persistAppState } from './appStore';
 
 describe('app store reducer', () => {
   const initial = createInitialAppState([{ title: 'Figma', desc: '', domain: 'figma.com', color: '#f00', icon: 'F', category: 'Проект' }]);
@@ -99,5 +100,76 @@ describe('app store reducer', () => {
 
   it('starts with the table arrangement on a narrow screen', () => {
     expect(initial.ui.mobileMode).toBe('table');
+  });
+});
+
+describe('сохранение при переполнении хранилища', () => {
+  /**
+   * Хранилище с потолком по объёму, как настоящее. Счёт по числу записей не
+   * годился: девять ключей из десяти при повторном сохранении не меняются, и
+   * места они не просят — переполнение так не наступало вовсе.
+   */
+  function tight(limitBytes: number) {
+    const data = new Map<string, string>();
+    const size = () => [...data.entries()].reduce((sum, [key, value]) => sum + key.length + value.length, 0);
+    let limit = limitBytes;
+    const adapter: StorageAdapter = {
+      getItem: key => data.get(key) ?? null,
+      setItem: (key, value) => {
+        const without = size() - (data.has(key) ? key.length + (data.get(key) ?? '').length : 0);
+        if (without + key.length + value.length > limit) {
+          throw new DOMException('quota', 'QuotaExceededError');
+        }
+        data.set(key, value);
+      },
+      removeItem: key => { data.delete(key); },
+      key: index => [...data.keys()][index] ?? null,
+    };
+    return { adapter, data, shrinkTo: (bytes: number) => { limit = bytes; } };
+  }
+
+  const stateWith = (title: string) => ({
+    ...createInitialAppState([]),
+    sites: [{ id: 'site-1', title, desc: '', domain: 'a.test', color: '#111', icon: 'A', category: 'К', categoryId: 'cat-1' }],
+  });
+
+  it('пишет все десять ключей, когда места хватает', () => {
+    const store = tight(1_000_000);
+    expect(persistAppState(stateWith('Первый'), store.adapter)).toBe(true);
+    expect(store.data.size).toBe(10);
+  });
+
+  it('не оставляет половину записи, когда место кончилось', () => {
+    const store = tight(1_000_000);
+    persistAppState(stateWith('Первый'), store.adapter);
+    const snapshot = new Map(store.data);
+    const used = [...store.data.entries()].reduce((sum, [key, value]) => sum + key.length + value.length, 0);
+
+    // Разрыв надо смоделировать честно: ранний ключ должен поместиться, а
+    // поздний — нет. Иначе отказ случается на первом же ключе, рвать нечего,
+    // и проверка проходит даже без отката — на этом первая её редакция и
+    // попалась.
+    //
+    // «Второй» ровно той же длины, что «Первый», поэтому nexus-sites ложится
+    // без роста. А список сессий вырастает настолько, что до него места уже
+    // не хватает.
+    store.shrinkTo(used + 40);
+    const torn = {
+      ...stateWith('Второй'),
+      sessions: [{ id: 'session-1', name: 'С'.repeat(400), siteIds: [], createdAt: 1 }],
+    };
+    expect(persistAppState(torn, store.adapter)).toBe(false);
+
+    // Ни один ключ не изменился: несогласованного состояния не осталось.
+    expect([...store.data.entries()].sort()).toEqual([...snapshot.entries()].sort());
+    expect(store.data.get('nexus-sites')).toContain('Первый');
+    expect(store.data.get('nexus-sites')).not.toContain('Второй');
+  });
+
+  it('ключ, которого не было, после отката не появляется', () => {
+    // Места нет совсем: ни один ключ не должен остаться.
+    const store = tight(20);
+    expect(persistAppState(stateWith('Первый'), store.adapter)).toBe(false);
+    expect(store.data.size).toBe(0);
   });
 });

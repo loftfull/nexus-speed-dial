@@ -3,7 +3,7 @@ import { normalizeSiteAddress } from './siteUtils';
 import { normalizeTileAppearance, type TileAppearance } from './tileAppearance';
 import { migrateHierarchy } from './hierarchy';
 import { seedCategories, seedGroups, seedProjects } from './seed';
-import { readStorage, writeStorage } from './storage';
+import { browserStorage, readStorage, writeStorage, type StorageAdapter } from './storage';
 import type { NexusBackup } from './backup';
 
 /** Внешний вид плитки целиком описан в `tileAppearance`. */
@@ -204,18 +204,46 @@ export function appReducer(state: AppState, action: AppAction): AppState {
   }
 }
 
-/** Returns false when at least one key could not be written, e.g. the quota is full. */
-export function persistAppState(state: AppState): boolean {
-  return [
-    writeStorage('nexus-sites', state.sites),
-    writeStorage('nexus-trash', state.trash),
-    writeStorage('nexus-categories', state.categories),
-    writeStorage('nexus-groups', state.groups),
-    writeStorage('nexus-history', state.history),
-    writeStorage('nexus-ui', state.ui),
-    writeStorage('nexus-tile', state.tile),
-    writeStorage('nexus-appearance', state.appearance),
-    writeStorage('nexus-projects', state.projects),
-    writeStorage('nexus-sessions', state.sessions),
-  ].every(Boolean);
+/**
+ * Сохраняет состояние целиком или не сохраняет вовсе.
+ *
+ * Ключей десять, и записывались они подряд: когда место кончалось на
+ * середине, часть ложилась, часть нет. После перезагрузки получалось
+ * несогласованное состояние — например, сайты записались, а категории, в
+ * которых они лежат, остались прежними. Половина сохранения хуже, чем
+ * отсутствие сохранения: во втором случае пользователь хотя бы видит ровно
+ * то, что было, и ему честно сказано, что место кончилось.
+ *
+ * Поэтому перед записью снимаются прежние значения, и первая же неудача
+ * откатывает всё обратно. Возврат false остаётся прежним: приложение по нему
+ * показывает сообщение о переполнении.
+ */
+export function persistAppState(state: AppState, storage: StorageAdapter = browserStorage): boolean {
+  const entries: [string, unknown][] = [
+    ['nexus-sites', state.sites],
+    ['nexus-trash', state.trash],
+    ['nexus-categories', state.categories],
+    ['nexus-groups', state.groups],
+    ['nexus-history', state.history],
+    ['nexus-ui', state.ui],
+    ['nexus-tile', state.tile],
+    ['nexus-appearance', state.appearance],
+    ['nexus-projects', state.projects],
+    ['nexus-sessions', state.sessions],
+  ];
+  const before = entries.map(([key]) => [key, storage.getItem(key)] as const);
+
+  for (const [key, value] of entries) {
+    if (writeStorage(key, value, storage)) continue;
+    // Откат. Ключ, которого раньше не было, убирается совсем: пустая строка
+    // и отсутствие ключа читаются по-разному.
+    for (const [name, raw] of before) {
+      try {
+        if (raw === null) storage.removeItem(name);
+        else storage.setItem(name, raw);
+      } catch { /* места нет даже на откат — дальше уже ничего не поможет */ }
+    }
+    return false;
+  }
+  return true;
 }
