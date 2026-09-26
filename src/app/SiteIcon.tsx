@@ -95,14 +95,17 @@ export function SiteIcon({ title, domain, color, logos = true, className = 'nx-m
     const node = imageRef.current;
     if (!node || !source || loaded) return;
     let alive = true;
-    const settle = () => {
-      if (!alive || !node.complete) return;
-      // complete истинно и для неудачной картинки, её отличает нулевая ширина.
-      if (node.naturalWidth > 0) setLoaded(true);
-      else failImage();
-    };
-    settle();
-    node.decode?.().then(settle, settle);
+    // Эффект ловит только пропущенный успех. Неудачу он не объявляет: для неё
+    // есть onError и отказ decode(), а вот пара «complete истинно, ширина
+    // нулевая» бывает и у картинки, которая просто не начинала грузиться, —
+    // в jsdom так выглядит любой <img> без src. Эта ветка однажды и увела
+    // знак не туда: прогон 323 показал, что после ошибки адрес остался
+    // прежним, хотя должен был перейти на запасной. Воспроизвести падение
+    // на месте не удалось, поэтому неоднозначная ветка снята целиком, а не
+    // подправлена наугад.
+    const succeed = () => { if (alive && node.complete && node.naturalWidth > 0) setLoaded(true); };
+    succeed();
+    node.decode?.().then(succeed, () => { if (alive) failImage(); });
     return () => { alive = false; };
     // failImage пересоздаётся каждый раз и в зависимости не годится: она
     // читает только mark, а он меняется вместе с source.
