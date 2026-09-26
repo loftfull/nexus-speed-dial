@@ -59,10 +59,17 @@ jobs:
         if: steps.review.outputs.mode == 'accept'
         shell: bash
         run: |
-          if git diff --quiet -- e2e/visual.spec.ts-snapshots; then
+          # `git diff` не видит неотслеживаемые файлы, а именно такими
+          # возвращаются эталоны, удалённые перед пересъёмкой: в прогоне 94
+          # Playwright записал все семь снимков, а шаг доложил «нечего
+          # коммитить» и ничего не отправил. `git status --porcelain` видит
+          # и изменённые, и новые, и удалённые.
+          changed=$(git status --porcelain -- e2e/visual.spec.ts-snapshots)
+          if [ -z "$changed" ]; then
             echo 'Reviewed baselines already match; nothing to commit.'
             exit 0
           fi
+          echo "$changed"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add e2e/visual.spec.ts-snapshots
