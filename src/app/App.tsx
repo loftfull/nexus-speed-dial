@@ -1158,9 +1158,7 @@ export function App() {
                   {projectCategories.map(category => (
                     <button key={category.id} type="button"
                       className={'nx-cat-card' + (categoryId === category.id ? ' on' : '')}
-                      /* Длина имени доходит до стиля числом: по нему кегль
-                         подгоняется оптически, без многоточия. */
-                      style={{ '--nx-node': categoryColor(category), '--nx-name-len': category.name.length } as React.CSSProperties}
+                      style={{ '--nx-node': categoryColor(category) } as React.CSSProperties}
                       aria-current={categoryId === category.id ? 'true' : undefined}
                       onClick={() => { setCategoryId(category.id); setGroupId(null); }}>
                       <NodeMark name={category.name} size={22} active={categoryId === category.id} />

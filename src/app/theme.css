@@ -1621,17 +1621,22 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 /* Монограмма узла: когда название ни о чём не говорит, знака нет вовсе.
    Круг с буквой честно сообщает «имя знаю, смысл нет» — в отличие от тега,
    который утверждал бы, что категория про ярлыки. */
+/* Кегль монограммы — ступень шкалы, а не доля от размера рамки: доля давала
+   бесконечный ряд значений, чего шкала и не допускает. Рамка под него
+   подстраивается, а не наоборот. */
 .nx-node-mono{display:inline-grid;place-items:center;flex:none;border-radius:50%;
- font-size:.62em;font-weight:700;letter-spacing:.2px;line-height:1;
+ min-width:18px;min-height:18px;
+ font-size:var(--nx-fs-1);font-weight:700;letter-spacing:.2px;line-height:1;
  color:var(--nx-node,var(--nx-muted));
  background:color-mix(in srgb,var(--nx-node,var(--nx-muted)) 16%,transparent);
  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--nx-node,var(--nx-muted)) 34%,transparent)}
 .nx-cat-card span{font-size:var(--nx-fs-2);font-weight:600;color:var(--nx-text);max-width:100%;
  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* Оптическая подгонка: имя длиннее тринадцати знаков набирается на ступень
-   мельче. Приём из дорогих интерфейсов — лучше на волос мельче, чем с
-   многоточием. Порог держится в паре с потолком ширины выше. */
-.nx-cat-card span:not(:empty){font-size:clamp(var(--nx-fs-1),calc(var(--nx-fs-2) - (var(--nx-name-len,0) - 13) * .34px),var(--nx-fs-2))}
+/* Здесь была «оптическая подгонка»: кегль плавно уменьшался с длиной имени.
+   Проверка шкалы её отвергла, и правильно — она же и заведена против такого.
+   Аудит насчитал в стилях девятнадцать кеглей, часть в полпикселя друг от
+   друга, и запрет на значения вне шкалы держит их шесть. Ширины, растущей от
+   названия, и так достаточно: обрезки нет, а это и было целью. */
 .nx-cat-card:hover{transform:translateY(-2px)}
 .nx-cat-card.on{background:var(--nx-accent-soft);
  box-shadow:inset 0 0 0 2px var(--nx-accent),0 8px 20px -12px rgba(16,24,40,.32)}
