@@ -68,7 +68,9 @@ export function TileSettings({ tile, patch, applyPreset, siteIcons, setSiteIcons
     <>
       <div className="nx-card">
         <h3>Готовый вид</h3>
-        <p className="nx-card-hint">Девять наборов. Любой из них — отправная точка: все параметры ниже остаются доступны.</p>
+        {/* Число берётся из самого списка: подпись говорила «Девять наборов»,
+            когда их было уже пятнадцать, и разойтись снова не сможет. */}
+        <p className="nx-card-hint">Наборов — {PRESET_ORDER.length}. Любой из них — отправная точка: все параметры ниже остаются доступны.</p>
         <div className="nx-presets">
           {PRESET_ORDER.map(id => {
             const sample = TILE_PRESETS[id];

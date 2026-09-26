@@ -167,8 +167,12 @@ test.describe('Nexus shell', () => {
     expect(scoped).toBeLessThan(all);
     await expect(page.locator('.nx-group')).toHaveCount(0);
 
-    test.skip(testInfo.project.name === 'mobile', 'Сегмент вида живёт в заголовке содержимого на широком экране.');
-    await page.getByRole('button', { name: 'По группам' }).click();
+    test.skip(testInfo.project.name === 'mobile', 'Вид «по группам» рисуется только на широком экране.');
+    // Вид сетки переехал в настройки: панельки над сеткой больше нет.
+    await page.getByRole('button', { name: 'Настройки' }).last().click();
+    await page.locator('.nx-rail-item', { hasText: /^Плитки$/ }).click();
+    await page.getByLabel('Вид сетки').selectOption('groups');
+    await page.getByRole('button', { name: 'Закрыть настройки' }).click();
     const blocks = page.locator('.nx-group');
     expect(await blocks.count()).toBeGreaterThan(1);
     expect(await page.locator('.nx-group .nx-tile').count()).toBe(scoped);
@@ -387,22 +391,21 @@ test.describe('Nexus shell', () => {
     expect(worst.scrollWidth).toBe(worst.inner);
   });
 
-  test('на узком экране переключатель раскладки идёт под лентой категорий', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'mobile', 'Переключатель раскладки живёт только на узком экране.');
+  /**
+   * Панель отображения плиток переехала в настройки целиком: ни на широком,
+   * ни на узком экране над сеткой не должно остаться органов, которые лишь
+   * дублируют раздел «Плитки». Прежняя проверка следила за тем, чтобы
+   * переключатель раскладки стоял в одной строке с лентой категорий, —
+   * следить больше не за чем, самой строки нет.
+   */
+  test('над сеткой не осталось органов выбора вида', async ({ page }, testInfo) => {
     await page.goto('/');
-    const views = page.getByRole('group', { name: 'Вид сетки на узком экране' });
-    const carousel = page.locator('.nx-carousel');
-    const viewsBox = (await views.boundingBox())!;
-    const carouselBox = (await carousel.boundingBox())!;
-    // Переключатель идёт под лентой категорий, а не занимает отдельную
-    // строку выше неё: на 390 px каждая строка сверху — минус одна плитка.
-    expect(viewsBox.y).toBeGreaterThanOrEqual(carouselBox.y + carouselBox.height - 2);
+    await expect(page.locator('.nx-main .nx-seg, .nx-main .nx-sort, .nx-main .nx-mobile-views')).toHaveCount(0);
+    await expect(page.getByRole('group', { name: 'Вид сетки на узком экране' })).toHaveCount(0);
+    await expect(page.getByRole('group', { name: 'Вид списка' })).toHaveCount(0);
 
-    // Вне «Быстрого доступа» строки категорий нет, но переключатель остаётся.
+    // Заголовок раздела на узком экране остаётся: убраны органы, не навигация.
     await openSection(page, testInfo, 'Корзина');
-    await expect(page.locator('.nx-carousel')).toHaveCount(0);
-    await expect(views).toBeVisible();
-    // Заголовок раздела на узком экране остаётся, исчезает только строка со счётчиком.
     await expect(page.getByRole('heading', { name: 'Корзина' })).toBeVisible();
   });
 
@@ -839,23 +842,27 @@ test.describe('Nexus shell', () => {
 
 
   // ── настройки ──────────────────────────────────────────────────────────
-  const openSettings = async (page: import('@playwright/test').Page, fold: string) => {
+  const railTo = async (page: import('@playwright/test').Page, section: string) => {
+    const item = page.locator('.nx-rail-item', { hasText: new RegExp(`^${section}$`) });
+    await item.click();
+    await expect(item).toHaveAttribute('aria-current', 'true');
+  };
+  const openSettings = async (page: import('@playwright/test').Page, section: string) => {
     await page.getByRole('button', { name: 'Настройки' }).last().click();
-    const head = page.locator('.nx-fold-head', { hasText: new RegExp(`^${fold}$`) });
-    // One fold is open from the start, so only click the ones that are still shut.
-    if (await head.getAttribute('aria-expanded') !== 'true') await head.click();
-    await expect(head).toHaveAttribute('aria-expanded', 'true');
+    await railTo(page, section);
   };
 
-  test('the accordion carries every settings section again', async ({ page }) => {
+  test('the rail carries every settings section', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Настройки' }).last().click();
-    const heads = page.locator('.nx-settings .nx-fold-head');
-    await expect(heads).toHaveCount(10);
-    for (const label of ['Общие', 'Оформление', 'Плитки', 'Панели', 'Мобильная версия',
+    const items = page.locator('.nx-settings .nx-rail-item');
+    await expect(items).toHaveCount(9);
+    for (const label of ['Общие', 'Оформление', 'Плитки', 'Панели',
       'Поиск', 'Погода', 'Приватность', 'Горячие клавиши', 'Данные']) {
-      await expect(heads.filter({ hasText: new RegExp(`^${label}$`) })).toHaveCount(1);
+      await expect(items.filter({ hasText: new RegExp(`^${label}$`) })).toHaveCount(1);
     }
+    // Открыт ровно один раздел, и рельс показывает какой.
+    await expect(page.locator('.nx-settings .nx-rail-item[aria-current="true"]')).toHaveCount(1);
   });
 
   test('the compact switch really tightens the page behind the settings', async ({ page }) => {
@@ -980,14 +987,21 @@ test.describe('Nexus shell', () => {
     // The table keeps a short description under the name.
     await expect(page.locator('.nx-tile').first().locator('.nx-tile-desc')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Строки с подробным описанием' }).click();
+    const setLayout = async (label: string) => {
+      await page.getByRole('button', { name: 'Настройки' }).last().click();
+      await page.locator('.nx-rail-item', { hasText: /^Плитки$/ }).click();
+      await page.locator('.nx-cell-pick', { hasText: label }).click();
+      await page.getByRole('button', { name: 'Закрыть настройки' }).click();
+    };
+
+    await setLayout('Строки');
     await expect(page.locator('.nx-grid')).toHaveClass(/layout-row/);
     expect(await columns(page)).toBe(1);
     const row = page.locator('.nx-tile').first();
     await expect(row.locator('.nx-tile-desc')).toBeVisible();
     await expect(row.locator('.nx-tile-sub')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Иконки в четыре столбца' }).click();
+    await setLayout('Иконки');
     await expect(page.locator('.nx-grid')).toHaveClass(/layout-icon/);
     expect(await columns(page)).toBe(4);
     const icon = page.locator('.nx-tile').first();
@@ -999,7 +1013,7 @@ test.describe('Nexus shell', () => {
     test.skip(testInfo.project.name !== 'mobile', 'The default only applies to the narrow screen.');
     await page.goto('/');
     await page.getByRole('button', { name: 'Настройки' }).last().click();
-    await page.locator('.nx-fold-head', { hasText: /^Мобильная версия$/ }).click();
+    await railTo(page, 'Плитки');
     await page.locator('.nx-cell-pick', { hasText: 'Иконки' }).click();
     await page.getByRole('button', { name: 'Закрыть настройки' }).click();
     await expect(page.locator('.nx-grid')).toHaveClass(/layout-icon/);
@@ -1051,9 +1065,9 @@ test.describe('Nexus shell', () => {
 
   const openTiles = async (page: import('@playwright/test').Page) => {
     await page.getByRole('button', { name: 'Настройки' }).last().click();
-    const head = page.locator('.nx-fold-head', { hasText: /^Плитки$/ });
-    if (await head.getAttribute('aria-expanded') !== 'true') await head.click();
-    await expect(head).toHaveAttribute('aria-expanded', 'true');
+    const item = page.locator('.nx-rail-item', { hasText: /^Плитки$/ });
+    await item.click();
+    await expect(item).toHaveAttribute('aria-current', 'true');
   };
 
   test('каждый из пятнадцати готовых видов даёт свою плитку', async ({ page }, testInfo) => {
@@ -1186,7 +1200,9 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-main .nx-tile-star')).toHaveCount(1);
 
     await openTiles(page);
-    const section = page.locator('.nx-settings .nx-fold.open .nx-fold-body');
+    // Только органы внешнего вида плитки: вид и сортировка сетки плитку не
+    // меняют и живут в своей группе — их проверяет отдельный тест.
+    const section = page.locator('.nx-settings .nx-tile-look');
     const dead: string[] = [];
 
     const sliders = section.locator('input[type="range"]:not([disabled])');
@@ -1233,6 +1249,26 @@ test.describe('Nexus shell', () => {
     expect(await sliders.count() + await selects.count() + await switches.count()).toBeGreaterThan(24);
   });
 
+  test('вид и сортировка из раздела «Плитки» меняют саму сетку', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Группы и сортировка рисуются на широком экране.');
+    await page.goto('/');
+    const names = () => page.locator('.nx-main .nx-tile .nx-tile-name').allTextContents();
+    const byName = await names();
+    expect(byName.length).toBeGreaterThan(2);
+
+    await openTiles(page);
+    await page.getByLabel('Сортировка').selectOption('added');
+    await page.getByRole('button', { name: 'Закрыть настройки' }).click();
+    const byAdded = await names();
+    expect(byAdded.sort()).toEqual([...byName].sort());
+    expect(byAdded.join()).not.toBe(byName.join());
+
+    await openTiles(page);
+    await page.getByLabel('Вид сетки').selectOption('groups');
+    await page.getByRole('button', { name: 'Закрыть настройки' }).click();
+    expect(await page.locator('.nx-main .nx-group').count()).toBeGreaterThan(0);
+  });
+
   test('погашенный контрол объясняет, почему он сейчас ничего не изменит', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'Узкий экран ведёт свою раскладку.');
     await page.goto('/');
@@ -1261,37 +1297,75 @@ test.describe('Nexus shell', () => {
     expect(new Set(transforms).size).toBe(3);
   });
 
-  test('раздел «Плитки» выложен ровно в три столбца', async ({ page }, testInfo) => {
+  /**
+   * Прежняя редакция требовала ровно три столбца везде. Требование было
+   * слишком жёстким: карточка из четырёх ячеек при трёх столбцах даёт
+   * «три плюс одна», то есть два пустых места в нижнем ряду. Теперь число
+   * столбцов выбирает `columnsFor`, а проверка следит за тем, ради чего
+   * правило и заводилось, — чтобы нижний ряд был заполнен целиком.
+   */
+  const fullRows = async (page: import('@playwright/test').Page, where: string) => {
+    const groups = page.locator('.nx-settings .nx-triples');
+    const count = await groups.count();
+    for (let index = 0; index < count; index += 1) {
+      const group = groups.nth(index);
+      const columns = await group.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+      const cells = await group.locator(':scope > *').count();
+      expect(cells % columns, `${where}: ${cells} ячеек в ${columns} столбца`).toBe(0);
+    }
+    return count;
+  };
+
+  test('в разделе «Плитки» нижний ряд каждой группы заполнен', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'На узком экране панель занимает всю ширину.');
     await page.goto('/');
     await openTiles(page);
-    const grids = page.locator('.nx-settings .nx-triples, .nx-settings .nx-presets, .nx-settings .nx-samples');
-    expect(await grids.count()).toBeGreaterThan(3);
-    for (let index = 0; index < await grids.count(); index += 1) {
-      const columns = await grids.nth(index).evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
-      expect(columns).toBe(3);
-    }
-    // Число ячеек в каждой группе кратно трём, поэтому строки не рвутся.
-    const groups = page.locator('.nx-settings .nx-triples');
-    for (let index = 0; index < await groups.count(); index += 1) {
-      expect(await groups.nth(index).locator(':scope > *').count() % 3).toBe(0);
+    expect(await fullRows(page, 'Плитки')).toBeGreaterThan(2);
+    for (const selector of ['.nx-settings .nx-presets', '.nx-settings .nx-samples']) {
+      const grids = page.locator(selector);
+      for (let index = 0; index < await grids.count(); index += 1) {
+        const columns = await grids.nth(index).evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+        expect(columns).toBe(3);
+      }
     }
   });
 
   test('у каждого контрола настроек есть своя иконка', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Настройки' }).last().click();
-    for (const fold of ['Общие', 'Оформление', 'Панели', 'Мобильная версия', 'Поиск', 'Погода', 'Приватность']) {
-      const head = page.locator('.nx-fold-head', { hasText: new RegExp(`^${fold}$`) });
-      if (await head.getAttribute('aria-expanded') !== 'true') await head.click();
-      const cells = page.locator('.nx-fold.open .nx-cell');
+    for (const section of ['Общие', 'Оформление', 'Плитки', 'Панели', 'Поиск', 'Погода', 'Приватность']) {
+      await railTo(page, section);
+      await fullRows(page, section);
+      const cells = page.locator('.nx-pane-body .nx-cell');
       const count = await cells.count();
-      expect(count % 3, `${fold}: число ячеек кратно трём`).toBe(0);
+      expect(count, `${section}: раздел не пуст`).toBeGreaterThan(0);
       for (let index = 0; index < count; index += 1) {
         await expect(cells.nth(index).locator('.nx-cell-top svg')).toHaveCount(1);
       }
-      await head.click();
     }
+  });
+
+  /**
+   * Ради чего ячейку переложили на три полосы: подписи в одном ряду должны
+   * начинаться на одной линии. Раньше ячейка росла свободным столбиком, и
+   * подпись под выпадающим списком стояла ниже, чем под переключателем.
+   */
+  test('подписи в ряду настроек стоят на одной линии', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Ряд из трёх ячеек живёт на широком экране.');
+    await page.goto('/');
+    await openSettings(page, 'Оформление');
+    const tops = await page.locator('.nx-pane-body .nx-cell .nx-cell-label').evaluateAll(
+      nodes => nodes.map(node => Math.round(node.getBoundingClientRect().top)),
+    );
+    expect(tops.length).toBeGreaterThan(3);
+    // Группируем по рядам: у ячеек одного ряда верх подписи совпадает.
+    const rows = new Map<number, number>();
+    for (const top of tops) {
+      const key = [...rows.keys()].find(value => Math.abs(value - top) <= 1) ?? top;
+      rows.set(key, (rows.get(key) ?? 0) + 1);
+    }
+    // Шесть ячеек в три столбца дают ровно два ряда, а не шесть высот.
+    expect([...rows.values()].every(count => count === 3), `высоты подписей: ${tops.join(', ')}`).toBe(true);
   });
 
   /**

@@ -2,15 +2,15 @@ import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } 
 import {
   Check, ChevronDown, ChevronRight, ChevronUp, Clock3, CloudSun, Droplets, ExternalLink, Home, Layers3, LayoutGrid,
   Briefcase, Cloud, CloudRain, GraduationCap, Moon, ShoppingBag, Snowflake, Sun,
-  ChevronLeft, Grid3X3, Keyboard, MoreHorizontal, Palette, Pencil, Plus, Rows3, RotateCw, Save, Search, Settings as SettingsIcon, SlidersHorizontal, Upload,
-  Database, Star, StickyNote, SquareStack, Table2, Tag, Trash2, Wind, X,
+  ChevronLeft, Keyboard, MoreHorizontal, Palette, Pencil, Plus, RotateCw, Save, Search, Settings as SettingsIcon, SlidersHorizontal, Upload,
+  Database, Star, StickyNote, SquareStack, Tag, Trash2, Wind, X,
 } from './icons.generated';
 
 import './theme.css';
 
 import { appReducer, createInitialAppState, persistAppState } from '../domain/appStore';
 import { getStorageUsage } from '../domain/storage';
-import { sortSites, type SortKey } from '../domain/sortSites';
+import { sortSites } from '../domain/sortSites';
 import {
   WEATHER_TTL_MS, readWeatherCache, weatherCacheAge, writeWeatherCache, type Weather,
 } from '../domain/weatherCache';
@@ -68,15 +68,8 @@ const SECTION_TITLE = Object.fromEntries(SECTIONS.map(s => [s.id, s.label])) as 
 const SECTION_PALETTE_ICON: Record<SectionId, string> = {
   sites: 'home', favorites: 'star', recent: 'clock', notes: 'note', trash: 'trash', sessions: 'session',
 };
-const SORTS: [SortKey, string][] = [
-  ['name', 'По названию'],
-  ['recent', 'По последнему открытию'],
-  ['added', 'По добавлению'],
-];
 /** Сколько пространств видно до нажатия «Ещё». */
 const SPACES_SHOWN = 5;
-/** С какого числа сайтов в выборке показывать сортировку. */
-const SORT_FROM = 12;
 /** Сколько пространств должно остаться за кадром, чтобы «Ещё N» имела смысл. */
 const MORE_FROM = 2;
 /** Насколько заполненным должно быть хранилище, чтобы о нём сообщать. */
@@ -117,9 +110,15 @@ export function App() {
   const [section, setSection] = useState<SectionId>('sites');
   const [projectId, setProjectId] = useState<string | null>(() => readStorage('nexus-active-project', null as string | null));
   const [categoryId, setCategoryId] = useState<string | null>(() => readStorage('nexus-active-category', null as string | null));
-  // Настройка задаёт вид только для нового профиля: если пользователь уже
-  // переключал вид руками, его выбор важнее умолчания.
-  const [view, setView] = useState<'all' | 'groups'>(() => readStorage('nexus-view-mode', 'all' as 'all' | 'groups'));
+  // Вид сетки хранится там же, где его меняют, — в настройках. Пока
+  // переключатель стоял ещё и в заголовке содержимого, значений было два:
+  // настройка писала в `defaultView`, а сетка читала отдельный ключ
+  // `nexus-view-mode`, и «Вид по умолчанию» не менял ровно ничего. Теперь
+  // значение одно; прежний ключ читается один раз, чтобы выбор, сделанный
+  // до переноса, не пропал.
+  const [viewBeforeMove] = useState<'all' | 'groups'>(() => readStorage('nexus-view-mode', 'all' as 'all' | 'groups'));
+  const view: 'all' | 'groups' = ui.defaultView ?? viewBeforeMove;
+  const setView = (value: 'all' | 'groups') => setUi(current => ({ ...current, defaultView: value }));
   const [query, setQuery] = useState('');
 
   const [limit, setLimit] = useState(PAGE);
@@ -168,9 +167,8 @@ export function App() {
   const [toast, setToast] = useState('');
   const [now, setNow] = useState(() => new Date());
   const [weather, setWeather] = useState<Weather>(WEATHER_EMPTY);
-  // The setting holds the arrangement a narrow screen opens with; the switcher
-  // above the grid changes it for this visit only.
-  const [mobileView, setMobileView] = useState<MobileMode>(ui.mobileMode ?? 'table');
+  // Раскладка узкого экрана — тоже одно значение из настроек.
+  const mobileView: MobileMode = ui.mobileMode ?? 'table';
   const [swapping, setSwapping] = useState(false);
   const swapTimer = useRef<number | undefined>(undefined);
 
@@ -187,13 +185,11 @@ export function App() {
   );
   const activeGroup = categoryGroups.find(item => item.id === groupId) ?? null;
 
-  useEffect(() => { setMobileView(ui.mobileMode ?? 'table'); }, [ui.mobileMode]);
   useEffect(() => () => window.clearTimeout(swapTimer.current), []);
   useEffect(() => { if (categoryId && !activeCategory) setCategoryId(null); }, [categoryId, activeCategory]);
   useEffect(() => { persistAppState(state) || setToast('Не удалось сохранить: хранилище браузера переполнено'); }, [state]);
   useEffect(() => { writeStorage('nexus-active-project', activeProjectId); }, [activeProjectId]);
   useEffect(() => { writeStorage('nexus-active-category', categoryId); }, [categoryId]);
-  useEffect(() => { writeStorage('nexus-view-mode', view); }, [view]);
   useEffect(() => { writeStorage('nexus-panel-open', panelOpen); }, [panelOpen]);
   useEffect(() => { writeStorage('nexus-dock-open', dockOpen); }, [dockOpen]);
   useEffect(() => { writeStorage('nexus-open-projects', openProjects); }, [openProjects]);
@@ -858,20 +854,6 @@ export function App() {
   };
 
   const showCategoryBar = section === 'sites';
-  // Переключатель раскладки на узком экране стоит в одной строке с кнопкой
-  // проекта, а не отдельной полосой: на 390 px каждая строка сверху — это
-  // минус одна плитка на первом экране. Вне «Быстрого доступа» строки с
-  // категориями нет, поэтому там он идёт сам по себе.
-  const mobileViews = narrow ? (
-    <div className="nx-mobile-views" role="group" aria-label="Вид сетки на узком экране">
-      <button type="button" className={mobileView === 'table' ? 'on' : ''} aria-pressed={mobileView === 'table'}
-        aria-label="Таблица в два столбца" title="Таблица в два столбца" onClick={() => setMobileView('table')}><Table2 size={17} /></button>
-      <button type="button" className={mobileView === 'rows' ? 'on' : ''} aria-pressed={mobileView === 'rows'}
-        aria-label="Строки с подробным описанием" title="Строки с подробным описанием" onClick={() => setMobileView('rows')}><Rows3 size={17} /></button>
-      <button type="button" className={mobileView === 'icons' ? 'on' : ''} aria-pressed={mobileView === 'icons'}
-        aria-label="Иконки в четыре столбца" title="Иконки в четыре столбца" onClick={() => setMobileView('icons')}><Grid3X3 size={17} /></button>
-    </div>
-  ) : null;
   const pinnedSites = pinned.map(id => sites.find(site => site.id === id)).filter(Boolean) as Site[];
   const showExplorer = ui.projects !== false;
 
@@ -1177,36 +1159,16 @@ export function App() {
                 )}
               </nav>
 
-              {/* Заголовок содержимого: где мы, сколько здесь, как показать.
-                  На узком экране его нет: активную категорию видно по самой
-                  карусели, а каждая строка сверху там стоит одной плитки. */}
+              {/* Заголовок содержимого: где мы и сколько здесь. Органов
+                  управления в нём больше нет — вид сетки и сортировка живут
+                  в настройках, в разделе «Плитки». На узком экране заголовка
+                  нет вовсе: активную категорию видно по самой карусели, а
+                  каждая строка сверху там стоит одной плитки. */}
               {!narrow && (
               <div className="nx-content-head">
                 <div className="nx-content-title">
                   <h1>{activeCategory ? activeCategory.name : 'Все сайты'}{activeGroup ? ` / ${activeGroup.name}` : ''}</h1>
                   <p>{countSites(found.length)}</p>
-                </div>
-                <div className="nx-content-tools">
-                  <div className="nx-seg" role="group" aria-label="Вид списка">
-                    <button type="button" className={view === 'all' ? 'on' : ''} aria-pressed={view === 'all'}
-                      aria-label="Сеткой" title="Сеткой" onClick={() => setView('all')}><LayoutGrid size={17} /></button>
-                    <button type="button" className={view === 'groups' ? 'on' : ''} aria-pressed={view === 'groups'}
-                      aria-label="По группам" title="По группам" onClick={() => setView('groups')}><Rows3 size={17} /></button>
-                  </div>
-                  {/* Порог: при девяти сайтах сортировать нечего, и три
-                      органа в заголовке висели просто так. Двенадцать — это
-                      примерно два ряда на широком экране: с этого места глаз
-                      уже не удерживает список целиком. */}
-                  {shown.length >= SORT_FROM && (
-                  <label className="nx-sort">
-                    <span className="nx-sr">Сортировка</span>
-                    <select value={ui.sortBy ?? 'name'} aria-label="Сортировка"
-                      onChange={event => patchUi({ sortBy: event.target.value as SortKey })}>
-                      {SORTS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-                    </select>
-                    <ChevronDown size={14} aria-hidden="true" />
-                  </label>
-                  )}
                 </div>
               </div>
               )}
@@ -1238,14 +1200,8 @@ export function App() {
                 </div>
               )}
 
-              {/* Переключатель раскладки на узком экране идёт следом за лентой
-                  категорий, а не отдельной строкой выше: на 390 px каждая
-                  строка сверху стоит одной плитки первого экрана. */}
-              {mobileViews}
             </>
           )}
-
-          {!showCategoryBar && mobileViews}
 
 
           {/* Заголовок с именем раздела нужен там, где нет строки крошек:

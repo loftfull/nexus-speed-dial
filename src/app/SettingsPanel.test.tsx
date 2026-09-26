@@ -166,11 +166,49 @@ describe('SettingsPanel', () => {
   });
 
 
-  it('показывает все разделы прежней панели настроек', () => {
+  it('показывает все разделы панели настроек', () => {
     setup();
-    for (const label of ['Общие', 'Оформление', 'Плитки', 'Панели', 'Мобильная версия',
+    for (const label of ['Общие', 'Оформление', 'Плитки', 'Панели',
       'Поиск', 'Погода', 'Приватность', 'Горячие клавиши', 'Данные']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
+  });
+
+  /**
+   * Раздел «Мобильная версия» слился с «Плитками», поэтому список названий
+   * больше не годится в сторожа: он молча позволил бы потерять настройку
+   * вместе с разделом. Сторож теперь считает сами органы управления — каждый
+   * должен находиться хотя бы в одном разделе.
+   */
+  it('сохраняет все органы управления при перестановке разделов', async () => {
+    const user = userEvent.setup();
+    setup();
+    const controls: [string, string][] = [
+      ['Общие', 'Компактный интерфейс'],
+      ['Общие', 'Плавные анимации'],
+      ['Общие', 'Открывать в новой вкладке'],
+      ['Общие', 'Виджеты справа в сетке'],
+      ['Оформление', 'Тема'],
+      ['Оформление', 'Фон'],
+      ['Оформление', 'Размытие панелей'],
+      ['Плитки', 'Вид сетки'],
+      ['Плитки', 'Сортировка'],
+      ['Плитки', 'Раскладка'],
+      ['Панели', 'Ширина окна'],
+      ['Панели', 'Показывать недавние'],
+      ['Панели', 'Полоса избранного'],
+      ['Поиск', 'Поисковая система'],
+      ['Погода', 'Город'],
+      ['Приватность', 'История открытий'],
+    ];
+    for (const [section, label] of controls) {
+      await user.click(screen.getByRole('button', { name: section }));
+      expect(screen.getByLabelText(label), `${section} → ${label}`).toBeInTheDocument();
+    }
+    // Три мобильные раскладки — кнопки, а не поля, поэтому проверяются отдельно.
+    await user.click(screen.getByRole('button', { name: 'Плитки' }));
+    for (const label of ['Таблица', 'Строки', 'Иконки']) {
+      expect(screen.getByRole('button', { name: new RegExp('^' + label) })).toBeInTheDocument();
     }
   });
 
@@ -201,13 +239,36 @@ describe('SettingsPanel', () => {
     expect(update(ui).sidebarWidth).toBe('340px');
   });
 
-  it('выбирает вид по умолчанию для мобильной версии', async () => {
+  it('выбирает раскладку узкого экрана в разделе «Плитки»', async () => {
     const user = userEvent.setup();
     const props = setup();
-    await user.click(screen.getByRole('button', { name: 'Мобильная версия' }));
+    await user.click(screen.getByRole('button', { name: 'Плитки' }));
     await user.click(screen.getByRole('button', { name: /^Иконки/ }));
     const update = (props.setUi as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: UiState) => UiState;
     expect(update(ui).mobileMode).toBe('icons');
+  });
+
+  /**
+   * Вид сетки переехал сюда из заголовка содержимого. До переноса значений
+   * было два: настройка писала `defaultView`, а сетка читала свой ключ, и
+   * этот выбор не менял ничего. Проверка держит одно значение.
+   */
+  it('переключает вид сетки в разделе «Плитки»', async () => {
+    const user = userEvent.setup();
+    const props = setup();
+    await user.click(screen.getByRole('button', { name: 'Плитки' }));
+    await user.selectOptions(screen.getByLabelText('Вид сетки'), 'groups');
+    const update = (props.setUi as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: UiState) => UiState;
+    expect(update(ui).defaultView).toBe('groups');
+  });
+
+  it('меняет сортировку сетки в разделе «Плитки»', async () => {
+    const user = userEvent.setup();
+    const props = setup();
+    await user.click(screen.getByRole('button', { name: 'Плитки' }));
+    await user.selectOptions(screen.getByLabelText('Сортировка'), 'recent');
+    const update = (props.setUi as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: UiState) => UiState;
+    expect(update(ui).sortBy).toBe('recent');
   });
 
   it('перечисляет реальные горячие клавиши', async () => {

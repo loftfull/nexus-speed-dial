@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
 import {
-  Camera, ChevronDown, CloudSun, Columns2, Columns3, Database, Download, Droplets, ExternalLink, Eye, FolderTree,
+  Camera, CloudSun, Columns2, Columns3, Database, Download, Droplets, ExternalLink, Eye, FolderTree,
   Globe, Grid2X2, Grid3X3, History, Image as ImageIcon, Keyboard, ListFilter, MapPin, Minimize2,
   LayoutGrid, Monitor, Moon, Palette, PanelLeft, RefreshCw, RotateCcw, Rows3, Search,
-  Settings as SettingsIcon, ShieldCheck, Smartphone, Star, Sun, Thermometer, Trash2, Type, Upload, X, Zap,
+  Settings as SettingsIcon, ShieldCheck, Star, Sun, Thermometer, Trash2, Type, Upload, X, Zap,
 } from './icons.generated';
 import type { AppearanceState, MobileMode, TileState, UiState } from '../domain/appStore';
 import type { BrowserSession, Category, Project, SiteGroup, SiteRecord as Site, VisualPreset } from '../domain/types';
@@ -18,18 +18,24 @@ import { dataUrlBytes, readWallpaperPhoto, saveWallpaperPhoto, shrinkImage } fro
 import { BrowserImportPanel } from '../components/BrowserImportPanel';
 import { ActionDialog } from './ActionDialog';
 
-export type SectionId = 'general' | 'look' | 'tiles' | 'panel' | 'mobile' | 'search' | 'weather' | 'privacy' | 'keys' | 'data';
-const SECTIONS: { id: SectionId; label: string; icon: ControlIcon }[] = [
-  { id: 'general', label: 'Общие', icon: SettingsIcon },
-  { id: 'look', label: 'Оформление', icon: Palette },
-  { id: 'tiles', label: 'Плитки', icon: Grid2X2 },
-  { id: 'panel', label: 'Панели', icon: PanelLeft },
-  { id: 'mobile', label: 'Мобильная версия', icon: Smartphone },
-  { id: 'search', label: 'Поиск', icon: Search },
-  { id: 'weather', label: 'Погода', icon: CloudSun },
-  { id: 'privacy', label: 'Приватность', icon: ShieldCheck },
-  { id: 'keys', label: 'Горячие клавиши', icon: Keyboard },
-  { id: 'data', label: 'Данные', icon: Database },
+export type SectionId = 'general' | 'look' | 'tiles' | 'panel' | 'search' | 'weather' | 'privacy' | 'keys' | 'data';
+/**
+ * Раздела «Мобильная версия» больше нет: он состоял из одного выбора —
+ * раскладки узкого экрана, — а это такой же ответ на вопрос «как показывать
+ * сетку», как вид и сортировка. Всё три переехали в «Плитки», к остальному
+ * виду плитки; отдельный раздел ради одного органа управления только удлинял
+ * список.
+ */
+const SECTIONS: { id: SectionId; label: string; icon: ControlIcon; about: string }[] = [
+  { id: 'general', label: 'Общие', icon: SettingsIcon, about: 'Как ведёт себя приложение' },
+  { id: 'look', label: 'Оформление', icon: Palette, about: 'Тема, фон и акцент' },
+  { id: 'tiles', label: 'Плитки', icon: Grid2X2, about: 'Как показывать сетку сайтов' },
+  { id: 'panel', label: 'Панели', icon: PanelLeft, about: 'Боковое окно и полосы' },
+  { id: 'search', label: 'Поиск', icon: Search, about: 'Омнибокс и подсказки' },
+  { id: 'weather', label: 'Погода', icon: CloudSun, about: 'Город и единицы' },
+  { id: 'privacy', label: 'Приватность', icon: ShieldCheck, about: 'Что остаётся в браузере' },
+  { id: 'keys', label: 'Горячие клавиши', icon: Keyboard, about: 'Справка по сочетаниям' },
+  { id: 'data', label: 'Данные', icon: Database, about: 'Импорт, копия и очистка' },
 ];
 
 // Графит в наборе не случайно: у Figma, Cal и Intercom главное действие
@@ -80,7 +86,9 @@ export type SettingsProps = {
 
 export function SettingsPanel(props: SettingsProps) {
   const { onClose, ui, setUi, tile, setTile, appearance, setAppearance, initialSection } = props;
-  const [open, setOpen] = useState<SectionId | null>(initialSection ?? 'look');
+  const [open, setOpen] = useState<SectionId>(initialSection ?? 'look');
+  const current = SECTIONS.find(item => item.id === open) ?? SECTIONS[0];
+  const resettable = current.id !== 'data' && current.id !== 'keys';
   const photoInput = useRef<HTMLInputElement>(null);
   const [hasPhoto, setHasPhoto] = useState(() => readWallpaperPhoto() !== null);
   const [photoNote, setPhotoNote] = useState<string | null>(null);
@@ -117,11 +125,10 @@ export function SettingsPanel(props: SettingsProps) {
   /** Puts one fold back to the values a fresh install starts with. */
   const resetSection = (section: SectionId) => {
     switch (section) {
-      case 'general': patchUi({ compact: false, animations: true, newTab: true, sortBy: 'name', defaultView: 'all', rail: true }); break;
+      case 'general': patchUi({ compact: false, animations: true, newTab: true, rail: true }); break;
       case 'look': setAppearance({ ...DEFAULT_APPEARANCE }); break;
-      case 'tiles': setTile({ ...DEFAULT_TILE }); patchUi({ siteIcons: true }); break;
+      case 'tiles': setTile({ ...DEFAULT_TILE }); patchUi({ siteIcons: true, defaultView: 'all', sortBy: 'name', mobileMode: 'table' }); break;
       case 'panel': patchUi({ sidebarWidth: '292px', projects: true, weather: true, favoritesBar: true, favoritesCount: 8, favoritesLabels: true, panelRecent: true, panelRecentCount: 6, panelRecentLabels: true }); break;
-      case 'mobile': patchUi({ mobileMode: 'table' }); break;
       case 'search': patchUi({ searchEngine: 'Google', searchLocal: true, searchSuggestions: true }); break;
       case 'weather': patchUi({ weather: true, weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true }); break;
       case 'privacy': patchUi({ saveHistory: true, siteIcons: true, remotePreviews: false }); break;
@@ -141,33 +148,39 @@ export function SettingsPanel(props: SettingsProps) {
       </header>
 
       <div className="nx-settings-body">
-        {SECTIONS.map(item => {
-          const expanded = open === item.id;
-          const resettable = item.id !== 'data' && item.id !== 'keys';
-          return (
-            <section className={'nx-fold' + (expanded ? ' open' : '')} key={item.id}>
-              <h3>
-                <button type="button" className="nx-fold-head" aria-expanded={expanded}
-                  onClick={() => setOpen(current => (current === item.id ? null : item.id))}>
-                  <item.icon size={16} weight={expanded ? 'duotone' : 'regular'} />
-                  <span>{item.label}</span>
-                  <ChevronDown size={16} className="nx-fold-caret" aria-hidden="true" />
-                </button>
-              </h3>
-              {expanded && (
-                <div className="nx-fold-body">
-                  {renderSection(item.id)}
-                  {resettable && (
-                    <button type="button" className="nx-fold-reset" onClick={() => resetSection(item.id)}>
-                      <RotateCcw size={13} /> Сбросить раздел «{item.label}»
-                    </button>
-                  )}
-                </div>
-              )}
-            </section>
-          );
-        })}
-        <p className="nx-settings-version">Nexus Speed Dial · версия 1.0.0 · лицензия MIT</p>
+        {/* Слева — все разделы разом, справа — один открытый. У складня
+            список и содержимое были одной колонкой: открытый раздел толкал
+            остальные вниз, а «Данные» уводили их за край. Рельс стоит на
+            месте и всегда показывает, где мы находимся. На узком экране тот
+            же рельс становится строкой-лентой — раскладку задаёт CSS, разметка
+            одна. */}
+        <nav className="nx-settings-rail" aria-label="Разделы настроек">
+          {SECTIONS.map(item => (
+            <button key={item.id} type="button" className={'nx-rail-item' + (open === item.id ? ' on' : '')}
+              aria-current={open === item.id} onClick={() => setOpen(item.id)}>
+              <item.icon size={16} weight={open === item.id ? 'duotone' : 'regular'} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="nx-settings-pane">
+          <div className="nx-pane-head">
+            <div>
+              <h3>{current.label}</h3>
+              <p>{current.about}</p>
+            </div>
+            {resettable && (
+              <button type="button" className="nx-fold-reset" onClick={() => resetSection(current.id)}>
+                <RotateCcw size={13} /> Сбросить раздел «{current.label}»
+              </button>
+            )}
+          </div>
+          <div className="nx-pane-body">
+            {renderSection(current.id)}
+            <p className="nx-settings-version">Nexus Speed Dial · версия 1.0.0 · лицензия MIT</p>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -175,29 +188,15 @@ export function SettingsPanel(props: SettingsProps) {
   function renderSection(section: SectionId) {
     return <>
         {section === 'general' && (
-          <Group title="Главный экран" hint="Как по умолчанию отсортирована и показана сетка сайтов.">
-            <Pick icon={ListFilter} label="Сортировка по умолчанию"
-              options={[['name', 'По названию'], ['recent', 'По последнему открытию'], ['added', 'По добавлению']]}
-              value={ui.sortBy ?? 'name'}
-              onChange={value => patchUi({ sortBy: value as 'name' | 'recent' | 'added' })} />
-            <Pick icon={LayoutGrid} label="Вид по умолчанию"
-              options={[['all', 'Сеткой'], ['groups', 'По группам']]}
-              value={ui.defaultView ?? 'all'}
-              onChange={value => patchUi({ defaultView: value as 'all' | 'groups' })} />
-            <Switch icon={CloudSun} label="Виджеты справа в сетке" value={ui.rail !== false}
-              why="Часы, погода и недавние. В раскладке «рабочий стол» не используются"
-              onChange={value => patchUi({ rail: value })} />
-          </Group>
-        )}
-
-        {section === 'general' && (
-          <Group title="Поведение приложения">
+          <Group title="Поведение приложения" hint="Как показывать сетку сайтов — в разделе «Плитки».">
             <Switch icon={Minimize2} label="Компактный интерфейс" value={ui.compact === true}
               onChange={value => patchUi({ compact: value })} />
             <Switch icon={Zap} label="Плавные анимации" value={ui.animations !== false}
               onChange={value => patchUi({ animations: value })} />
             <Switch icon={ExternalLink} label="Открывать в новой вкладке" value={ui.newTab !== false}
               onChange={value => patchUi({ newTab: value })} />
+            <Switch icon={CloudSun} label="Виджеты справа в сетке" value={ui.rail !== false}
+              why="Часы, погода и недавние" onChange={value => patchUi({ rail: value })} />
           </Group>
         )}
 
@@ -255,14 +254,50 @@ export function SettingsPanel(props: SettingsProps) {
           </Group>
         )}
 
+        {/* Вид сетки и сортировка стояли в заголовке содержимого отдельной
+            панелькой поверх фотографии. Теперь они здесь — там, где и всё
+            остальное об устройстве сетки, — и меняют сетку сразу, а не
+            «по умолчанию»: значение одно. */}
         {section === 'tiles' && (
-          <TileSettings
-            tile={tile}
-            patch={patchTile}
-            applyPreset={(preset: VisualPreset) => setTile({ ...TILE_PRESETS[preset] })}
-            siteIcons={ui.siteIcons !== false}
-            setSiteIcons={value => patchUi({ siteIcons: value })}
-          />
+          <Group title="Как показывать сетку" hint="Применяется сразу к сетке на широком экране.">
+            <Pick icon={LayoutGrid} label="Вид сетки"
+              options={[['all', 'Сеткой'], ['groups', 'По группам']]}
+              value={ui.defaultView ?? 'all'}
+              onChange={value => patchUi({ defaultView: value as 'all' | 'groups' })} />
+            <Pick icon={ListFilter} label="Сортировка"
+              options={[['name', 'По названию'], ['recent', 'По последнему открытию'], ['added', 'По добавлению']]}
+              value={ui.sortBy ?? 'name'}
+              onChange={value => patchUi({ sortBy: value as 'name' | 'recent' | 'added' })} />
+          </Group>
+        )}
+
+        {section === 'tiles' && (
+          <Group title="Раскладка на узком экране" hint="Ниже 900 px сетка перестраивается по этому выбору.">
+            {MOBILE_VIEWS.map(([value, label, hint, Icon]) => (
+              <button key={value} type="button" className={'nx-cell nx-cell-pick' + ((ui.mobileMode ?? 'table') === value ? ' on' : '')}
+                aria-pressed={(ui.mobileMode ?? 'table') === value} title={hint}
+                onClick={() => patchUi({ mobileMode: value })}>
+                <span className="nx-cell-top"><Icon size={14} /></span>
+                <span className="nx-cell-control"><span className={'nx-cell-art art-' + value} aria-hidden="true"><i /><i /><i /><i /></span></span>
+                <span className="nx-cell-text"><span className="nx-cell-label">{label}</span></span>
+              </button>
+            ))}
+          </Group>
+        )}
+
+        {/* Отдельная обёртка: внешний вид плитки проверяется отпечатком самой
+            плитки, а вид и сортировка сетки плитку не меняют — им нужна своя
+            проверка, и смешивать их в одном обходе нельзя. */}
+        {section === 'tiles' && (
+          <div className="nx-tile-look">
+            <TileSettings
+              tile={tile}
+              patch={patchTile}
+              applyPreset={(preset: VisualPreset) => setTile({ ...TILE_PRESETS[preset] })}
+              siteIcons={ui.siteIcons !== false}
+              setSiteIcons={value => patchUi({ siteIcons: value })}
+            />
+          </div>
         )}
 
         {section === 'panel' && (
@@ -299,20 +334,6 @@ export function SettingsPanel(props: SettingsProps) {
             <Switch icon={Type} label="Названия на полосе" value={ui.favoritesLabels !== false}
               onChange={value => patchUi({ favoritesLabels: value })}
               disabled={ui.favoritesBar === false} why="Полоса избранного выключена" />
-          </Group>
-        )}
-
-        {section === 'mobile' && (
-          <Group title="Вид по умолчанию" hint="С этого вида открывается главная страница на узком экране; переключатель остаётся над сеткой.">
-            {MOBILE_VIEWS.map(([value, label, hint, Icon]) => (
-              <button key={value} type="button" className={'nx-cell nx-cell-pick' + ((ui.mobileMode ?? 'table') === value ? ' on' : '')}
-                aria-pressed={(ui.mobileMode ?? 'table') === value} title={hint}
-                onClick={() => patchUi({ mobileMode: value })}>
-                <span className="nx-cell-top"><Icon size={14} /></span>
-                <span className={'nx-cell-art art-' + value} aria-hidden="true"><i /><i /><i /><i /></span>
-                <span className="nx-cell-label">{label}</span>
-              </button>
-            ))}
           </Group>
         )}
 
