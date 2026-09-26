@@ -39,8 +39,15 @@ jobs:
         run: npm run build
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium webkit
+      # Пересъёмка всегда полная. При `--update-snapshots` без значения
+      # Playwright решает сам, что считать изменившимся, и в прогоне 93 он
+      # объявил desktop-home совпавшим с эталоном, в котором ещё стояла
+      # убранная панель «Сеткой / По группам»: замер даёт 3168 различающихся
+      # точек в одной её рамке при допуске в 250. Почему проверка их не
+      # увидела, я объяснить не могу. Поэтому решение снято с неё: «принято»
+      # теперь буквально означает «сняли заново всё».
       - name: Capture candidate baselines
-        run: npx playwright test e2e/visual.spec.ts --update-snapshots
+        run: npx playwright test e2e/visual.spec.ts --update-snapshots=all
       - name: Upload candidate baselines
         uses: actions/upload-artifact@v7
         with:
