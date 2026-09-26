@@ -47,16 +47,30 @@ export function Tile({
 
   const close = () => { setMenuOpen(false); toggle.current?.focus(); };
 
-  // `row` spells the description out in full; `table` and `preview` keep it to a hint.
-  const detailed = layout === 'row' || layout === 'list';
-  const wantsDescription = layout === 'table' || layout === 'preview' || detailed || showDescription;
-  const description = layout === 'icon' ? '' : (wantsDescription ? site.desc?.trim() ?? '' : '');
-  const domain = layout === 'icon' ? '' : (detailed || showDomain ? site.domain : '');
+  // Состав подписи задаёт переключатель, а не раскладка. Прежде строка и
+  // список подставляли адрес сами, поверх настройки: пока адрес был включён по
+  // умолчанию, разница не была видна, а стоило его выключить — элемент
+  // оставался в разметке и прятался стилем. Один хозяин у решения надёжнее.
+  // Исключение одно: в значках подписи нет вовсе, там нет для неё места.
+  const description = layout === 'icon' ? '' : (showDescription ? site.desc?.trim() ?? '' : '');
+  const domain = layout === 'icon' ? '' : (showDomain ? site.domain : '');
   const category = layout === 'icon' ? '' : (showCategory ? site.category : '');
+
+  /**
+   * Что не помещается на плитку, показывается подсказкой при наведении.
+   * Плитка несёт знак и имя, но описание и адрес не должны пропадать совсем:
+   * «Почта» и «mail.google.com» — разные сведения, и второе иногда решает.
+   * Подсказка собирается только из того, чего на плитке сейчас нет.
+   */
+  const hint = [
+    showDescription ? '' : site.desc?.trim() ?? '',
+    showDomain ? '' : site.domain ?? '',
+  ].filter(Boolean).join(' · ');
 
   return (
     <div
       className={'nx-tile nx-tile-' + layout + (menuOpen ? ' menu-open' : '')}
+      data-hint={hint || undefined}
       ref={holder}
       style={style}
       draggable={Boolean(dragType && site.id)}

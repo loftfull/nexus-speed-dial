@@ -138,19 +138,31 @@ const BASE: TileAppearance = {
   preset: 'soft', mode: 'standard',
   // Знак сайта — главное на плитке, поэтому он крупный, а отступы вокруг
   // минимальные: карточка должна обнимать содержание.
-  width: 170, minHeight: 120, gap: 20, radius: 20, iconSize: 52, columns: 0, markRadius: 16, ratio: 'auto', anchor: 'top',
+  // Плитка стала шире и выше, а знак крупнее: текста под ним теперь одна
+  // строка, и место, которое занимали ещё две, отдано самому знаку.
+  // Сетка прижата к центру: девять сайтов на широком экране занимали верхнюю
+  // треть и роняли низ в пустоту, а по центру та же сетка читается как
+  // композиция, а не как недогруженная страница.
+  width: 190, minHeight: 148, gap: 20, radius: 20, iconSize: 60, columns: 0, markRadius: 16, ratio: 'auto', anchor: 'center',
   align: 'center', font: 'Inter',
-  surface: 'solid', tint: 0,
-  borderWidth: 0, borderOpacity: 0, innerHighlight: false,
+  // Стекло по умолчанию: плитка лежит на фотосцене, и плотная белая карточка
+  // на ней читается как наклейка. Полупрозрачная подложка с размытием и
+  // светлой кромкой сверху собирает плитку и сцену в одну модель света.
+  // Это умолчание, а не правило: все пятнадцать готовых видов и каждый из
+  // сорока двух параметров по-прежнему перебивают его — иначе настройки
+  // оформления перестали бы что-либо значить.
+  surface: 'glass', tint: 0,
+  borderWidth: 0, borderOpacity: 0, innerHighlight: true,
   shadowStyle: 'stack', shadowDepth: 6, shadowSoftness: 18, shadowOpacity: 6, ring: 8, ringHover: 14, ringWidth: 10,
-  blur: 0, fillOpacity: 18, stateLayer: 0,
+  blur: 18, fillOpacity: 72, stateLayer: 0,
   hoverLift: 2, hoverScale: 100, hoverShadow: 140, pressedScale: 98,
   transitionMs: 180, easing: 'standard', focusRing: 'standard',
   loadAnimation: 'cascade', dragFeedback: true,
-  // Адрес показан по умолчанию: карточка должна быть заполнена содержанием,
-  // а не воздухом. В разобранных системах строка списка всегда несёт вторую
-  // строку — заголовок и пояснение.
-  showTitle: true, showDescription: true, showDomain: true, showCategory: false, showFavorite: true,
+  // Плитка несёт знак и имя — и всё. Прежде под знаком стояли ещё описание и
+  // адрес: четыре сообщения об одном и том же, потому что логотип уже говорит,
+  // какой это сайт. Описание и адрес не пропали, они показываются подсказкой
+  // при наведении — там они нужны, а на экране покоя только мешали плотности.
+  showTitle: true, showDescription: false, showDomain: false, showCategory: false, showFavorite: true,
 };
 
 /**
@@ -349,7 +361,12 @@ function background(tile: TileAppearance): string {
   // так совпадение точное, а рельеф создают две зеркальные тени.
   if (tile.shadowStyle === 'neumorph') return 'transparent';
   if (tile.surface === 'glass') {
-    return `color-mix(in srgb, var(--nx-surface) ${tile.fillOpacity}%, transparent)`;
+    // Оттенок доходит и до стекла: сначала подложка подкрашивается акцентом,
+    // и только потом разбавляется до нужной плотности. Иначе под стеклом
+    // ползунок «Оттенок акцента» не менял ровно ничего — а контрол, который
+    // ничего не делает, хуже отсутствующего.
+    const tinted = `color-mix(in srgb, var(--nx-accent) ${tile.tint}%, var(--nx-surface))`;
+    return `color-mix(in srgb, ${tinted} ${tile.fillOpacity}%, transparent)`;
   }
   if (tile.surface === 'contrast') {
     return `color-mix(in srgb, var(--nx-accent) ${tile.tint}%, #10151d)`;
@@ -459,6 +476,12 @@ export function toTileVars(tile: TileAppearance): TileVars {
       : `repeat(auto-fill,minmax(clamp(${Math.round(tile.width * 0.92)}px,14cqw,${Math.round(tile.width * 1.5)}px),1fr))`,
     '--nx-tile-ratio': tile.ratio,
     '--nx-grid-anchor': tile.anchor === 'center' ? 'center' : 'start',
+    // Прижатие к центру двигает не одну сетку, а весь блок вместе с
+    // заголовком: иначе заголовок оставался наверху, сетка уезжала к середине,
+    // и между ними зияла голая сцена. Сетка при этом перестаёт растягиваться —
+    // свободное место делят автоматические поля сверху и снизу.
+    '--nx-grid-push': tile.anchor === 'center' ? 'auto' : '0px',
+    '--nx-grid-grow': tile.anchor === 'center' ? '0' : '1',
     '--nx-tile-align': tile.align === 'left' ? 'flex-start' : 'center',
     '--nx-tile-text-align': tile.align,
     '--nx-tile-font': tile.font === 'Manrope' ? 'Manrope,Inter,system-ui,sans-serif' : 'Inter,Manrope,system-ui,sans-serif',

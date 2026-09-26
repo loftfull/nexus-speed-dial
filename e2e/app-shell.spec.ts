@@ -247,17 +247,21 @@ test.describe('Nexus shell', () => {
 
     await settings.getByRole('button', { name: 'Плитки' }).click();
     const address = settings.getByRole('switch', { name: 'Адрес' });
-    // Адрес показан по умолчанию, поэтому проверяем переключатель в обе стороны.
+    // Адреса на плитке по умолчанию нет: логотип уже говорит, какой это сайт.
+    // Переключатель проверяется в обе стороны, начиная с выключенного.
     const wide = testInfo.project.name !== 'mobile';
+    await expect(address).toHaveAttribute('aria-checked', 'false');
+    await address.click();
     await expect(address).toHaveAttribute('aria-checked', 'true');
+    // На узком экране состав подписи задаёт мобильная раскладка, а не этот переключатель.
+    if (wide) await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
     await address.click();
     await expect(address).toHaveAttribute('aria-checked', 'false');
-    // На узком экране состав подписи задаёт мобильная раскладка, а не этот переключатель.
     if (wide) await expect(page.locator('.nx-tile-sub').first()).toBeHidden();
-    await address.click();
-    await expect(address).toHaveAttribute('aria-checked', 'true');
-    if (wide) await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
 
+    // Включённый адрес переживает перезагрузку — значит настройка сохраняется,
+    // а не просто перерисовывает экран.
+    await address.click();
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     if (wide) await expect(page.locator('.nx-tile-sub').first()).toBeVisible();
@@ -892,14 +896,17 @@ test.describe('Nexus shell', () => {
     await openSettings(page, 'Плитки');
     await page.getByLabel('Раскладка').selectOption('list');
     await expect(page.locator('.nx-grid')).toHaveClass(/layout-list/);
-    // A list row puts the icon beside the text; the address follows its own switch.
+    // Раскладка отвечает за расположение: знак встаёт рядом с текстом.
     const tile = page.locator('.nx-tile').first();
     await expect(tile.locator('.nx-tile-face')).toHaveCSS('flex-direction', 'row');
+    // А состав подписи — за переключателем, и он работает в обе стороны.
+    // Раскладка его больше не перебивает: прежде строка подставляла адрес
+    // сама, и выключенный переключатель оставлял элемент в разметке.
+    await expect(tile.locator('.nx-tile-sub')).toHaveCount(0);
+    await page.getByRole('switch', { name: 'Адрес' }).click();
     await expect(tile.locator('.nx-tile-sub')).toBeVisible();
     await page.getByRole('switch', { name: 'Адрес' }).click();
-    await expect(tile.locator('.nx-tile-sub')).toBeHidden();
-    await page.getByRole('switch', { name: 'Адрес' }).click();
-    await expect(tile.locator('.nx-tile-sub')).toBeVisible();
+    await expect(tile.locator('.nx-tile-sub')).toHaveCount(0);
   });
 
   test('resetting a section puts its controls back', async ({ page }) => {

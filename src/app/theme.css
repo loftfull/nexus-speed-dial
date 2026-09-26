@@ -75,6 +75,11 @@
 :root{font-feature-settings:"calt","kern","liga"}
 
 @layer nx-reset{
+ /* Сброс начинался с .nx-root, и браузерные поля body в восемь точек
+    оставались на месте: приложение никогда не доходило до края окна, а по
+    периметру шла белая рамка. На фотосцене она особенно заметна — сцена
+    обрывается, не дойдя до края. */
+ html,body{margin:0;padding:0;background:var(--nx-canvas)}
  .nx-root *,.nx-root *:before,.nx-root *:after{box-sizing:border-box}
  .nx-root button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
  .nx-root input{font:inherit;color:inherit;background:none;border:0;outline:none;min-width:0}
@@ -240,6 +245,12 @@ button.nx-rail-card:hover{transform:translateY(-2px);
    области, которая ей досталась, а не от всего окна. */
 .nx-main-scroll{flex:1;min-height:0;overflow-y:auto;padding:12px 18px 132px;display:flex;flex-direction:column;gap:18px;
  container-type:inline-size}
+/* Рабочая колонка ограничена по ширине и стоит по центру. Без этого девять
+   сайтов растягивались на шесть колонок, второй ряд обрывался на третьей
+   плитке, и справа оставалось шестьсот точек пустоты — сетка читалась как
+   недогруженная. Ограничение превращает остаток в поля, а поля — это
+   композиция, а не дыра. */
+.nx-main-scroll > *{width:100%;max-width:var(--nx-column,1100px);margin-inline:auto}
 
 .nx-cats{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;border-bottom:1px solid var(--nx-line);flex:none}
 /* Вкладки и переключатели категории идут одной группой: на широком экране это
@@ -268,7 +279,12 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 /* Сетка забирает свободную высоту (расти — да, сжиматься — нет), поэтому
    «прижатие» имеет к чему прижимать, а длинный список по-прежнему прокручивается. */
 .nx-grid{display:grid;grid-template-columns:var(--nx-tile-cols,repeat(auto-fill,minmax(170px,1fr)));
- gap:var(--nx-gap,16px);flex:1 0 auto;align-content:var(--nx-grid-anchor,start)}
+ gap:var(--nx-gap,16px);flex:var(--nx-grid-grow,1) 0 auto;align-content:var(--nx-grid-anchor,start);
+ margin-bottom:var(--nx-grid-push,0)}
+/* Заголовок содержимого едет вместе с сеткой: пара автоматических полей —
+   сверху у заголовка, снизу у сетки — делит свободное место поровну, и блок
+   встаёт по центру целиком, а не рассыпается на две части. */
+.nx-main-scroll > .nx-content-head{margin-top:var(--nx-grid-push,0)}
 .nx-groups{display:flex;flex-direction:column;gap:26px}
 .nx-group{display:flex;flex-direction:column;gap:12px}
 .nx-group-head{display:flex;align-items:center;gap:9px}
@@ -298,6 +314,24 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  box-shadow:var(--nx-tile-shadow-hover,var(--nx-tile-shadow,var(--nx-shadow))),
   var(--nx-tile-highlight,inset 0 0 0 rgba(0,0,0,0))}
 .nx-tile:active,.nx-tile.is-press{transform:scale(var(--nx-tile-press-scale,.98))}
+/* Описание и адрес ушли с плитки, но не из приложения: при наведении они
+   выходят подсказкой под знаком. Она рисуется самим браузером только когда
+   на плитке действительно чего-то нет — атрибут ставится условно. */
+.nx-tile[data-hint]:before{
+ content:attr(data-hint);position:absolute;left:50%;top:calc(100% + 8px);transform:translate(-50%,4px);
+ z-index:30;max-width:230px;padding:7px 11px;border-radius:var(--nx-r-sm);
+ font-size:var(--nx-fs-2);line-height:1.35;color:var(--nx-text);white-space:normal;text-align:center;
+ background:var(--nx-glass-strong,var(--nx-surface));
+ -webkit-backdrop-filter:blur(var(--nx-glass-blur,16px)) saturate(1.6);
+ backdrop-filter:blur(var(--nx-glass-blur,16px)) saturate(1.6);
+ box-shadow:var(--nx-glass-edge,inset 0 0 0 1px var(--nx-line)),var(--nx-shadow-lg);
+ opacity:0;pointer-events:none;transition:opacity .14s ease,transform .14s ease}
+.nx-tile[data-hint]:hover:before,
+.nx-tile[data-hint]:focus-within:before{opacity:1;transform:translate(-50%,0)}
+/* Нижнему ряду подсказка выходит вверх, иначе она упирается в док. */
+.nx-tile[data-hint]:nth-last-child(-n+6):before{top:auto;bottom:calc(100% + 8px);transform:translate(-50%,-4px)}
+.nx-tile[data-hint]:nth-last-child(-n+6):hover:before,
+.nx-tile[data-hint]:nth-last-child(-n+6):focus-within:before{transform:translate(-50%,0)}
 /* Слой состояния Material 3: цвет содержимого поверх подложки, 8 % под
    курсором и 10 % при нажатии. Выключен, пока вид его не попросит. */
 .nx-tile:after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
@@ -459,7 +493,15 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  .nx-root,.nx-root.panel-collapsed{grid-template-columns:minmax(0,1fr)}
  .nx-panel{display:none}
  .nx-main{grid-column:1}
- .nx-main-scroll{padding:10px 16px 110px;gap:10px}
+ /* Нижний отступ считается от дока: 110 точек его не покрывали, и последняя
+    плитка уходила под него наполовину. Док на узком экране выше — в нём
+    лежат подсказка, «плюс», погода и часы. */
+ .nx-main-scroll{padding:10px 16px 150px;gap:10px}
+ /* В доке на узком экране город не помещается и обрывался на «Моск».
+    Название города и так стоит в настройках, а в доке важна температура —
+    поэтому подпись здесь снимается целиком, а не режется многоточием. */
+ .nx-dock-weather small,.nx-dock-clock small{display:none}
+ .nx-dock-weather > span,.nx-dock-clock{justify-content:center}
  /* Строка «Все сайты · 9 сайтов» повторяет выбранную вкладку и счётчик в
     проводнике, а стоит 37 px первого экрана — на узком экране её нет.
     Заголовки разделов («Корзина», «Заметки») остаются. */
@@ -468,10 +510,13 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  .nx-mobile-top .nx-icon-btn{background:var(--nx-surface);box-shadow:var(--nx-shadow-sm)}
  .nx-mobile-card{flex:1;min-width:0;display:flex;align-items:center;gap:10px;height:46px;padding:0 8px 0 14px;
   background:var(--nx-surface);border-radius:var(--nx-r-md);box-shadow:var(--nx-shadow-sm)}
- .nx-mobile-time{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:4px 6px;border-radius:var(--nx-r-sm)}
+ /* overflow нужен здесь, а не только у подписи: без него дата вылезала за
+    свою колонку и подлезала под иконку погоды. Многоточие в подписи само по
+    себе не работает, пока родитель разрешает выход за границы. */
+ .nx-mobile-time{flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:4px 6px;border-radius:var(--nx-r-sm)}
  .nx-mobile-time:hover{background:var(--nx-sunken)}
  .nx-mobile-time b{font-size:var(--nx-fs-5);font-weight:600;line-height:1.1}
- .nx-mobile-time small{font-size:var(--nx-fs-1);color:var(--nx-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .nx-mobile-time small{max-width:100%;font-size:var(--nx-fs-1);color:var(--nx-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .nx-mobile-weather{display:flex;align-items:center;gap:5px;flex:none;color:var(--nx-muted);font-size:var(--nx-fs-4);padding:6px 8px;border-radius:var(--nx-r-sm)}
  .nx-mobile-weather:hover{background:var(--nx-sunken);color:var(--nx-accent)}
  .nx-mobile-weather b{color:var(--nx-text);font-weight:600}
@@ -716,24 +761,101 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 :root[data-wallpaper="lake"] .nx-root{
  background:url("../assets/lake.webp") center top/cover no-repeat fixed,
   linear-gradient(170deg,#dbe8f8 0%,#eef3fb 46%,#f4f7fc 100%)}
-/* Своё изображение. Ставится на .nx-root, поверх — светлая вуаль: без неё
-   тёмная фотография съедает текст на панелях. Плотность вуали регулируется
-   в настройках, поэтому она переменная, а не константа. */
+/* Своё изображение. Ставится на .nx-root, поверх — вуаль. */
 :root[data-wallpaper="photo"] .nx-root{
  background:var(--nx-wall-photo,linear-gradient(160deg,#f6f9ff,#e7ecf8)) center/cover no-repeat fixed}
-/* Вуаль — только для произвольного пользовательского снимка: он может быть
-   каким угодно тёмным и пёстрым. Снимок из поставки заранее сведён под
-   подложку, и притушивать его значит портить то, ради чего он выбран. */
+
+/* ── сцена под стеклом ────────────────────────────────────────────
+   Фотография — атмосфера, а не ковёр под контентом. Между ней и
+   интерфейсом лежит вуаль, а поверхности становятся стеклом: полупрозрачная
+   подложка, размытие и тонкая светлая кромка сверху. Свет один на весь
+   экран — сверху, — поэтому кромка светлая только у верхнего края.
+
+   Вуаль теперь и у снимка из поставки. Прежде её не было вовсе: считалось,
+   что кадр заранее сведён под подложку. На деле заголовок содержимого тонул
+   в небе, а в тёмной теме чёрные панели лежали на ярко-голубой воде — тема
+   не доходила до сцены. Плотность растёт книзу: вверху кадра горы и закат,
+   ради которых снимок и выбран, а внизу он уходит в плоскую дымку, и её
+   лучше увести в глубину, чем показывать как есть.
+
+   Плотность остаётся переменной: ползунок «Осветление фона» её меняет. */
+:root[data-wallpaper="lake"] .nx-root:before,
 :root[data-wallpaper="photo"] .nx-root:before{
  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+ background:
+  radial-gradient(120% 78% at 50% -10%,rgba(255,255,255,calc(var(--nx-wall-veil,.42) * .30)) 0%,rgba(255,255,255,0) 62%),
+  linear-gradient(180deg,
+   rgba(255,255,255,calc(var(--nx-wall-veil,.42) * .24)) 0%,
+   rgba(96,128,170,calc(var(--nx-wall-veil,.42) * 1.00)) 38%,
+   rgba(20,34,58,calc(var(--nx-wall-veil,.42) * 1.86)) 100%),
+  /* Виньетка: края уходят в тень, и взгляд сам собирается к середине.
+     Приём старый, театральный, и работает ровно за счёт этого. */
+  radial-gradient(130% 96% at 50% 46%,rgba(0,0,0,0) 46%,rgba(12,22,40,calc(var(--nx-wall-veil,.42) * .62)) 100%)}
+:root[data-theme="dark"][data-wallpaper="lake"] .nx-root:before,
+:root[data-theme="dark"][data-wallpaper="photo"] .nx-root:before{
  background:linear-gradient(180deg,
-  rgba(255,255,255,var(--nx-wall-veil,.42)) 0%,
-  rgba(255,255,255,calc(var(--nx-wall-veil,.42) * .72)) 42%,
-  rgba(255,255,255,calc(var(--nx-wall-veil,.42) * 1.06)) 100%)}
+  rgba(9,13,20,calc(var(--nx-wall-veil,.42) * 1.24)) 0%,
+  rgba(9,13,20,calc(var(--nx-wall-veil,.42) * 1.62)) 46%,
+  rgba(6,9,15,calc(var(--nx-wall-veil,.42) * 1.98)) 100%)}
 :root[data-wallpaper="lake"] .nx-panel,
 :root[data-wallpaper="lake"] .nx-main,
 :root[data-wallpaper="photo"] .nx-panel,
 :root[data-wallpaper="photo"] .nx-main{position:relative;z-index:1}
+
+/* Стекло получает только то, что лежит прямо на сцене. Окно настроек,
+   диалоги и палитра остаются плотными: сквозь мелкий контрол фотография
+   видна не как глубина, а как грязь. */
+:root[data-wallpaper="lake"],
+:root[data-wallpaper="photo"]{
+ --nx-glass:rgba(255,255,255,.62);
+ --nx-glass-strong:rgba(255,255,255,.76);
+ --nx-glass-edge:inset 0 1px 0 rgba(255,255,255,.72),inset 0 0 0 1px rgba(255,255,255,.34);
+ --nx-glass-blur:20px;
+ --nx-glass-drop:0 1px 2px rgba(14,24,42,.06),0 10px 28px -12px rgba(14,24,42,.34);
+ --nx-glass-drop-lg:0 2px 8px rgba(14,24,42,.10),0 26px 60px -22px rgba(14,24,42,.5);
+}
+:root[data-theme="dark"][data-wallpaper="lake"],
+:root[data-theme="dark"][data-wallpaper="photo"]{
+ --nx-glass:rgba(20,26,36,.58);
+ --nx-glass-strong:rgba(20,26,36,.74);
+ --nx-glass-edge:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.07);
+ --nx-glass-drop:0 1px 2px rgba(0,0,0,.4),0 12px 30px -14px rgba(0,0,0,.72);
+ --nx-glass-drop-lg:0 2px 8px rgba(0,0,0,.5),0 28px 64px -22px rgba(0,0,0,.8);
+}
+:root[data-wallpaper="lake"] .nx-panel,
+:root[data-wallpaper="photo"] .nx-panel,
+:root[data-wallpaper="lake"] .nx-dock,
+:root[data-wallpaper="photo"] .nx-dock,
+:root[data-wallpaper="lake"] .nx-cat-card,
+:root[data-wallpaper="photo"] .nx-cat-card,
+:root[data-wallpaper="lake"] .nx-crumb-btn,
+:root[data-wallpaper="photo"] .nx-crumb-btn,
+:root[data-wallpaper="lake"] .nx-top-search,
+:root[data-wallpaper="photo"] .nx-top-search,
+:root[data-wallpaper="lake"] .nx-seg,
+:root[data-wallpaper="photo"] .nx-seg,
+:root[data-wallpaper="lake"] .nx-sort,
+:root[data-wallpaper="photo"] .nx-sort,
+:root[data-wallpaper="lake"] .nx-chip,
+:root[data-wallpaper="photo"] .nx-chip,
+:root[data-wallpaper="lake"] .nx-content-title,
+:root[data-wallpaper="photo"] .nx-content-title,
+:root[data-wallpaper="lake"] .nx-topbar .nx-icon-btn,
+:root[data-wallpaper="photo"] .nx-topbar .nx-icon-btn,
+:root[data-wallpaper="lake"] .nx-mobile-top .nx-icon-btn,
+:root[data-wallpaper="photo"] .nx-mobile-top .nx-icon-btn,
+:root[data-wallpaper="lake"] .nx-mobile-card,
+:root[data-wallpaper="photo"] .nx-mobile-card{
+ background:var(--nx-glass);
+ /* Префиксованное свойство идёт первым: минификатор выбрасывает дубль, и,
+    записанное вторым, оно съедало стандартное. */
+ -webkit-backdrop-filter:blur(var(--nx-glass-blur)) saturate(1.6);
+ backdrop-filter:blur(var(--nx-glass-blur)) saturate(1.6);
+ box-shadow:var(--nx-glass-edge),var(--nx-glass-drop)}
+:root[data-wallpaper="lake"] .nx-panel,
+:root[data-wallpaper="photo"] .nx-panel{border-right:0;box-shadow:var(--nx-glass-edge),var(--nx-glass-drop-lg)}
+:root[data-wallpaper="lake"] .nx-dock,
+:root[data-wallpaper="photo"] .nx-dock{box-shadow:var(--nx-glass-edge),var(--nx-glass-drop-lg)}
 
 /* Размытие панелей: над фотографией стекло читается как стекло, а не как
    белый прямоугольник. Ноль по умолчанию — приём включает сам пользователь.
@@ -893,7 +1015,7 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  .nx-tile-row .nx-mark img{width:22px;height:22px}
  .nx-tile-row .nx-mark{font-size:var(--nx-fs-4)}
  /* Узкая раскладка уже плотная, поэтому компактный режим ужимает её ещё раз. */
- .nx-root.compact .nx-main-scroll{padding:8px 12px 104px;gap:9px}
+ .nx-root.compact .nx-main-scroll{padding:8px 12px 138px;gap:9px}
  .nx-root.compact .nx-tile{min-height:0;padding:12px 8px 10px}
 }
 

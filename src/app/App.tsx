@@ -660,6 +660,16 @@ export function App() {
   const layout: TileLayout = narrow ? MOBILE_LAYOUT[mobileView] : ((tile.mode ?? 'standard') as TileLayout);
   const gridClass = 'nx-grid ' + tileLayoutClass(layout as typeof tile.mode);
 
+  /**
+   * Мобильные виды названы «Таблица с описанием» и «Строки с подробным
+   * описанием» — название обещает описание, значит оно и показывается,
+   * независимо от умолчания сетки. Это не раскладка спорит с настройкой:
+   * это другой контрол, и обещание даёт он.
+   */
+  const mobileDetailed = narrow && (mobileView === 'table' || mobileView === 'rows');
+  const showDescription = mobileDetailed || tile.showDescription;
+  const showDomain = (narrow && mobileView === 'rows') || tile.showDomain;
+
   const renderTile = (site: Site) => (
     <Tile
       key={site.id}
@@ -667,8 +677,8 @@ export function App() {
       dragType={DOCK_DRAG_TYPE}
       layout={layout}
       useFavicons={useFavicons}
-      showDomain={tile.showDomain}
-      showDescription={tile.showDescription}
+      showDomain={showDomain}
+      showDescription={showDescription}
       showCategory={tile.showCategory}
       onOpen={() => openSite(site)}
       onFavorite={() => toggleFavorite(site)}
@@ -1060,7 +1070,11 @@ export function App() {
               <button type="button" data-calendar-trigger className="nx-mobile-time"
                 aria-expanded={calendarOpen} aria-label={`Открыть календарь, сегодня ${dateLine}`}
                 onClick={() => { setForecastOpen(false); setCalendarOpen(value => !value); }}>
-                <b>{time}</b><small>{dateLine}</small>
+                {/* На узком экране в карточке помещается половина ширины, и полная
+                    дата обрывалась на «Среда, 1…» — обрезка вместо сведения.
+                    Короткий формат говорит то же самое и целиком; полная дата
+                    остаётся в подписи для чтения с экрана. */}
+                <b>{time}</b><small>{dateShort}</small>
               </button>
               {ui.weather && (
                 <button type="button" data-forecast-trigger className="nx-mobile-weather"

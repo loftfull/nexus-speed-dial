@@ -145,13 +145,31 @@ describe('tileAppearance', () => {
 
   // Стекло и рельеф вернулись как отдельные готовые виды, но вид по
   // умолчанию остаётся плотным: ни размытия, ни слоя состояния в нём нет.
-  it('вид по умолчанию не включает ни размытия, ни слоя состояния', () => {
-    expect(DEFAULT_TILE_APPEARANCE.surface).toBe('solid');
-    expect(DEFAULT_TILE_APPEARANCE.blur).toBe(0);
+  it('вид по умолчанию — стекло со светлой кромкой, но без слоя состояния', () => {
+    // Здесь умолчание развернулось. Прежде оно было плотным и без размытия —
+    // тогда в файле выкорчёвывали неон и стеклянные приёмы середины десятых.
+    // Но плитка лежит на фотосцене, и плотная белая карточка на ней читается
+    // как наклейка. Размытие вернулось не как украшение, а как материал
+    // выбранной композиции: подложка полупрозрачна, свет один — сверху.
+    // Слой состояния Material 3 остаётся выключенным: он из другой системы.
+    expect(DEFAULT_TILE_APPEARANCE.surface).toBe('glass');
+    expect(DEFAULT_TILE_APPEARANCE.blur).toBe(18);
+    expect(DEFAULT_TILE_APPEARANCE.innerHighlight).toBe(true);
     expect(DEFAULT_TILE_APPEARANCE.stateLayer).toBe(0);
     const vars = toTileVars(DEFAULT_TILE_APPEARANCE);
-    expect(vars['--nx-tile-blur']).toBe('none');
+    expect(vars['--nx-tile-blur']).toBe('blur(18px)');
     expect(vars['--nx-tile-state']).toBe('transparent');
+  });
+
+  it('оттенок акцента доходит и до стекла', () => {
+    // Под стеклом подложка строится из --nx-surface, и ползунок оттенка
+    // однажды перестал что-либо менять вовсе. Контрол, который ничего не
+    // делает, хуже отсутствующего, поэтому оттенок подмешивается до того,
+    // как подложку разбавят до нужной плотности.
+    const plain = toTileVars({ ...DEFAULT_TILE_APPEARANCE, tint: 0 })['--nx-tile-bg'];
+    const tinted = toTileVars({ ...DEFAULT_TILE_APPEARANCE, tint: 40 })['--nx-tile-bg'];
+    expect(plain).not.toBe(tinted);
+    expect(tinted).toContain('--nx-accent');
   });
 
   it('размытие остаётся в пределах, на которых оно не роняет кадры', () => {
@@ -190,12 +208,13 @@ describe('tileAppearance', () => {
     expect(old.preset).toBe(DEFAULT_TILE_APPEARANCE.preset);
     expect(old.surface).toBe(DEFAULT_TILE_APPEARANCE.surface);
     expect(old.shadowStyle).toBe(DEFAULT_TILE_APPEARANCE.shadowStyle);
-    // Число из прежнего профиля переживает переезд и подрезается границами,
-    // но остаётся бездействующим: подложка откатилась к плотной, а размывать
-    // под ней нечего.
+    // Число из прежнего профиля переживает переезд и подрезается границами.
     expect(old.blur).toBe(18);
     expect(old.stateLayer).toBe(DEFAULT_TILE_APPEARANCE.stateLayer);
-    expect(toTileVars(old)['--nx-tile-blur']).toBe('none');
+    // Подложка «translucent» из старого профиля не существует, поэтому
+    // откатывается к действующему умолчанию — а оно теперь стеклянное,
+    // и размытие из того же профиля доходит до экрана.
+    expect(toTileVars(old)['--nx-tile-blur']).toBe('blur(18px)');
   });
 
   it('усиливает тень под курсором ровно на заданную долю', () => {
@@ -219,7 +238,9 @@ describe('размер под окно', () => {
   const base = DEFAULT_TILE_APPEARANCE;
 
   it('ширина колонки идёт от области сетки и не уходит дальше границ', () => {
-    const vars = toTileVars({ ...base, width: 170, columns: 0 });
+    // Высота берётся из умолчания, поэтому проверяется явно заданная, а не
+    // текущее значение по умолчанию: иначе тест ломается от любой правки вида.
+    const vars = toTileVars({ ...base, width: 170, minHeight: 120, columns: 0 });
     expect(vars['--nx-tile-cols']).toBe('repeat(auto-fill,minmax(clamp(156px,14cqw,255px),1fr))');
     expect(vars['--nx-tile-min-h']).toBe('max(120px,8vw)');
   });
@@ -253,15 +274,25 @@ describe('пропорция и прижатие сетки', () => {
     expect(auto['--nx-grid-anchor']).toBe('start');
   });
 
-  it('по умолчанию ничего не навязывает: авто и верх', () => {
+  it('пропорция свободная, а сетка по умолчанию прижата к центру', () => {
+    // Пропорцию плитка не навязывает: её задаёт содержимое. А вот прижатие —
+    // это решение о композиции. Девять сайтов на широком экране занимали
+    // верхнюю треть, и низ проваливался в пустоту; по центру та же сетка
+    // читается как композиция, а не как недогруженная страница.
     expect(DEFAULT_TILE_APPEARANCE.ratio).toBe('auto');
-    expect(DEFAULT_TILE_APPEARANCE.anchor).toBe('top');
+    expect(DEFAULT_TILE_APPEARANCE.anchor).toBe('center');
+  });
+
+  it('плитка несёт знак и имя, а описание с адресом уходят в подсказку', () => {
+    expect(DEFAULT_TILE_APPEARANCE.showTitle).toBe(true);
+    expect(DEFAULT_TILE_APPEARANCE.showDescription).toBe(false);
+    expect(DEFAULT_TILE_APPEARANCE.showDomain).toBe(false);
   });
 
   it('чужие значения из хранилища приводятся к допустимым', () => {
     const restored = normalizeTileAppearance({ ratio: '16/9', anchor: 'bottom', markRadius: 999 });
     expect(restored.ratio).toBe('auto');
-    expect(restored.anchor).toBe('top');
+    expect(restored.anchor).toBe('center');
     expect(restored.markRadius).toBe(26);
   });
 });

@@ -150,19 +150,30 @@ describe('Tile', () => {
 });
 
 describe('Tile layouts', () => {
-  it('в табличном виде показывает краткое описание и не показывает адрес', () => {
-    const { container } = render(<Tile site={site} layout="table" {...handlers()} />);
-    expect(screen.getByText('Дизайн')).toBeInTheDocument();
+  it('состав подписи задаёт настройка, а не раскладка', () => {
+    // Прежде строка и список подставляли адрес сами, поверх переключателя.
+    // Пока адрес был включён по умолчанию, разница не была видна; стоило его
+    // выключить — элемент оставался в разметке и прятался стилем.
+    const { container } = render(<Tile site={site} layout="row" {...handlers()} />);
     expect(container.querySelector('.nx-tile-sub')).toBeNull();
-    expect(container.querySelector('.nx-tile-table')).not.toBeNull();
+    expect(container.querySelector('.nx-tile-desc')).toBeNull();
+    // Иконка при этом стоит рядом с текстом, а не над ним: раскладка отвечает
+    // за расположение, а не за состав.
+    expect(container.querySelector('.nx-tile-text')).not.toBeNull();
   });
 
-  it('в строчном виде показывает и описание, и адрес', () => {
-    const { container } = render(<Tile site={site} layout="row" {...handlers()} />);
+  it('включённые описание и адрес доходят до любой раскладки', () => {
+    const { container } = render(
+      <Tile site={site} layout="row" showDescription showDomain {...handlers()} />,
+    );
     expect(screen.getByText('Дизайн')).toBeInTheDocument();
     expect(screen.getByText('figma.com')).toBeInTheDocument();
-    // Иконка стоит рядом с текстом, а не над ним.
-    expect(container.querySelector('.nx-tile-text')).not.toBeNull();
+  });
+
+  it('в табличном виде плитка своя, а подпись подчиняется тем же настройкам', () => {
+    const { container } = render(<Tile site={site} layout="table" {...handlers()} />);
+    expect(container.querySelector('.nx-tile-table')).not.toBeNull();
+    expect(container.querySelector('.nx-tile-sub')).toBeNull();
   });
 
   it('в виде иконок оставляет только название', () => {
