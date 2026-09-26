@@ -1349,23 +1349,42 @@ test.describe('Nexus shell', () => {
    * Ради чего ячейку переложили на три полосы: подписи в одном ряду должны
    * начинаться на одной линии. Раньше ячейка росла свободным столбиком, и
    * подпись под выпадающим списком стояла ниже, чем под переключателем.
+   *
+   * Мера прямая: сколько в группе различных высот подписи, столько и должно
+   * быть рядов — `ячеек / столбцов`, округлённое вверх. Проверяются все
+   * разделы, а не один: раскладка общая, и ломается она тоже везде сразу.
    */
-  test('подписи в ряду настроек стоят на одной линии', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'Ряд из трёх ячеек живёт на широком экране.');
+  test('подписи в ряду настроек стоят на одной линии во всех разделах', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Ряд из нескольких ячеек живёт на широком экране.');
     await page.goto('/');
-    await openSettings(page, 'Оформление');
-    const tops = await page.locator('.nx-pane-body .nx-cell .nx-cell-label').evaluateAll(
-      nodes => nodes.map(node => Math.round(node.getBoundingClientRect().top)),
-    );
-    expect(tops.length).toBeGreaterThan(3);
-    // Группируем по рядам: у ячеек одного ряда верх подписи совпадает.
-    const rows = new Map<number, number>();
-    for (const top of tops) {
-      const key = [...rows.keys()].find(value => Math.abs(value - top) <= 1) ?? top;
-      rows.set(key, (rows.get(key) ?? 0) + 1);
+    await page.getByRole('button', { name: 'Настройки' }).last().click();
+    let groupsChecked = 0;
+    for (const section of ['Общие', 'Оформление', 'Плитки', 'Панели', 'Поиск', 'Погода', 'Приватность']) {
+      await railTo(page, section);
+      const groups = await page.locator('.nx-pane-body .nx-card').evaluateAll(cards => cards.map(card => {
+        const cells = [...card.querySelectorAll(':scope .nx-cell')];
+        const grid = card.querySelector('.nx-triples');
+        if (!cells.length || !grid) return null;
+        const columns = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+        const tops = cells.map(cell => {
+          const label = cell.querySelector('.nx-cell-label');
+          return label ? Math.round(label.getBoundingClientRect().top) : -1;
+        });
+        return {
+          title: card.querySelector('h3')?.textContent ?? '?',
+          heights: new Set(tops).size,
+          rows: Math.ceil(cells.length / columns),
+          tops,
+        };
+      }).filter(Boolean as unknown as (value: unknown) => boolean));
+      for (const group of groups as { title: string; heights: number; rows: number; tops: number[] }[]) {
+        expect(group.heights, `${section} → «${group.title}»: высоты подписей ${group.tops.join(', ')}`)
+          .toBe(group.rows);
+        groupsChecked += 1;
+      }
     }
-    // Шесть ячеек в три столбца дают ровно два ряда, а не шесть высот.
-    expect([...rows.values()].every(count => count === 3), `высоты подписей: ${tops.join(', ')}`).toBe(true);
+    // Разделы и правда обошли, а не проскочили по пустым страницам.
+    expect(groupsChecked).toBeGreaterThan(10);
   });
 
   /**

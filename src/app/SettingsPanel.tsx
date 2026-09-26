@@ -196,7 +196,7 @@ export function SettingsPanel(props: SettingsProps) {
             <Switch icon={ExternalLink} label="Открывать в новой вкладке" value={ui.newTab !== false}
               onChange={value => patchUi({ newTab: value })} />
             <Switch icon={CloudSun} label="Виджеты справа в сетке" value={ui.rail !== false}
-              why="Часы, погода и недавние" onChange={value => patchUi({ rail: value })} />
+              hint="Часы, погода и недавние" onChange={value => patchUi({ rail: value })} />
           </Group>
         )}
 
@@ -208,7 +208,7 @@ export function SettingsPanel(props: SettingsProps) {
             <Pick icon={ImageIcon} label="Фон" options={WALLPAPERS}
               value={appearance.wallpaper ?? 'lake'} onChange={value => setAppearance({ ...appearance, wallpaper: value })} />
             <Cell icon={ImageIcon} label="Своё изображение"
-              why={photoNote ?? 'Снимок уменьшается и хранится только на этом устройстве'}>
+              hint={photoNote ?? 'Снимок уменьшается и хранится только на этом устройстве'}>
               <span className="nx-card-buttons nx-inline-buttons">
                 <button type="button" onClick={() => photoInput.current?.click()}>
                   {hasPhoto ? 'Заменить' : 'Выбрать файл'}
@@ -227,16 +227,15 @@ export function SettingsPanel(props: SettingsProps) {
             </Cell>
             <Cell icon={Sun} label="Осветление фона" as="label"
               disabled={!photoActive}
-              why={photoActive
-                ? 'Насколько сильно снимок притушен, чтобы текст оставался читаемым'
-                : 'Сначала выберите своё изображение и включите фон «Своё фото»'}>
+              hint="Насколько сильно снимок притушен, чтобы текст оставался читаемым"
+              why="Сначала выберите своё изображение и включите фон «Своё фото»">
               <span className="nx-cell-value" aria-hidden="true">{appearance.veil ?? 42}%</span>
               <input type="range" min={0} max={85} step={1} aria-label="Осветление фона"
                 disabled={!photoActive} value={appearance.veil ?? 42}
                 onChange={event => setAppearance({ ...appearance, veil: Number(event.target.value) })} />
             </Cell>
             <Cell icon={Droplets} label="Размытие панелей" as="label"
-              why="Панели пропускают сцену сквозь себя — заметнее всего на фотографии">
+              hint="Панели пропускают сцену сквозь себя — заметнее всего на фотографии">
               <span className="nx-cell-value" aria-hidden="true">{appearance.panelBlur ?? 0}px</span>
               <input type="range" min={0} max={20} step={1} aria-label="Размытие панелей"
                 value={appearance.panelBlur ?? 0}
@@ -369,7 +368,7 @@ export function SettingsPanel(props: SettingsProps) {
             {/* Знак из набора берётся локально; запрос уходит только когда знака нет. */}
             <Switch icon={Eye} label="Логотипы сайтов" value={ui.siteIcons !== false}
               onChange={value => patchUi({ siteIcons: value })}
-              why="Выключено — везде монограмма. Включено — знак из набора, а для сайтов без него иконка запрашивается у самого сайта" />
+              hint="Выключено — везде монограмма. Включено — знак из набора, а для сайтов без него иконка запрашивается у самого сайта" />
             <Switch icon={Camera} label="Внешние превью" value={ui.remotePreviews === true}
               onChange={value => patchUi({ remotePreviews: value })} />
           </Group>

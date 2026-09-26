@@ -87,6 +87,37 @@ describe('SettingsPanel', () => {
     expect(screen.getByText('Сначала задайте толщину рамки')).toBeInTheDocument();
   });
 
+  /**
+   * Пояснение «почему погашено» показывалось всегда, а не только когда
+   * контрол и правда погашен: под включённым переключателем «Показывать
+   * недавние» стояло «Недавние выключены». Интерфейс утверждал неправду.
+   */
+  it('не объясняет отказ там, где отказа нет', async () => {
+    const user = userEvent.setup();
+    setup({ ui: { ...ui, panelRecent: true, favoritesBar: true, weather: true } });
+    await user.click(screen.getByRole('button', { name: 'Панели' }));
+    expect(screen.getByLabelText('Сколько недавних')).toBeEnabled();
+    expect(screen.queryByText('Недавние выключены')).not.toBeInTheDocument();
+    expect(screen.queryByText('Полоса избранного выключена')).not.toBeInTheDocument();
+  });
+
+  it('объясняет отказ там, где отказ есть', async () => {
+    const user = userEvent.setup();
+    setup({ ui: { ...ui, panelRecent: false, favoritesBar: false } });
+    await user.click(screen.getByRole('button', { name: 'Панели' }));
+    expect(screen.getByLabelText('Сколько недавних')).toBeDisabled();
+    expect(screen.getAllByText('Недавние выключены')).toHaveLength(2);
+    expect(screen.getAllByText('Полоса избранного выключена')).toHaveLength(2);
+  });
+
+  /** Пояснение, верное всегда, остаётся на месте и при работающем контроле. */
+  it('оставляет постоянное пояснение под включённым контролом', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: 'Общие' }));
+    expect(screen.getByText('Часы, погода и недавние')).toBeInTheDocument();
+  });
+
   it('меняет поисковую систему', async () => {
     const user = userEvent.setup();
     const props = setup();

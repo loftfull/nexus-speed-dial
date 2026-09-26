@@ -36,30 +36,36 @@ export function Group({ title, hint, children }: { title: string; hint?: string;
  * Три полосы, а не свободный столбик: у иконки и у органа высота задана, и
  * подпись поэтому начинается на одной высоте во всех ячейках ряда. Раньше
  * каждая ячейка росла сама по себе, и подписи стояли лесенкой.
+ *
+ * Пояснений два, и это не придирка к словам. `why` — причина, по которой
+ * контрол сейчас погашен, и показывать её, когда он работает, значит
+ * утверждать неправду: под включённым переключателем «Показывать недавние»
+ * стояло «Недавние выключены». `hint` — пояснение, верное всегда.
  */
-export function Cell({ icon: Icon, label, why, disabled, children, as = 'div' }: {
-  icon: ControlIcon; label: string; why?: string; disabled?: boolean;
+export function Cell({ icon: Icon, label, why, hint, disabled, children, as = 'div' }: {
+  icon: ControlIcon; label: string; why?: string; hint?: string; disabled?: boolean;
   children: React.ReactNode; as?: 'div' | 'label';
 }) {
   const Tag = as;
+  const note = disabled === true ? (why ?? hint) : hint;
   return (
     <Tag className={'nx-cell' + (disabled ? ' off' : '')} title={disabled && why ? why : label}>
       <span className="nx-cell-top"><Icon size={14} /></span>
       <span className="nx-cell-control">{children}</span>
       <span className="nx-cell-text">
         <span className="nx-cell-label">{label}</span>
-        {why && <span className="nx-cell-why">{why}</span>}
+        {note && <span className="nx-cell-why">{note}</span>}
       </span>
     </Tag>
   );
 }
 
-export function Pick({ icon, label, options, value, onChange, disabled, why }: {
+export function Pick({ icon, label, options, value, onChange, disabled, why, hint }: {
   icon: ControlIcon; label: string; options: [string, string][]; value: string;
-  onChange: (value: string) => void; disabled?: boolean; why?: string;
+  onChange: (value: string) => void; disabled?: boolean; why?: string; hint?: string;
 }) {
   return (
-    <Cell icon={icon} label={label} disabled={disabled} why={why} as="label">
+    <Cell icon={icon} label={label} disabled={disabled} why={why} hint={hint} as="label">
       <select aria-label={label} value={value} disabled={disabled}
         onChange={event => onChange(event.target.value)}>
         {options.map(([id, text]) => <option key={id} value={id}>{text}</option>)}
@@ -68,12 +74,12 @@ export function Pick({ icon, label, options, value, onChange, disabled, why }: {
   );
 }
 
-export function Switch({ icon, label, value, onChange, disabled, why }: {
+export function Switch({ icon, label, value, onChange, disabled, why, hint }: {
   icon: ControlIcon; label: string; value: boolean;
-  onChange: (value: boolean) => void; disabled?: boolean; why?: string;
+  onChange: (value: boolean) => void; disabled?: boolean; why?: string; hint?: string;
 }) {
   return (
-    <Cell icon={icon} label={label} disabled={disabled} why={why}>
+    <Cell icon={icon} label={label} disabled={disabled} why={why} hint={hint}>
       <button type="button" role="switch" aria-checked={value} aria-label={label} disabled={disabled}
         className={'nx-switch' + (value ? ' on' : '')} onClick={() => onChange(!value)}><span /></button>
     </Cell>
