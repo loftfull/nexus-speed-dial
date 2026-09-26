@@ -314,6 +314,29 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  box-shadow:var(--nx-tile-shadow-hover,var(--nx-tile-shadow,var(--nx-shadow))),
   var(--nx-tile-highlight,inset 0 0 0 rgba(0,0,0,0))}
 .nx-tile:active,.nx-tile.is-press{transform:scale(var(--nx-tile-press-scale,.98))}
+/* Помеченная плитка: акцентная кромка вместо галочки в углу. Галочка была бы
+   ещё одним постоянным органом управления, а кромка ничего не занимает. */
+.nx-tile.picked{box-shadow:inset 0 0 0 2px var(--nx-accent),var(--nx-tile-shadow,var(--nx-shadow-sm))}
+.nx-tile.picked .nx-tile-face{opacity:.92}
+
+/* Полоса выделения стоит над доком и живёт по тому же материалу. */
+/* Док лежит в .nx-bottom, которая не ловит указатель: полоса должна ловить,
+   иначе по её кнопкам нельзя попасть. */
+.nx-picked{position:absolute;left:50%;bottom:calc(100% - 4px);transform:translateX(-50%);pointer-events:auto;
+ z-index:24;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:var(--nx-r-lg);
+ background:var(--nx-glass-strong,var(--nx-surface));
+ -webkit-backdrop-filter:blur(var(--nx-glass-blur,18px)) saturate(1.6);
+ backdrop-filter:blur(var(--nx-glass-blur,18px)) saturate(1.6);
+ box-shadow:var(--nx-glass-edge,inset 0 0 0 1px var(--nx-line)),var(--nx-shadow-lg);
+ animation:nx-picked-in .18s cubic-bezier(.2,.85,.25,1)}
+@keyframes nx-picked-in{from{opacity:0;transform:translate(-50%,6px)}to{opacity:1;transform:translate(-50%,0)}}
+.nx-picked > b{padding:0 8px;font-size:var(--nx-fs-2);font-weight:700;color:var(--nx-text);
+ font-variant-numeric:tabular-nums;white-space:nowrap}
+.nx-picked button{display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:var(--nx-r-sm);
+ color:var(--nx-muted);font-size:var(--nx-fs-2);font-weight:600;white-space:nowrap;
+ transition:background .14s ease,color .14s ease}
+.nx-picked button:hover{background:var(--nx-sunken);color:var(--nx-accent)}
+.nx-picked button.danger:hover{color:#d2443f}
 /* Описание и адрес ушли с плитки, но не из приложения: при наведении они
    выходят подсказкой под знаком. Она рисуется самим браузером только когда
    на плитке действительно чего-то нет — атрибут ставится условно. */
@@ -1521,6 +1544,9 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 
 /* Показатель хранилища вместо лозунга: у localStorage около пяти
    мегабайт потолка, и упереться в него — реальный сценарий. */
+/* Вложенная строка списка инструментов: сдвиг и приглушённый цвет говорят,
+   что это второй уровень, без рисования дерева. */
+.nx-link-sub{padding-left:30px;color:var(--nx-muted)}
 .nx-usage{display:flex;flex-direction:column;gap:7px;width:100%;padding:10px 11px;
  border-radius:var(--nx-r-md);background:var(--nx-sunken);text-align:left;
  transition:background .15s ease}
@@ -1584,13 +1610,28 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-carousel-row{flex:1;min-width:0;display:flex;gap:10px;overflow-x:auto;scroll-behavior:smooth;
  scrollbar-width:none;padding:2px}
 .nx-carousel-row::-webkit-scrollbar{display:none}
-.nx-cat-card{flex:none;width:106px;display:flex;flex-direction:column;align-items:center;gap:7px;
+/* Ширина идёт от названия, а не задана числом. При жёстких 106 точках
+   «Развлечения» не помещались и обрывались многоточием — обрезка вместо
+   сведения. Потолок нужен, чтобы длинное имя не растянуло ленту. */
+.nx-cat-card{flex:none;min-width:98px;max-width:172px;display:flex;flex-direction:column;align-items:center;gap:7px;
  padding:12px 8px;border-radius:var(--nx-r-lg);background:var(--nx-surface);
  color:var(--nx-node,var(--nx-muted));
  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 8px 20px -12px rgba(16,24,40,.32);
  transition:transform .16s var(--nx-tile-easing,ease),box-shadow .16s ease,background .16s ease}
+/* Монограмма узла: когда название ни о чём не говорит, знака нет вовсе.
+   Круг с буквой честно сообщает «имя знаю, смысл нет» — в отличие от тега,
+   который утверждал бы, что категория про ярлыки. */
+.nx-node-mono{display:inline-grid;place-items:center;flex:none;border-radius:50%;
+ font-size:.62em;font-weight:700;letter-spacing:.2px;line-height:1;
+ color:var(--nx-node,var(--nx-muted));
+ background:color-mix(in srgb,var(--nx-node,var(--nx-muted)) 16%,transparent);
+ box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--nx-node,var(--nx-muted)) 34%,transparent)}
 .nx-cat-card span{font-size:var(--nx-fs-2);font-weight:600;color:var(--nx-text);max-width:100%;
  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Оптическая подгонка: имя длиннее тринадцати знаков набирается на ступень
+   мельче. Приём из дорогих интерфейсов — лучше на волос мельче, чем с
+   многоточием. Порог держится в паре с потолком ширины выше. */
+.nx-cat-card span:not(:empty){font-size:clamp(var(--nx-fs-1),calc(var(--nx-fs-2) - (var(--nx-name-len,0) - 13) * .34px),var(--nx-fs-2))}
 .nx-cat-card:hover{transform:translateY(-2px)}
 .nx-cat-card.on{background:var(--nx-accent-soft);
  box-shadow:inset 0 0 0 2px var(--nx-accent),0 8px 20px -12px rgba(16,24,40,.32)}

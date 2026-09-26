@@ -26,6 +26,7 @@ import { buildPaletteItems, looksLikeUrl } from '../domain/palette';
 import type { PaletteItem } from '../domain/palette';
 import { categoryColor, groupColor, projectColor } from '../domain/nodeColor';
 import { tileLayoutClass, toTileVars } from '../domain/tileAppearance';
+import { NodeMark } from './NodeMark';
 import { sites as countSites } from '../domain/plural';
 import type { Category, Project, SiteGroup, SiteRecord as Site } from '../domain/types';
 
@@ -67,7 +68,6 @@ const SECTION_TITLE = Object.fromEntries(SECTIONS.map(s => [s.id, s.label])) as 
 const SECTION_PALETTE_ICON: Record<SectionId, string> = {
   sites: 'home', favorites: 'star', recent: 'clock', notes: 'note', trash: 'trash', sessions: 'session',
 };
-const PROJECT_GLYPHS = [Home, Briefcase, GraduationCap, Star, Layers3, ShoppingBag];
 const SORTS: [SortKey, string][] = [
   ['name', 'По названию'],
   ['recent', 'По последнему открытию'],
@@ -75,14 +75,13 @@ const SORTS: [SortKey, string][] = [
 ];
 /** Сколько пространств видно до нажатия «Ещё». */
 const SPACES_SHOWN = 5;
+/** С какого числа сайтов в выборке показывать сортировку. */
+const SORT_FROM = 12;
+/** Сколько пространств должно остаться за кадром, чтобы «Ещё N» имела смысл. */
+const MORE_FROM = 2;
+/** Насколько заполненным должно быть хранилище, чтобы о нём сообщать. */
+const USAGE_FROM = 70;
 /** Инструменты боковой панели: каждый ведёт в свой раздел настроек. */
-const TOOLS: [SettingsSectionId, string, ControlIcon][] = [
-  ['data', 'Импорт', Upload],
-  ['data', 'Резервная копия', Save],
-  ['general', 'Настройки', SettingsIcon],
-  ['look', 'Внешний вид', Palette],
-  ['keys', 'Горячие клавиши', Keyboard],
-];
 const PAGE = 24;
 export const DOCK_DRAG_TYPE = 'application/x-nexus-site';
 
@@ -129,6 +128,21 @@ export function App() {
   const [settingsSection, setSettingsSection] = useState<SettingsSectionId>('general');
   const [allSpaces, setAllSpaces] = useState(false);
   const carousel = useRef<HTMLDivElement>(null);
+  /**
+   * Стрелки нужны только когда лента и правда не помещается. Раньше они
+   * висели всегда: две кнопки, которые в половине случаев ничего не делают.
+   * Переполнение измеряется, а не предполагается.
+   */
+  const [carouselOverflows, setCarouselOverflows] = useState(false);
+  useEffect(() => {
+    const row = carousel.current;
+    if (!row || typeof ResizeObserver === 'undefined') return;
+    const check = () => setCarouselOverflows(row.scrollWidth > row.clientWidth + 1);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(row);
+    return () => observer.disconnect();
+  });
   /** Лента категорий прокручивается на ширину видимой части, а не на пиксели. */
   const scrollCarousel = (direction: 1 | -1) => {
     const row = carousel.current;
@@ -338,6 +352,22 @@ export function App() {
     setSites(current => current.filter(item => item.id !== site.id));
     setToast(`«${site.title}» в корзине`);
   };
+
+  /**
+   * Выделение. Пока оно пусто, на экране нет ни одного органа управления,
+   * который бы о нём напоминал: он появляется ровно тогда, когда появляется
+   * сам выбор. Это заменяет меню на каждой из девяти плиток одной полосой.
+   */
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const togglePicked = (id: string) => setPicked(current => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const clearPicked = () => setPicked(new Set());
+  const pickedSites = useMemo(() => sites.filter(site => site.id && picked.has(site.id)), [sites, picked]);
+  // Выбор живёт внутри текущей выборки: сменили категорию — он теряет смысл.
+  useEffect(() => { setPicked(new Set()); }, [activeProjectId, categoryId, groupId, section]);
 
   const selectProject = (id: string) => { setSection('sites'); setProjectId(id); setCategoryId(null); setGroupId(null); };
   const addProject = () => setActionDialog({ kind: 'project' });
@@ -680,6 +710,9 @@ export function App() {
       showDomain={showDomain}
       showDescription={showDescription}
       showCategory={tile.showCategory}
+      selected={Boolean(site.id) && picked.has(site.id!)}
+      selecting={picked.size > 0}
+      onSelectToggle={site.id ? () => togglePicked(site.id!) : undefined}
       onOpen={() => openSite(site)}
       onFavorite={() => toggleFavorite(site)}
       onEdit={() => setEditing(site)}
@@ -905,6 +938,13 @@ export function App() {
             {SECTIONS.map(item => {
               const Glyph = item.icon;
               const on = section === item.id;
+              // Здесь напрашивалось правило «пустой раздел не занимает экран»,
+              // и я его сделал. Проверки показали, почему это неверно: у
+              // каждого раздела есть спроектированное пустое состояние со
+              // своим следующим шагом — «Сессий пока нет» предлагает сохранить
+              // текущие сайты. Скрыв строку, я убрал единственный путь к этому
+              // предложению. Разделы — это навигация, а не хром; сокращать
+              // надо второе.
               return (
                 <button key={item.id} type="button" className={'nx-link' + (on ? ' on' : '')}
                   aria-current={on ? 'page' : undefined} title={item.label}
@@ -926,7 +966,6 @@ export function App() {
                 рабочая область — цепочкой крошек, каруселью и чипами. Дерево
                 в панели повторяло бы то же самое второй раз. */}
             {shownProjects.map((project, index) => {
-              const Glyph = PROJECT_GLYPHS[index % PROJECT_GLYPHS.length];
               const current = activeProjectId === project.id && section === 'sites';
               return (
                 <button key={project.id} type="button" className={'nx-link' + (current ? ' on' : '')}
@@ -934,14 +973,14 @@ export function App() {
                   title={project.name} aria-label={`Пространство «${project.name}»`}
                   aria-current={current ? 'true' : undefined}
                   onClick={() => selectProject(project.id)}>
-                  <Glyph size={18} weight={current ? 'duotone' : 'regular'} />
+                  <NodeMark name={project.name} size={18} active={current} />
                   {panelOpen && <span>{project.name}</span>}
                   {panelOpen && treeCounts.byProject.get(project.id) ? <i>{treeCounts.byProject.get(project.id)}</i> : null}
                 </button>
               );
             })}
 
-            {panelOpen && projects.length > SPACES_SHOWN && (
+            {panelOpen && projects.length > SPACES_SHOWN + MORE_FROM - 1 && (
               <button type="button" className="nx-link nx-link-ghost" aria-expanded={allSpaces}
                 onClick={() => setAllSpaces(value => !value)}>
                 <ChevronDown size={18} className={'nx-tree-caret' + (allSpaces ? ' open' : '')} aria-hidden="true" />
@@ -953,16 +992,20 @@ export function App() {
 
           {/* Инструменты ведут прямо в нужный раздел настроек. «Справки» здесь
               нет намеренно: раздела помощи в приложении не существует, а
-              кнопка без действия в этом проекте запрещена отдельной проверкой. */}
+              кнопка без действия в этом проекте запрещена отдельной проверкой.
+
+              Пять строк держались на экране всегда, хотя открывают их раз в
+              месяц. Осталась одна — и ничего не потеряно: все пять вели в
+              разделы одного и того же окна настроек, и там эти разделы никуда
+              не делись. Первая попытка была хуже: список прятался за
+              раскрывающейся строкой, и до самих настроек становилось два
+              нажатия вместо одного. Проверки это поймали. */}
           <div className="nx-section">
-            {panelOpen && <span className="nx-label">Инструменты</span>}
-            {TOOLS.map(([id, label, Glyph]) => (
-              <button key={label} type="button" className="nx-link" title={label}
-                onClick={() => { setSettingsSection(id); setSettingsOpen(true); }}>
-                <Glyph size={18} />
-                {panelOpen && <span>{label}</span>}
-              </button>
-            ))}
+            <button type="button" className="nx-link" title="Настройки"
+              onClick={() => { setSettingsSection('general'); setSettingsOpen(true); }}>
+              <SettingsIcon size={18} />
+              {panelOpen && <span>Настройки</span>}
+            </button>
           </div>
 
           {panelRecent.length > 0 && (
@@ -986,7 +1029,10 @@ export function App() {
             показатель, который действительно может понадобиться: сколько
             места занято в хранилище браузера. Потолок там около пяти
             мегабайт, и упереться в него — реальный сценарий. */}
-        <div className="nx-panel-foot">
+        {/* Хранилище показывается только когда о нём есть что сказать. Строка
+            «1 КБ из 5 МБ» — это сообщение «всё в порядке», а такие сообщения
+            экран не должны занимать. */}
+        <div className="nx-panel-foot" hidden={usage.percent < USAGE_FROM}>
           {panelOpen ? (
             <button type="button" className="nx-usage" title="Открыть раздел «Данные»"
               onClick={() => { setSettingsSection('data'); setSettingsOpen(true); }}>
@@ -1098,8 +1144,10 @@ export function App() {
                   Категорий у пространства бывает десяток, в строку они не
                   влезают, поэтому лента прокручивается стрелками. */}
               <nav className="nx-carousel" aria-label="Категории пространства">
+                {carouselOverflows && (
                 <button type="button" className="nx-carousel-arrow" aria-label="Левее"
                   onClick={() => scrollCarousel(-1)}><ChevronLeft size={18} /></button>
+                )}
                 <div className="nx-carousel-row" ref={carousel}>
                   <button type="button" className={'nx-cat-card' + (categoryId ? '' : ' on')}
                     aria-current={categoryId ? undefined : 'true'}
@@ -1110,10 +1158,12 @@ export function App() {
                   {projectCategories.map(category => (
                     <button key={category.id} type="button"
                       className={'nx-cat-card' + (categoryId === category.id ? ' on' : '')}
-                      style={{ '--nx-node': categoryColor(category) } as React.CSSProperties}
+                      /* Длина имени доходит до стиля числом: по нему кегль
+                         подгоняется оптически, без многоточия. */
+                      style={{ '--nx-node': categoryColor(category), '--nx-name-len': category.name.length } as React.CSSProperties}
                       aria-current={categoryId === category.id ? 'true' : undefined}
                       onClick={() => { setCategoryId(category.id); setGroupId(null); }}>
-                      <Tag size={22} weight={categoryId === category.id ? 'duotone' : 'regular'} aria-hidden="true" />
+                      <NodeMark name={category.name} size={22} active={categoryId === category.id} />
                       <span>{category.name}</span>
                     </button>
                   ))}
@@ -1123,8 +1173,10 @@ export function App() {
                     <span>Категория</span>
                   </button>
                 </div>
+                {carouselOverflows && (
                 <button type="button" className="nx-carousel-arrow" aria-label="Правее"
                   onClick={() => scrollCarousel(1)}><ChevronRight size={18} /></button>
+                )}
               </nav>
 
               {/* Заголовок содержимого: где мы, сколько здесь, как показать.
@@ -1143,6 +1195,11 @@ export function App() {
                     <button type="button" className={view === 'groups' ? 'on' : ''} aria-pressed={view === 'groups'}
                       aria-label="По группам" title="По группам" onClick={() => setView('groups')}><Rows3 size={17} /></button>
                   </div>
+                  {/* Порог: при девяти сайтах сортировать нечего, и три
+                      органа в заголовке висели просто так. Двенадцать — это
+                      примерно два ряда на широком экране: с этого места глаз
+                      уже не удерживает список целиком. */}
+                  {shown.length >= SORT_FROM && (
                   <label className="nx-sort">
                     <span className="nx-sr">Сортировка</span>
                     <select value={ui.sortBy ?? 'name'} aria-label="Сортировка"
@@ -1151,6 +1208,7 @@ export function App() {
                     </select>
                     <ChevronDown size={14} aria-hidden="true" />
                   </label>
+                  )}
                 </div>
               </div>
               )}
@@ -1169,7 +1227,7 @@ export function App() {
                       style={{ '--nx-node': groupColor(group) } as React.CSSProperties}
                       aria-pressed={groupId === group.id}
                       onClick={() => setGroupId(current => (current === group.id ? null : group.id))}>
-                      <Layers3 size={15} aria-hidden="true" />
+                      <NodeMark name={group.name} size={15} active={groupId === group.id} />
                       <span>{group.name}</span>
                       <i>{treeCounts.byGroup.get(group.id) ?? 0}</i>
                     </button>
@@ -1208,6 +1266,28 @@ export function App() {
 
         <div className="nx-bottom">
 
+          {/* Полоса выделения. Её нет, пока ничего не выбрано, и она заменяет
+              меню на каждой плитке: одно действие на весь выбор вместо девяти
+              одинаковых кнопок по углам. */}
+          {picked.size > 0 && (
+            <div className="nx-picked" role="toolbar" aria-label={`Выбрано сайтов: ${picked.size}`}>
+              <b>{countSites(picked.size)}</b>
+              <span className="nx-dock-sep" />
+              <button type="button" onClick={() => { pickedSites.forEach(toggleFavorite); clearPicked(); }}>
+                <Star size={16} weight="regular" aria-hidden="true" />
+                <span>В избранное</span>
+              </button>
+              <button type="button" className="danger" onClick={() => { pickedSites.forEach(removeSite); clearPicked(); }}>
+                <Trash2 size={16} aria-hidden="true" />
+                <span>В корзину</span>
+              </button>
+              <span className="nx-dock-sep" />
+              <button type="button" aria-label="Снять выделение" onClick={clearPicked}>
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+          )}
+
           <div
             className={'nx-dock' + (dockOpen ? ' open' : '') + (dragOverDock ? ' drop' : '')}
             id="nx-dock" role="toolbar" aria-label="Док-панель" aria-hidden={!dockOpen}
@@ -1224,7 +1304,10 @@ export function App() {
             }}
           >
             {pinnedSites.length === 0 ? (
-              <span className="nx-dock-empty">Перетащите сюда плитку сайта</span>
+              /* Подсказка адресована первому дню, а занимала половину дока
+                 всегда. Теперь она появляется ровно тогда, когда на док
+                 тащат плитку, — то есть когда она и нужна. */
+              dragOverDock ? <span className="nx-dock-empty">Отпустите, чтобы закрепить</span> : null
             ) : (
               <>
                 {pinnedSites.map(site => (

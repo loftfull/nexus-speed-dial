@@ -1374,9 +1374,14 @@ test.describe('Nexus shell', () => {
     // «Справки» нет, пока нет раздела помощи: кнопка без действия хуже её отсутствия.
     await expect(page.locator('.nx-panel').getByRole('button', { name: 'Справка' })).toHaveCount(0);
 
-    // А то, что обещано, — делается: инструмент ведёт в свой раздел настроек.
-    await page.locator('.nx-panel').getByRole('button', { name: 'Резервная копия' }).click();
+    // А то, что обещано, — делается. Пяти отдельных строк инструментов в
+    // панели больше нет: все они вели в разделы одного окна настроек, и там
+    // эти разделы на месте. Одна строка открывает окно, раздел выбирается
+    // внутри — путь стал длиннее на одно нажатие, но экран короче на четыре
+    // постоянных органа.
+    await page.locator('.nx-panel').getByRole('button', { name: 'Настройки' }).click();
     await expect(page.locator('.nx-settings')).toBeVisible();
+    await page.locator('.nx-settings').getByRole('button', { name: 'Данные' }).click();
     await expect(page.locator('.nx-settings').getByRole('button', { name: 'Экспорт данных' })).toBeVisible();
   });
 
@@ -1466,6 +1471,70 @@ test.describe('Nexus shell', () => {
     // и Chromium считают по-разному, — а вот забирать латиницу с диакритикой
     // для русского интерфейса не должен ни один.
     expect(fonts.filter(name => name.includes('-ext-'))).toEqual([]);
+  });
+
+  test('действия появляются при выделении, а не висят на каждой плитке', async ({ page }) => {
+    await page.goto('/');
+    const tiles = page.locator('.nx-main .nx-tile');
+    await expect(tiles.first()).toBeVisible();
+
+    // В покое полосы нет вовсе: она не занимает экран, пока нечего делать.
+    await expect(page.locator('.nx-picked')).toHaveCount(0);
+
+    // Ctrl-щелчок помечает плитку и не открывает сайт.
+    await tiles.nth(0).locator('.nx-tile-face').click({ modifiers: ['ControlOrMeta'] });
+    await expect(page.locator('.nx-tile.picked')).toHaveCount(1);
+    const bar = page.locator('.nx-picked');
+    await expect(bar).toBeVisible();
+    await expect(bar).toContainText('1');
+
+    // Пока выделение идёт, обычный щелчок продолжает его, а не открывает сайт.
+    await tiles.nth(1).locator('.nx-tile-face').click();
+    await expect(page.locator('.nx-tile.picked')).toHaveCount(2);
+    await expect(bar).toContainText('2');
+
+    // Повторный щелчок снимает пометку.
+    await tiles.nth(1).locator('.nx-tile-face').click();
+    await expect(page.locator('.nx-tile.picked')).toHaveCount(1);
+
+    // Действие применяется ко всему выбору и само снимает выделение.
+    await bar.getByRole('button', { name: 'В избранное' }).click();
+    await expect(page.locator('.nx-picked')).toHaveCount(0);
+    await expect(page.locator('.nx-tile .nx-tile-star').first()).toBeVisible();
+
+    // И щелчок без выделения снова открывает сайт, а не метит его.
+    await expect(page.locator('.nx-tile.picked')).toHaveCount(0);
+  });
+
+  test('ни одна подпись на экране не обрезана', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('.nx-tile');
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(400);
+
+    // Обрезка — это когда текст шире своей рамки и браузер добавляет
+    // многоточие. «Развлече…» в карусели категорий, «Моск» в доке, «Среда,
+    // 1…» в мобильной шапке — каждый такой случай находили глазами на
+    // снимке. Измерение переводит требование в инвариант: сломать его молча
+    // уже нельзя.
+    const cut = await page.evaluate(() => {
+      const out: string[] = [];
+      document.querySelectorAll('.nx-root *').forEach(element => {
+        const node = element as HTMLElement;
+        // Только листья: у родителя своя прокрутка и своё переполнение.
+        if (node.children.length > 0) return;
+        const text = (node.textContent ?? '').trim();
+        if (!text) return;
+        const box = node.getBoundingClientRect();
+        if (box.width < 2 || box.height < 2) return;
+        if (getComputedStyle(node).textOverflow !== 'ellipsis') return;
+        if (node.scrollWidth > node.clientWidth + 1) {
+          out.push(`«${text.slice(0, 30)}» ${node.clientWidth}→${node.scrollWidth}px`);
+        }
+      });
+      return out;
+    });
+    expect(cut, 'подписи, которым не хватило места').toEqual([]);
   });
 
   test('второе открытие вкладки не идёт за погодой заново', async ({ page }) => {

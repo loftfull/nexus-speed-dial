@@ -1,4 +1,5 @@
 import type { Category, Project, SiteGroup } from './types';
+import { themeColor } from './categoryTheme';
 
 /** Palette used when a node carries no colour of its own. */
 export const NODE_PALETTE = [
@@ -20,11 +21,22 @@ export function projectColor(project: Pick<Project, 'id' | 'color'>): string {
   return hex.test(project.color ?? '') ? project.color : NODE_PALETTE[paletteIndex(project.id)];
 }
 
-/** Categories have no colour field, so the tint is derived from the identifier. */
-export function categoryColor(category: Pick<Category, 'id'>): string {
-  return NODE_PALETTE[paletteIndex(category.id)];
+/**
+ * У категории нет своего цвета, поэтому он выводится из названия: узнанная
+ * тема отдаёт свой цвет, неузнанная — хеш названия.
+ *
+ * Раньше хеш брался от идентификатора. Идентификатор выдаётся при создании,
+ * поэтому «Соцсети» в одном пространстве и «Соцсети» в другом оказывались
+ * разного цвета — со стороны это читалось как лотерея. Имя устойчиво, и
+ * одинаковые имена теперь везде выглядят одинаково.
+ *
+ * Название может не дойти — например, когда на руках один идентификатор из
+ * хлебной крошки. Тогда работает прежний путь, и вид не ломается.
+ */
+export function categoryColor(category: Pick<Category, 'id'> & { name?: string }): string {
+  return category.name ? themeColor(category.name) : NODE_PALETTE[paletteIndex(category.id)];
 }
 
-export function groupColor(group: Pick<SiteGroup, 'id'>): string {
-  return NODE_PALETTE[paletteIndex(group.id)];
+export function groupColor(group: Pick<SiteGroup, 'id'> & { name?: string }): string {
+  return group.name ? themeColor(group.name) : NODE_PALETTE[paletteIndex(group.id)];
 }

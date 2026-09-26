@@ -22,6 +22,12 @@ export type TileProps = {
   showDescription?: boolean;
   showCategory?: boolean;
   useFavicons?: boolean;
+  /** Плитка помечена в текущем выделении. */
+  selected?: boolean;
+  /** В сетке уже есть выделение: обычный щелчок продолжает его, а не открывает сайт. */
+  selecting?: boolean;
+  /** Щелчок с Ctrl/Cmd или долгое нажатие. */
+  onSelectToggle?: () => void;
   onOpen: () => void;
   onFavorite: () => void;
   onEdit: () => void;
@@ -30,9 +36,24 @@ export type TileProps = {
 
 export function Tile({
   site, dragType, layout = 'standard', showDomain = false, showDescription = false,
-  showCategory = false, useFavicons = true, style, onOpen, onFavorite, onEdit, onDelete,
+  showCategory = false, useFavicons = true, selected = false, selecting = false,
+  style, onSelectToggle, onOpen, onFavorite, onEdit, onDelete,
 }: TileProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  /**
+   * Долгое нажатие включает выделение там, где нет клавиатуры. Порог в 450 мс
+   * выбран как у мобильных систем: короче — срабатывает при обычном касании,
+   * длиннее — ощущается как зависание.
+   */
+  const hold = useRef<number | undefined>(undefined);
+  const held = useRef(false);
+  const startHold = () => {
+    if (!onSelectToggle) return;
+    held.current = false;
+    hold.current = window.setTimeout(() => { held.current = true; onSelectToggle(); }, 450);
+  };
+  const stopHold = () => { if (hold.current) window.clearTimeout(hold.current); hold.current = undefined; };
+  useEffect(() => stopHold, []);
   const holder = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
 
@@ -69,7 +90,8 @@ export function Tile({
 
   return (
     <div
-      className={'nx-tile nx-tile-' + layout + (menuOpen ? ' menu-open' : '')}
+      className={'nx-tile nx-tile-' + layout + (menuOpen ? ' menu-open' : '') + (selected ? ' picked' : '')}
+      data-picked={selected ? 'true' : undefined}
       data-hint={hint || undefined}
       ref={holder}
       style={style}
@@ -81,7 +103,19 @@ export function Tile({
       }}
       onKeyDown={event => { if (event.key === 'Escape' && menuOpen) { event.stopPropagation(); close(); } }}
     >
-      <button type="button" className="nx-tile-face" aria-label={`Открыть «${site.title}»`} onClick={onOpen}>
+      <button type="button" className="nx-tile-face"
+        aria-label={selecting ? `Пометить «${site.title}»` : `Открыть «${site.title}»`}
+        aria-pressed={selecting ? selected : undefined}
+        onPointerDown={startHold}
+        onPointerUp={stopHold}
+        onPointerLeave={stopHold}
+        onClick={event => {
+          // Долгое нажатие уже пометило плитку — открывать сайт не нужно.
+          if (held.current) { held.current = false; return; }
+          const additive = event.ctrlKey || event.metaKey;
+          if (onSelectToggle && (additive || selecting)) { event.preventDefault(); onSelectToggle(); return; }
+          onOpen();
+        }}>
         <SiteIcon title={site.title} domain={site.domain} color={site.color} logos={useFavicons} />
         {HORIZONTAL.includes(layout) ? (
           <span className="nx-tile-text">
