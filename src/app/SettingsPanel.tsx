@@ -3,7 +3,7 @@ import {
   Camera, CloudSun, Columns2, Columns3, Database, Download, Droplets, ExternalLink, Eye, FolderTree,
   Globe, Grid2X2, Grid3X3, History, Image as ImageIcon, Keyboard, ListFilter, MapPin, Minimize2,
   LayoutGrid, Monitor, Moon, Palette, PanelLeft, RefreshCw, RotateCcw, Rows3, Search,
-  Settings as SettingsIcon, ShieldCheck, Star, Sun, Thermometer, Trash2, Type, Upload, X, Zap,
+  Settings as SettingsIcon, ShieldCheck, Sparkles, Star, Sun, Thermometer, Trash2, Type, Upload, X, Zap,
 } from './icons.generated';
 import type { AppearanceState, MobileMode, TileState, UiState } from '../domain/appStore';
 import type { BrowserSession, Category, Project, SiteGroup, SiteRecord as Site, VisualPreset } from '../domain/types';
@@ -131,7 +131,7 @@ export function SettingsPanel(props: SettingsProps) {
       case 'panel': patchUi({ sidebarWidth: '292px', projects: true, weather: true, panelRecent: true, panelRecentCount: 6, panelRecentLabels: true }); break;
       case 'search': patchUi({ searchEngine: 'Google', searchLocal: true, searchSuggestions: true }); break;
       case 'weather': patchUi({ weather: true, weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true }); break;
-      case 'privacy': patchUi({ saveHistory: true, siteIcons: true, remotePreviews: false }); break;
+      case 'privacy': patchUi({ saveHistory: true, siteIcons: true, remotePreviews: false, remoteMetadata: false }); break;
       default: break;
     }
   };
@@ -355,7 +355,12 @@ export function SettingsPanel(props: SettingsProps) {
               onChange={value => patchUi({ siteIcons: value })}
               hint="Выключено — везде монограмма. Включено — знак из набора, а для сайтов без него иконка запрашивается у самого сайта" />
             <Switch icon={Camera} label="Внешние превью" value={ui.remotePreviews === true}
-              onChange={value => patchUi({ remotePreviews: value })} />
+              onChange={value => patchUi({ remotePreviews: value })}
+              hint="Вид «Превью» показывает снимки страниц: адрес сайта уходит сервису image.thum.io" />
+            {/* Выключено по умолчанию: форма добавления иначе отправляла бы каждый набранный адрес. */}
+            <Switch icon={Sparkles} label="Название и описание из сети" value={ui.remoteMetadata === true}
+              onChange={value => patchUi({ remoteMetadata: value })}
+              hint="Адрес из формы добавления уходит сервису api.microlink.io" />
           </Group>
         )}
 

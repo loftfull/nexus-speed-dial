@@ -89,3 +89,17 @@ export function createSite(input: Partial<SiteRecord>): SiteRecord {
     note: input.note?.trim() || undefined,
   };
 }
+
+/**
+ * Адрес снимка страницы для вида «Превью».
+ *
+ * Снимок, сохранённый формой, важнее вычисленного. Для остальных сайтов адрес
+ * собирается по той же схеме image.thum.io: иначе включённые превью оставались
+ * бы пустыми у всего, что было добавлено до включения. Адрес, который не
+ * удаётся разобрать как http(s), снимка не получает.
+ */
+export function screenshotFor(site: Pick<SiteRecord, 'screenshotUrl' | 'url' | 'domain'>): string | null {
+  if (site.screenshotUrl) return site.screenshotUrl;
+  const address = normalizeSiteAddress(site.url ?? site.domain);
+  return address ? `https://image.thum.io/get/width/900/crop/420/${address.url}` : null;
+}

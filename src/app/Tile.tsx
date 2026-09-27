@@ -22,6 +22,8 @@ export type TileProps = {
   showDescription?: boolean;
   showCategory?: boolean;
   useFavicons?: boolean;
+  /** Снимок страницы над знаком; передаётся только виду «Превью» с разрешёнными внешними превью. */
+  screenshot?: string | null;
   /** Плитка помечена в текущем выделении. */
   selected?: boolean;
   /** В сетке уже есть выделение: обычный щелчок продолжает его, а не открывает сайт. */
@@ -36,10 +38,14 @@ export type TileProps = {
 
 export function Tile({
   site, dragType, layout = 'standard', showDomain = false, showDescription = false,
-  showCategory = false, useFavicons = true, selected = false, selecting = false,
+  showCategory = false, useFavicons = true, screenshot = null, selected = false, selecting = false,
   style, onSelectToggle, onOpen, onFavorite, onEdit, onDelete,
 }: TileProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Снимок, который не загрузился, убирается целиком: пустая рамка на плитке
+  // выглядела бы как поломка, а знак сайта и так остаётся на месте.
+  const [shotFailed, setShotFailed] = useState(false);
+  useEffect(() => setShotFailed(false), [screenshot]);
   /**
    * Долгое нажатие включает выделение там, где нет клавиатуры. Порог в 450 мс
    * выбран как у мобильных систем: короче — срабатывает при обычном касании,
@@ -116,6 +122,10 @@ export function Tile({
           if (onSelectToggle && (additive || selecting)) { event.preventDefault(); onSelectToggle(); return; }
           onOpen();
         }}>
+        {screenshot && !shotFailed && (
+          <img className="nx-tile-shot" src={screenshot} alt="" loading="lazy" referrerPolicy="no-referrer"
+            onError={() => setShotFailed(true)} />
+        )}
         <SiteIcon title={site.title} domain={site.domain} color={site.color} logos={useFavicons} />
         {HORIZONTAL.includes(layout) ? (
           <span className="nx-tile-text">

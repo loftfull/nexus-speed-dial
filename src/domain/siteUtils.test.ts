@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSite, filterSites, normalizeDomain, reorderSites } from './siteUtils';
+import { createSite, filterSites, normalizeDomain, reorderSites, screenshotFor } from './siteUtils';
 import type { SiteRecord } from './types';
 
 const sites: SiteRecord[] = [
@@ -58,5 +58,12 @@ describe('site utilities', () => {
 
   it('ignores an id that is not in the list', () => {
     expect(reorderSites(sites, 'missing', 's-figma')).toBe(sites);
+  });
+
+  it('prefers a stored screenshot and builds one from the exact destination otherwise', () => {
+    expect(screenshotFor({ domain: 'figma.com', screenshotUrl: 'https://cdn.example/figma.png' })).toBe('https://cdn.example/figma.png');
+    expect(screenshotFor({ domain: 'linear.app', url: 'https://linear.app/projects' }))
+      .toBe('https://image.thum.io/get/width/900/crop/420/https://linear.app/projects');
+    expect(screenshotFor({ domain: 'javascript:alert(1)' })).toBeNull();
   });
 });

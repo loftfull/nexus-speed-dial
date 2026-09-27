@@ -10,7 +10,7 @@ const ui: UiState = {
   sidebar: true, weather: true, compact: false, animations: true, newTab: true,
   searchLocal: true, searchSuggestions: true, searchEngine: 'Google',
   weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true,
-  localOnly: true, saveHistory: true, analytics: false,
+  saveHistory: true,
 };
 const tile: TileState = { ...DEFAULT_TILE_APPEARANCE };
 const appearance: AppearanceState = { theme: 'light', accent: '#2f6fe4', wallpaper: 'lake' };
@@ -130,6 +130,18 @@ describe('SettingsPanel', () => {
     expect(update(ui).searchEngine).toBe('Яндекс');
   });
 
+  it('включает загрузку названия и описания из сети только по выбору', async () => {
+    const user = userEvent.setup();
+    const props = setup();
+    await user.click(screen.getByRole('button', { name: 'Приватность' }));
+    const toggle = screen.getByRole('switch', { name: 'Название и описание из сети' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByText('Адрес из формы добавления уходит сервису api.microlink.io')).toBeInTheDocument();
+    await user.click(toggle);
+    const update = (props.setUi as ReturnType<typeof vi.fn>).mock.calls[0][0] as (current: UiState) => UiState;
+    expect(update(ui).remoteMetadata).toBe(true);
+  });
+
   it('закрывается по Escape', async () => {
     const user = userEvent.setup();
     const props = setup();
@@ -232,6 +244,7 @@ describe('SettingsPanel', () => {
       ['Поиск', 'Поисковая система'],
       ['Погода', 'Город'],
       ['Приватность', 'История открытий'],
+      ['Приватность', 'Название и описание из сети'],
     ];
     for (const [section, label] of controls) {
       await user.click(screen.getByRole('button', { name: section }));

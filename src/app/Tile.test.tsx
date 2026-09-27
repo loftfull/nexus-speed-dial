@@ -190,3 +190,22 @@ describe('Tile layouts', () => {
     expect(screen.getByText('Дизайн')).toBeInTheDocument();
   });
 });
+
+describe('Tile preview screenshot', () => {
+  beforeEach(() => { serveIndex(); });
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('рисует снимок страницы только когда его передали', () => {
+    const { container, rerender } = render(<Tile site={site} layout="preview" {...handlers()} />);
+    expect(container.querySelector('.nx-tile-shot')).toBeNull();
+    rerender(<Tile site={site} layout="preview" screenshot="https://cdn.example/figma.png" {...handlers()} />);
+    expect(container.querySelector('.nx-tile-shot')).toHaveAttribute('src', 'https://cdn.example/figma.png');
+  });
+
+  it('убирает снимок, который не загрузился, и оставляет знак', () => {
+    const { container } = render(<Tile site={site} layout="preview" screenshot="https://cdn.example/broken.png" {...handlers()} />);
+    fireEvent.error(container.querySelector('.nx-tile-shot')!);
+    expect(container.querySelector('.nx-tile-shot')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Открыть «Figma»' })).toBeInTheDocument();
+  });
+});

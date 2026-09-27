@@ -871,6 +871,56 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-settings .nx-rail-item[aria-current="true"]')).toHaveCount(1);
   });
 
+  test('адрес из формы уходит сервису метаданных только после явного разрешения', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Связка настройки и формы одна для всех ширин.');
+    const lookups: string[] = [];
+    await page.route('https://api.microlink.io/**', route => {
+      lookups.push(route.request().url());
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: { title: 'Linear', description: 'Issue tracking' } }) });
+    });
+    const typeAddress = async () => {
+      await page.getByRole('button', { name: 'Добавить сайт' }).first().click();
+      await page.getByLabel('Адрес сайта').fill('linear.app');
+    };
+
+    await page.goto('/');
+    await typeAddress();
+    await page.waitForTimeout(1200);
+    expect(lookups).toEqual([]);
+    await page.getByRole('button', { name: 'Отмена' }).click();
+
+    await openSettings(page, 'Приватность');
+    await page.getByRole('switch', { name: 'Название и описание из сети' }).click();
+    await page.keyboard.press('Escape');
+    await typeAddress();
+    await expect(page.getByLabel('Название')).toHaveValue('Linear');
+    expect(lookups).toHaveLength(1);
+    expect(lookups[0]).toContain('url=https%3A%2F%2Flinear.app');
+  });
+
+  test('вид «Превью» показывает снимки страниц только с разрешёнными внешними превью', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'На узком экране свои три раскладки, «Превью» среди них нет.');
+    const shots: string[] = [];
+    await page.route('https://image.thum.io/**', route => {
+      shots.push(route.request().url());
+      // Прозрачный пиксель 1×1: снимок должен встать на плитку, а не только запроситься.
+      return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64') });
+    });
+    await page.goto('/');
+    await openSettings(page, 'Плитки');
+    await page.getByLabel('Раскладка').selectOption('preview');
+    await expect(page.locator('.nx-grid')).toHaveClass(/layout-preview/);
+    await expect(page.locator('.nx-grid .nx-tile-shot')).toHaveCount(0);
+    expect(shots).toEqual([]);
+
+    await railTo(page, 'Приватность');
+    await page.getByRole('switch', { name: 'Внешние превью' }).click();
+    await expect.poll(() => shots.length).toBeGreaterThan(0);
+    expect(shots.every(url => url.startsWith('https://image.thum.io/get/width/900/crop/420/https://'))).toBe(true);
+    await expect(page.locator('.nx-grid .nx-tile-shot')).toHaveCount(await page.locator('.nx-grid .nx-tile').count());
+    await expect(page.locator('.nx-grid .nx-tile-shot').first()).toBeVisible();
+  });
+
   test('the compact switch really tightens the page behind the settings', async ({ page }) => {
     await page.goto('/');
     const scroll = page.locator('.nx-main-scroll');

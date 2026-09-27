@@ -27,10 +27,19 @@ describe('app store reducer', () => {
   it('starts in strict local-first mode without remote screenshots', () => {
     localStorage.removeItem('nexus-ui');
     const fresh = createInitialAppState([]);
-    expect(fresh.ui.localOnly).toBe(true);
+    expect(fresh.ui.remoteMetadata).toBe(false);
     expect(fresh.ui.remotePreviews).toBe(false);
   });
 
+
+  it('drops stored settings whose surfaces no longer exist', () => {
+    localStorage.setItem('nexus-ui', JSON.stringify({ sidebar: true, localOnly: false, analytics: true, rail: true, favoritesBar: true, favoritesCount: 12, favoritesLabels: false }));
+    const migrated = createInitialAppState([]) as { ui: Record<string, unknown> };
+    for (const key of ['localOnly', 'analytics', 'rail', 'favoritesBar', 'favoritesCount', 'favoritesLabels']) {
+      expect(migrated.ui, key).not.toHaveProperty(key);
+    }
+    localStorage.removeItem('nexus-ui');
+  });
 
   it('migrates legacy sidebar width values stored with a space', () => {
     localStorage.setItem('nexus-ui', JSON.stringify({ sidebar: true, sidebarWidth: '292 px' }));

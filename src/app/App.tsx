@@ -20,7 +20,7 @@ import { readStorage, writeStorage } from '../domain/storage';
 import { makeCategoryId, makeGroupId } from '../domain/hierarchy';
 import { buildWebSearchUrl } from '../domain/webSearch';
 import { recordSiteOpen, resolveHistoryTarget, resolveSiteUrl } from '../domain/siteOpen';
-import { filterSites } from '../domain/siteUtils';
+import { filterSites, screenshotFor } from '../domain/siteUtils';
 import { createSession, liveCount, orderSessions, removeSession, renameSession, sessionSites, touchSession } from '../domain/sessions';
 import { buildPaletteItems, looksLikeUrl } from '../domain/palette';
 import type { PaletteItem } from '../domain/palette';
@@ -557,14 +557,6 @@ export function App() {
     return found;
   }, [history, sites]);
 
-  // Избранное живёт над сеткой и одинаково в любом проекте — как ряд избранных
-  // вкладок в Arc. На узком экране полосы нет: там дорог каждый пиксель высоты.
-  const favoriteBar = useMemo(() => {
-    if (narrow || ui.favoritesBar === false || section !== 'sites') return [];
-    const limit = ui.favoritesCount ?? 8;
-    return sites.filter(site => site.favorite).slice(0, limit);
-  }, [sites, narrow, ui.favoritesBar, ui.favoritesCount, section]);
-
   // ─── Палитра ──────────────────────────────────────────────────────────────
   // Окно поиска открывается только по вызову и ищет по всему хранилищу, а не по
   // текущему разделу: сайт находится, даже когда неизвестно, в каком он проекте.
@@ -724,6 +716,7 @@ export function App() {
       dragType={DOCK_DRAG_TYPE}
       layout={layout}
       useFavicons={useFavicons}
+      screenshot={layout === 'preview' && ui.remotePreviews === true ? screenshotFor(site) : null}
       showDomain={showDomain}
       showDescription={showDescription}
       showCategory={tile.showCategory}
@@ -1400,6 +1393,7 @@ export function App() {
           existing={editing ?? undefined}
           categories={categories}
           groups={groups}
+          allowRemoteMetadata={ui.remoteMetadata === true}
           allowRemotePreview={ui.remotePreviews === true}
           onClose={() => { setAddOpen(false); setEditing(null); }}
           onSave={site => {

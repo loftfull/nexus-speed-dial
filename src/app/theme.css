@@ -1027,6 +1027,8 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-grid.layout-preview{grid-template-columns:repeat(auto-fill,minmax(232px,1fr))}
 .nx-tile-preview{min-height:176px}
 .nx-tile-preview .nx-tile-desc{-webkit-line-clamp:2;line-clamp:2}
+.nx-tile-shot{display:block;width:100%;aspect-ratio:900/420;object-fit:cover;object-position:top;
+ border-radius:var(--nx-r-md);background:var(--nx-sunken)}
 
 .nx-grid.layout-table .nx-tile-desc{-webkit-line-clamp:1;line-clamp:1}
 

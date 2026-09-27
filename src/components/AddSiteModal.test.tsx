@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AddSiteModal } from './AddSiteModal';
@@ -37,5 +37,34 @@ describe('AddSiteModal', () => {
     await user.type(screen.getByLabelText('Адрес сайта'), 'localhost:3000');
     await user.click(screen.getByRole('button', { name: 'Добавить сайт' }));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ domain: 'localhost:3000' }));
+  });
+
+  it('не обращается к сервису метаданных, пока это не разрешено', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: {} })));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const user = userEvent.setup();
+      render(<AddSiteModal categories={[{id:'c-personal',name:'Личное'}]} onClose={vi.fn()} onSave={vi.fn()} />);
+      await user.type(screen.getByLabelText('Адрес сайта'), 'linear.app');
+      await new Promise(resolve => setTimeout(resolve, 800));
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('подставляет название и описание из сервиса метаданных, когда это разрешено', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: { title: 'Linear', description: 'Issue tracking' } })));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const user = userEvent.setup();
+      render(<AddSiteModal allowRemoteMetadata categories={[{id:'c-personal',name:'Личное'}]} onClose={vi.fn()} onSave={vi.fn()} />);
+      await user.type(screen.getByLabelText('Адрес сайта'), 'linear.app');
+      await waitFor(() => expect(screen.getByLabelText('Название')).toHaveValue('Linear'), { timeout: 2000 });
+      expect(screen.getByLabelText('Описание')).toHaveValue('Issue tracking');
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('https://api.microlink.io?url=https%3A%2F%2Flinear.app'), expect.anything());
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
