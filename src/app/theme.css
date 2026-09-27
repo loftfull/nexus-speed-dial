@@ -642,9 +642,9 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-switch.on{background:var(--nx-accent)}
 .nx-switch.on span{left:19px}
 .nx-card-buttons{display:flex;flex-wrap:wrap;gap:7px}
-.nx-card-buttons button{display:flex;align-items:center;gap:6px;padding:8px 11px;border-radius:var(--nx-r-sm);background:var(--nx-surface);
+.nx-card-buttons button,.nx-recovery button{display:flex;align-items:center;gap:6px;padding:8px 11px;border-radius:var(--nx-r-sm);background:var(--nx-surface);
  color:var(--nx-accent);font-size:var(--nx-fs-2);font-weight:600}
-.nx-card-buttons button.danger{color:#c33547}
+.nx-card-buttons button.danger,.nx-recovery button.danger{color:#c33547}
 @media (max-width:900px){
  .nx-settings{top:auto;left:8px;right:8px;bottom:8px;width:auto;height:min(74vh,580px)}
  .nx-pane-head{padding:11px 12px 9px}
@@ -1752,3 +1752,10 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  .nx-cat-card{width:78px;gap:4px;padding:8px 6px;border-radius:var(--nx-r-md)}
  .nx-cat-card span{font-size:var(--nx-fs-1)}
 }
+
+/* ── восстановление нечитаемых записей ─────────────────────────── */
+.nx-recovery{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.nx-recovery li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--nx-r-md);background:var(--nx-sunken)}
+.nx-recovery li>span{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.nx-recovery b{font-size:var(--nx-fs-3);font-weight:600}
+.nx-recovery small{font-size:var(--nx-fs-1);color:var(--nx-muted)}

@@ -202,6 +202,27 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-grid .nx-tile-name')).toHaveText(['Issues']);
   });
 
+  test('повреждённые сохранённые сайты не затираются, а откладываются в копию', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Хранилище одно для всех ширин.');
+    const broken = '[{"title":"Мой сайт", broken';
+    await page.goto('/');
+    await page.evaluate(value => { localStorage.clear(); localStorage.setItem('nexus-sites', value); }, broken);
+    await page.reload();
+    await expect(page.getByText('Часть сохранённых данных не прочиталась')).toBeVisible();
+    const copies = await page.evaluate(() => Object.keys(localStorage)
+      .filter(key => key.startsWith('nexus-recovery:nexus-sites:'))
+      .map(key => localStorage.getItem(key)));
+    expect(copies).toEqual([broken]);
+
+    await page.getByRole('button', { name: 'Настройки' }).last().click();
+    await page.locator('.nx-rail-item', { hasText: /^Данные$/ }).click();
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Скачать копию: Сайты' }).click();
+    const file = await download;
+    const text = await (await file.createReadStream()).toArray();
+    expect(Buffer.concat(text).toString('utf8')).toBe(broken);
+  });
+
   test('a tile opens in a new tab and lands in the recent section', async ({ page }, testInfo) => {
     await page.addInitScript(() => {
       Object.defineProperty(window, 'open', {

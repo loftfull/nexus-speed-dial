@@ -11,6 +11,7 @@ import { TILE_PRESETS, normalizeTileAppearance } from '../domain/tileAppearance'
 import { TileSettings } from './TileSettings';
 import { Card, Cell, Group, Pick, Switch, type ControlIcon } from './SettingControls';
 import { createBackup, parseBackup, type NexusBackup } from '../domain/backup';
+import { listRecoveryCopies } from '../domain/storage';
 import { createBookmarkHtml, parseBookmarkHtml, withoutExistingDomains } from '../domain/importUtils';
 import { SEARCH_ENGINES } from '../domain/webSearch';
 import { sites as countSites } from '../domain/plural';
@@ -384,10 +385,18 @@ export function SettingsPanel(props: SettingsProps) {
 
 
 
+/** Человеческие названия сохранённых записей для карточки восстановления. */
+const RECOVERY_LABELS: Record<string, string> = {
+  'nexus-sites': 'Сайты', 'nexus-trash': 'Корзина', 'nexus-categories': 'Категории', 'nexus-groups': 'Группы',
+  'nexus-history': 'История открытий', 'nexus-ui': 'Настройки интерфейса', 'nexus-tile': 'Вид плиток',
+  'nexus-appearance': 'Оформление', 'nexus-projects': 'Проекты', 'nexus-sessions': 'Сессии',
+};
+
 function DataSection({ sites, setSites, categories, groups, projects, setProjects, sessions, setSessions, ui, tile, appearance, onApplyBackup }: SettingsProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   const [clearOpen, setClearOpen] = useState(false);
+  const [recovery, setRecovery] = useState(() => listRecoveryCopies());
 
   const download = (content: string, type: string, name: string) => {
     const link = document.createElement('a');
@@ -446,6 +455,24 @@ function DataSection({ sites, setSites, categories, groups, projects, setProject
         </div>
         {message && <p className="nx-card-hint" role="status">{message}</p>}
       </Card>
+      {recovery.length > 0 && (
+        <Card title="Восстановление" hint="Эти записи не прочитались при запуске, и приложение начало с чистого значения. Исходный текст сохранён: его можно скачать и поправить вручную.">
+          <ul className="nx-recovery">
+            {recovery.map(copy => (
+              <li key={copy.key}>
+                <span>
+                  <b>{RECOVERY_LABELS[copy.source] ?? copy.source}</b>
+                  <small>{new Date(copy.savedAt).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })} · {Math.max(1, Math.round(copy.raw.length / 1024))} КБ</small>
+                </span>
+                <button type="button" onClick={() => download(copy.raw, 'text/plain', `${copy.source}-${copy.savedAt}.txt`)}
+                  aria-label={`Скачать копию: ${RECOVERY_LABELS[copy.source] ?? copy.source}`}><Download size={15} /> Скачать</button>
+                <button type="button" className="danger" onClick={() => { localStorage.removeItem(copy.key); setRecovery(listRecoveryCopies()); }}
+                  aria-label={`Удалить копию: ${RECOVERY_LABELS[copy.source] ?? copy.source}`}><Trash2 size={15} /> Удалить</button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       <Card title="Опасная зона" hint="Удаляет сайты, проекты и сохранённые сессии. Настройки интерфейса останутся.">
         <div className="nx-card-buttons">
           <button type="button" className="danger" onClick={() => setClearOpen(true)}>

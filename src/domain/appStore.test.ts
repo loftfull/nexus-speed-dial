@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { StorageAdapter } from './storage';
+import { listRecoveryCopies, type StorageAdapter } from './storage';
 import { appReducer, createInitialAppState, normalizeMobileMode, persistAppState } from './appStore';
 
 describe('app store reducer', () => {
@@ -39,6 +39,16 @@ describe('app store reducer', () => {
       expect(migrated.ui, key).not.toHaveProperty(key);
     }
     localStorage.removeItem('nexus-ui');
+  });
+
+  it('keeps a copy of unreadable saved data before the first save overwrites it', () => {
+    const broken = '[{"title":"Мой сайт", broken';
+    localStorage.setItem('nexus-sites', broken);
+    persistAppState(createInitialAppState([]));
+    const copies = listRecoveryCopies();
+    expect(copies.map(copy => [copy.source, copy.raw])).toEqual([['nexus-sites', broken]]);
+    copies.forEach(copy => localStorage.removeItem(copy.key));
+    localStorage.removeItem('nexus-sites');
   });
 
   it('migrates legacy sidebar width values stored with a space', () => {

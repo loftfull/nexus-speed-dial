@@ -4,7 +4,7 @@ import { migrateHistory } from './siteOpen';
 import { normalizeTileAppearance, type TileAppearance } from './tileAppearance';
 import { migrateHierarchy } from './hierarchy';
 import { seedCategories, seedGroups, seedProjects } from './seed';
-import { browserStorage, readStorage, writeStorage, type StorageAdapter } from './storage';
+import { browserStorage, preserveUnreadable, readStorage, writeStorage, type StorageAdapter } from './storage';
 import type { NexusBackup } from './backup';
 
 /** Внешний вид плитки целиком описан в `tileAppearance`. */
@@ -81,6 +81,8 @@ export function normalizeMobileMode(value: unknown): MobileMode {
 }
 
 export function createInitialAppState(initialSites: SiteRecord[]): AppState {
+  // До любого чтения: иначе первое сохранение затрёт то, что не удалось разобрать.
+  preserveUnreadable(PERSISTED_KEYS);
   const storedSites = readStorage('nexus-sites', initialSites).map((site, index) => {
     const address = normalizeSiteAddress(site.url ?? site.domain);
     return {
@@ -223,6 +225,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
   }
 }
 
+/** Ключи, которые приложение перезаписывает при каждом сохранении. */
+export const PERSISTED_KEYS = [
+  'nexus-sites', 'nexus-trash', 'nexus-categories', 'nexus-groups', 'nexus-history',
+  'nexus-ui', 'nexus-tile', 'nexus-appearance', 'nexus-projects', 'nexus-sessions',
+] as const;
+
 /**
  * Сохраняет состояние целиком или не сохраняет вовсе.
  *
@@ -238,18 +246,19 @@ export function appReducer(state: AppState, action: AppAction): AppState {
  * показывает сообщение о переполнении.
  */
 export function persistAppState(state: AppState, storage: StorageAdapter = browserStorage): boolean {
-  const entries: [string, unknown][] = [
-    ['nexus-sites', state.sites],
-    ['nexus-trash', state.trash],
-    ['nexus-categories', state.categories],
-    ['nexus-groups', state.groups],
-    ['nexus-history', state.history],
-    ['nexus-ui', state.ui],
-    ['nexus-tile', state.tile],
-    ['nexus-appearance', state.appearance],
-    ['nexus-projects', state.projects],
-    ['nexus-sessions', state.sessions],
-  ];
+  const values: Record<(typeof PERSISTED_KEYS)[number], unknown> = {
+    'nexus-sites': state.sites,
+    'nexus-trash': state.trash,
+    'nexus-categories': state.categories,
+    'nexus-groups': state.groups,
+    'nexus-history': state.history,
+    'nexus-ui': state.ui,
+    'nexus-tile': state.tile,
+    'nexus-appearance': state.appearance,
+    'nexus-projects': state.projects,
+    'nexus-sessions': state.sessions,
+  };
+  const entries = PERSISTED_KEYS.map(key => [key, values[key]] as [string, unknown]);
   const before = entries.map(([key]) => [key, storage.getItem(key)] as const);
 
   for (const [key, value] of entries) {

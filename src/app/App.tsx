@@ -9,7 +9,7 @@ import {
 import './theme.css';
 
 import { appReducer, createInitialAppState, persistAppState } from '../domain/appStore';
-import { getStorageUsage } from '../domain/storage';
+import { getStorageUsage, listRecoveryCopies } from '../domain/storage';
 import { sortSites } from '../domain/sortSites';
 import {
   WEATHER_TTL_MS, readWeatherCache, weatherCacheAge, writeWeatherCache, type Weather,
@@ -206,6 +206,11 @@ export function App() {
   useEffect(() => () => window.clearTimeout(swapTimer.current), []);
   useEffect(() => { if (categoryId && !activeCategory) setCategoryId(null); }, [categoryId, activeCategory]);
   useEffect(() => { persistAppState(state) || setToast('Не удалось сохранить: хранилище браузера переполнено'); }, [state]);
+  // Нечитаемые записи отложены при загрузке; сказать об этом нужно сразу,
+  // иначе пустая или демонстрационная сетка выглядит как потеря данных.
+  useEffect(() => {
+    if (listRecoveryCopies().length) setToast('Часть сохранённых данных не прочиталась. Копия — в «Настройки → Данные»');
+  }, []);
   useEffect(() => { writeStorage('nexus-active-project', activeProjectId); }, [activeProjectId]);
   useEffect(() => { writeStorage('nexus-active-category', categoryId); }, [categoryId]);
   useEffect(() => { writeStorage('nexus-panel-open', panelOpen); }, [panelOpen]);

@@ -212,6 +212,25 @@ describe('SettingsPanel', () => {
   });
 
 
+  it('показывает отложенную копию нечитаемых данных и удаляет её по запросу', async () => {
+    localStorage.setItem('nexus-recovery:nexus-sites:1700000000000', '[{"title":"Мой сайт", broken');
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: 'Данные' }));
+    expect(screen.getByRole('heading', { name: 'Восстановление' })).toBeInTheDocument();
+    expect(screen.getByText('Сайты')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Удалить копию: Сайты' }));
+    expect(localStorage.getItem('nexus-recovery:nexus-sites:1700000000000')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Восстановление' })).not.toBeInTheDocument();
+  });
+
+  it('не показывает карточку восстановления, когда копий нет', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: 'Данные' }));
+    expect(screen.queryByRole('heading', { name: 'Восстановление' })).not.toBeInTheDocument();
+  });
+
   it('показывает все разделы панели настроек', () => {
     setup();
     for (const label of ['Общие', 'Оформление', 'Плитки', 'Панели',
