@@ -504,7 +504,11 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 
 /* ── тосты ────────────────────────────────────────────────────── */
 .nx-toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:60;
- background:var(--nx-text);color:var(--nx-canvas);padding:11px 18px;border-radius:999px;font-size:var(--nx-fs-3);box-shadow:var(--nx-shadow-lg)}
+ display:flex;align-items:center;gap:12px;
+ background:var(--nx-text);color:var(--nx-canvas);padding:11px 14px 11px 18px;border-radius:999px;font-size:var(--nx-fs-3);box-shadow:var(--nx-shadow-lg)}
+.nx-toast button{flex:none;padding:6px 10px;border-radius:999px;background:color-mix(in srgb,var(--nx-canvas) 14%,transparent);
+ color:var(--nx-canvas);font:inherit;font-weight:700}
+.nx-toast button:hover{background:color-mix(in srgb,var(--nx-canvas) 22%,transparent)}
 
 /* ── мобильная раскладка ──────────────────────────────────────── */
 .nx-mobile-top{display:none}
