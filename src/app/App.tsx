@@ -158,7 +158,7 @@ export function App() {
       observer.disconnect();
       row.removeEventListener('scroll', syncCarouselState);
     };
-  }, [syncCarouselState, projectCategories.length]);
+  }, [syncCarouselState, categories, activeProjectId]);
   /** Лента категорий прокручивается на ширину видимой части, а не на пиксели. */
   const scrollCarousel = (direction: 1 | -1) => {
     const row = carousel.current;
