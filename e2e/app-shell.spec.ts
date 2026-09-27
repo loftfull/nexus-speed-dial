@@ -593,6 +593,12 @@ test.describe('Nexus shell', () => {
     await page.locator('.nx-session').first().getByRole('button', { name: 'Удалить' }).click();
     await expect(page.locator('.nx-session')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Сохранить текущие сайты/ })).toBeVisible();
+
+    const undo = page.getByRole('button', { name: 'Отменить удаление сессии' });
+    await expect(undo).toBeVisible();
+    await undo.click();
+    await expect(page.locator('.nx-session b')).toHaveText('Вечерний набор');
+    await expect(page.locator('.nx-session-mark')).toHaveCount(total);
   });
 
   test('the palette can save a session too', async ({ page }, testInfo) => {
