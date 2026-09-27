@@ -321,9 +321,6 @@ export function SettingsPanel(props: SettingsProps) {
           </Group>
         )}
 
-        {section === 'panel' && (
-        )}
-
         {section === 'search' && (
           <Group title="Поиск" hint="Омнибокс открывает адрес или ищет запрос в выбранной системе.">
             <Pick icon={Globe} label="Поисковая система" options={SEARCH_ENGINES.map(engine => [engine, engine] as [string, string])}
