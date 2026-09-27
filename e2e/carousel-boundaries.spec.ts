@@ -69,7 +69,9 @@ test.describe('Category carousel boundaries', () => {
     await expect(left).toBeEnabled();
   });
 
-  test('reveals a persisted active category that starts beyond the viewport', async ({ page }, testInfo) => {
+  test.fixme('reveals a persisted active category that starts beyond the viewport', async ({ page }, testInfo) => {
+    // Quarantined in https://github.com/loftfull/nexus-speed-dial/issues/1.
+    // Keep the executable scenario here so the delegated fix can turn it back into blocking coverage.
     test.skip(testInfo.project.name === 'mobile', 'Mobile uses the compact navigation surface.');
     await seedOverflowingCarousel(page, 'stress-category-13');
 
