@@ -94,28 +94,31 @@ describe('SettingsPanel', () => {
    */
   it('не объясняет отказ там, где отказа нет', async () => {
     const user = userEvent.setup();
-    setup({ ui: { ...ui, panelRecent: true, favoritesBar: true, weather: true } });
+    setup({ ui: { ...ui, panelRecent: true, weather: true } });
     await user.click(screen.getByRole('button', { name: 'Панели' }));
     expect(screen.getByLabelText('Сколько недавних')).toBeEnabled();
     expect(screen.queryByText('Недавние выключены')).not.toBeInTheDocument();
-    expect(screen.queryByText('Полоса избранного выключена')).not.toBeInTheDocument();
   });
 
   it('объясняет отказ там, где отказ есть', async () => {
     const user = userEvent.setup();
-    setup({ ui: { ...ui, panelRecent: false, favoritesBar: false } });
+    setup({ ui: { ...ui, panelRecent: false } });
     await user.click(screen.getByRole('button', { name: 'Панели' }));
     expect(screen.getByLabelText('Сколько недавних')).toBeDisabled();
     expect(screen.getAllByText('Недавние выключены')).toHaveLength(2);
-    expect(screen.getAllByText('Полоса избранного выключена')).toHaveLength(2);
   });
 
-  /** Пояснение, верное всегда, остаётся на месте и при работающем контроле. */
-  it('оставляет постоянное пояснение под включённым контролом', async () => {
+  it('не показывает настройки поверхностей, которых больше нет в интерфейсе', async () => {
     const user = userEvent.setup();
     setup();
+
     await user.click(screen.getByRole('button', { name: 'Общие' }));
-    expect(screen.getByText('Часы, погода и недавние')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Виджеты справа в сетке')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Панели' }));
+    expect(screen.queryByLabelText('Полоса избранного')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Сколько показывать')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Названия на полосе')).not.toBeInTheDocument();
   });
 
   it('меняет поисковую систему', async () => {
@@ -218,7 +221,6 @@ describe('SettingsPanel', () => {
       ['Общие', 'Компактный интерфейс'],
       ['Общие', 'Плавные анимации'],
       ['Общие', 'Открывать в новой вкладке'],
-      ['Общие', 'Виджеты справа в сетке'],
       ['Оформление', 'Тема'],
       ['Оформление', 'Фон'],
       ['Оформление', 'Размытие панелей'],
@@ -227,7 +229,6 @@ describe('SettingsPanel', () => {
       ['Плитки', 'Раскладка'],
       ['Панели', 'Ширина окна'],
       ['Панели', 'Показывать недавние'],
-      ['Панели', 'Полоса избранного'],
       ['Поиск', 'Поисковая система'],
       ['Погода', 'Город'],
       ['Приватность', 'История открытий'],
