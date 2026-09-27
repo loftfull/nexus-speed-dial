@@ -182,6 +182,26 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-group').first()).toBeVisible();
   });
 
+  test('два адреса на одном домене — две разные записи в «Недавних»', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Идентичность записей не зависит от ширины экрана.');
+    await page.addInitScript(() => { window.open = () => null; });
+    await page.goto('/');
+    for (const [title, url] of [['Docs', 'https://github.com/docs'], ['Issues', 'https://github.com/issues']]) {
+      await page.getByRole('button', { name: 'Добавить сайт' }).first().click();
+      await page.getByLabel('Название').fill(title);
+      await page.getByLabel('Адрес сайта').fill(url);
+      await page.locator('.site-form').getByRole('button', { name: 'Добавить сайт' }).click();
+    }
+    await page.getByRole('button', { name: 'Открыть «Issues»' }).click();
+    await openSection(page, testInfo, 'Недавние');
+    await expect(page.locator('.nx-grid .nx-tile-name')).toHaveText(['Issues']);
+
+    // После перезагрузки история читается из хранилища — и остаётся той же.
+    await page.reload();
+    await openSection(page, testInfo, 'Недавние');
+    await expect(page.locator('.nx-grid .nx-tile-name')).toHaveText(['Issues']);
+  });
+
   test('a tile opens in a new tab and lands in the recent section', async ({ page }, testInfo) => {
     await page.addInitScript(() => {
       Object.defineProperty(window, 'open', {

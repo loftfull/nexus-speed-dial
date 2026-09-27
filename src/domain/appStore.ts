@@ -1,5 +1,6 @@
 import type { SiteRecord, Project, BrowserSession, Category, SiteGroup } from './types';
 import { normalizeSiteAddress } from './siteUtils';
+import { migrateHistory } from './siteOpen';
 import { normalizeTileAppearance, type TileAppearance } from './tileAppearance';
 import { migrateHierarchy } from './hierarchy';
 import { seedCategories, seedGroups, seedProjects } from './seed';
@@ -98,14 +99,15 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
     sites: storedSites,
   });
   const storedSessions = readStorage<BrowserSession[]>('nexus-sessions', []).map(session => ({ ...session, siteIds: session.siteIds.map(resolveSiteRef), noteSiteIds: session.noteSiteIds?.map(resolveSiteRef) }));
+  const trash = readStorage<SiteRecord[]>('nexus-trash', []);
   const storedUi = readStorage('nexus-ui', null as UiState | null);
   const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, saveHistory: true, remotePreviews: false, remoteMetadata: false, siteIcons: true, projects: true, sidebarWidth: '292px', mobileMode: 'table', panelRecent: true, panelRecentCount: 6, panelRecentLabels: true };
   return {
     sites: hierarchy.sites,
-    trash: readStorage<SiteRecord[]>('nexus-trash', []),
+    trash,
     categories: hierarchy.categories,
     groups: hierarchy.groups,
-    history: readStorage('nexus-history', []),
+    history: migrateHistory(readStorage<unknown>('nexus-history', []), [...hierarchy.sites, ...trash]),
     ui: withoutRetiredUiKeys({ ...defaultUi, ...(storedUi ?? {}), sidebarWidth: normalizeSidebarWidth(storedUi?.sidebarWidth), mobileMode: normalizeMobileMode(storedUi?.mobileMode) }),
     tile: normalizeTileAppearance(readStorage<unknown>('nexus-tile', null)),
     appearance: readStorage('nexus-appearance', { theme: 'light', accent: '#2f7cf6', wallpaper: 'lake' }),

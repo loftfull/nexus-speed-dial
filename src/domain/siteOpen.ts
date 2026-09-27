@@ -59,18 +59,42 @@ export function recordSiteOpen(
   };
 }
 
-export function resolveHistoryTarget(historyItem: string, sites: SiteRecord[]): HistoryTarget {
-  const site = sites.find(item =>
-    item.id === historyItem || item.url === historyItem || item.domain === historyItem || item.title === historyItem,
-  );
-
-  if (site) {
-    return { site, url: resolveSiteUrl(site) };
+/**
+ * Переводит историю открытий на постоянные ID.
+ *
+ * Прежние версии писали в историю название, домен или адрес. Такая ссылка
+ * неоднозначна: два сохранённых адреса на одном домене — разные записи, и
+ * «Недавние» показывали бы первую попавшуюся. Проекты и сессии уже
+ * переводятся на ID при загрузке; история проходит тот же путь один раз, после
+ * чего сайты в ней ищутся только по ID.
+ *
+ * `known` — все записи, на которые история может ссылаться, включая корзину:
+ * сайт, восстановленный из корзины, возвращается в «Недавние». Ссылки, которые
+ * не узнаются ни в одной записи, отбрасываются — открыть по ним нечего.
+ */
+export function migrateHistory(history: unknown, known: SiteRecord[]): string[] {
+  if (!Array.isArray(history)) return [];
+  const ids: string[] = [];
+  for (const ref of history) {
+    if (typeof ref !== 'string') continue;
+    const site = known.find(item => item.id === ref)
+      ?? known.find(item => item.url === ref || resolveSiteUrl(item) === ref)
+      ?? known.find(item => item.domain === ref)
+      ?? known.find(item => item.title === ref);
+    if (site?.id && !ids.includes(site.id)) ids.push(site.id);
   }
+  return ids.slice(0, 20);
+}
 
-  const raw = historyItem.trim();
-  return {
-    site: undefined,
-    url: hasHttpProtocol(raw) ? raw : `https://${raw}`,
-  };
+/** Сайты из истории по порядку, без повторов, только по ID. */
+export function recentSites(history: string[], sites: SiteRecord[], limit = Infinity): SiteRecord[] {
+  const byId = new Map(sites.filter(site => site.id).map(site => [site.id!, site]));
+  const found: SiteRecord[] = [];
+  for (const id of new Set(history)) {
+    const site = byId.get(id);
+    if (!site) continue;
+    found.push(site);
+    if (found.length >= limit) break;
+  }
+  return found;
 }

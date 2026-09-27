@@ -59,6 +59,19 @@ describe('app store reducer', () => {
     ['nexus-sites', 'nexus-projects', 'nexus-sessions'].forEach(key => localStorage.removeItem(key));
   });
 
+  it('migrates legacy history references to persisted site ids, trash included', () => {
+    localStorage.setItem('nexus-sites', JSON.stringify([
+      { id: 'site-docs', title: 'GitHub Docs', desc: '', domain: 'github.com', url: 'https://github.com/docs', color: '#111', icon: 'G', category: 'Работа' },
+      { id: 'site-issues', title: 'GitHub Issues', desc: '', domain: 'github.com', url: 'https://github.com/issues', color: '#111', icon: 'G', category: 'Работа' },
+    ]));
+    localStorage.setItem('nexus-trash', JSON.stringify([
+      { id: 'site-old', title: 'Old', desc: '', domain: 'old.example', color: '#111', icon: 'O', category: 'Работа' },
+    ]));
+    localStorage.setItem('nexus-history', JSON.stringify(['GitHub Issues', 'https://github.com/docs', 'old.example', 'gone.example']));
+    expect(createInitialAppState([]).history).toEqual(['site-issues', 'site-docs', 'site-old']);
+    ['nexus-sites', 'nexus-trash', 'nexus-history'].forEach(key => localStorage.removeItem(key));
+  });
+
   it('applies a backup as one state transaction, including saved settings', () => {
     const backup = {
       version: 1,

@@ -19,7 +19,7 @@ import { seedSites } from '../domain/seed';
 import { readStorage, writeStorage } from '../domain/storage';
 import { makeCategoryId, makeGroupId } from '../domain/hierarchy';
 import { buildWebSearchUrl } from '../domain/webSearch';
-import { recordSiteOpen, resolveHistoryTarget, resolveSiteUrl } from '../domain/siteOpen';
+import { recentSites, recordSiteOpen, resolveSiteUrl } from '../domain/siteOpen';
 import { filterSites, screenshotFor } from '../domain/siteUtils';
 import { createSession, liveCount, orderSessions, removeSession, renameSession, sessionSites, touchSession } from '../domain/sessions';
 import { buildPaletteItems, looksLikeUrl } from '../domain/palette';
@@ -359,10 +359,6 @@ export function App() {
     if (ui.saveHistory !== false) setHistory(current => recordSiteOpen([], current, site, stamp, true).history);
     openUrl(resolveSiteUrl(site));
   };
-  const openHistoryItem = (item: string) => {
-    const target = resolveHistoryTarget(item, sites);
-    if (target.site) openSite(target.site); else openUrl(target.url);
-  };
   const toggleFavorite = (site: Site) => setSites(current => current.map(item => (item.id === site.id ? { ...item, favorite: !item.favorite } : item)));
   const removeSite = (site: Site) => {
     setTrash(current => [site, ...current.filter(item => item.id !== site.id)]);
@@ -526,36 +522,8 @@ export function App() {
   // не несла ничего. Список берётся из истории и свёрнут до последних.
   const panelRecent = useMemo(() => {
     if (!panelOpen || ui.panelRecent === false) return [];
-    const limit = ui.panelRecentCount ?? 6;
-    const seen = new Set<string>();
-    const found: Site[] = [];
-    for (const ref of history) {
-      const site = sites.find(item => item.id === ref || item.domain === ref || item.title === ref);
-      if (!site || seen.has(site.id ?? site.domain)) continue;
-      seen.add(site.id ?? site.domain);
-      found.push(site);
-      if (found.length >= limit) break;
-    }
-    return found;
+    return recentSites(history, sites, ui.panelRecentCount ?? 6);
   }, [history, sites, panelOpen, ui.panelRecent, ui.panelRecentCount]);
-
-  /**
-   * Недавние для правого рельса. Считаются отдельно от панельных: те
-   * пропадают вместе со свёрнутым боковым окном, а рельс живёт своей жизнью
-   * и должен оставаться наполненным.
-   */
-  const railRecent = useMemo(() => {
-    const seen = new Set<string>();
-    const found: Site[] = [];
-    for (const ref of history) {
-      const site = sites.find(item => item.id === ref || item.domain === ref || item.title === ref);
-      if (!site || seen.has(site.id ?? site.domain)) continue;
-      seen.add(site.id ?? site.domain);
-      found.push(site);
-      if (found.length >= 5) break;
-    }
-    return found;
-  }, [history, sites]);
 
   // ─── Палитра ──────────────────────────────────────────────────────────────
   // Окно поиска открывается только по вызову и ищет по всему хранилищу, а не по
@@ -793,9 +761,9 @@ export function App() {
     ) : <Empty icon={Trash2} title="Корзина пуста" hint="Удалённые сайты можно восстановить отсюда"
           action={{ label: 'К сайтам', icon: Home, onClick: () => setSection('sites') }} />;
   } else if (section === 'recent') {
-    const items = history.map(ref => sites.find(site => site.id === ref || site.domain === ref || site.title === ref)).filter(Boolean) as Site[];
+    const items = recentSites(history, sites);
     body = items.length
-      ? <TileGrid className={gridClass}>{items.map((site, index) => <React.Fragment key={`${site.id}-${index}`}>{renderTile(site)}</React.Fragment>)}</TileGrid>
+      ? <TileGrid className={gridClass}>{items.map(renderTile)}</TileGrid>
       : <Empty icon={Clock3} title="Пока ничего не открывали" hint="Открытые сайты появятся здесь"
           action={{ label: 'К сайтам', icon: Home, onClick: () => setSection('sites') }} />;
   } else if (section === 'sessions') {

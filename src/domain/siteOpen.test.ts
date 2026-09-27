@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SiteRecord } from './types';
-import { recordSiteOpen, resolveHistoryTarget, resolveSiteUrl } from './siteOpen';
+import { migrateHistory, recentSites, recordSiteOpen, resolveSiteUrl } from './siteOpen';
 
 const github: SiteRecord = {
   id: 'site-github',
@@ -56,13 +56,20 @@ describe('siteOpen domain action', () => {
     expect(result.history).toEqual(['existing.example']);
   });
 
-  it('resolves stable ids, legacy titles, legacy domains and raw urls safely', () => {
-    const sites = [github];
+  it('migrates legacy history references to ids once, dropping unknown ones', () => {
+    const docs: SiteRecord = { ...github, id: 'site-docs', title: 'GitHub Docs', url: 'https://github.com/docs' };
+    expect(migrateHistory(['GitHub Docs', 'github.com', 'site-github', 'https://github.com/docs', 'gone.example'], [github, docs]))
+      .toEqual(['site-docs', 'site-github']);
+    expect(migrateHistory('broken', [github])).toEqual([]);
+    expect(migrateHistory([42, null, 'site-github'], [github])).toEqual(['site-github']);
+  });
 
-    expect(resolveHistoryTarget('site-github', sites)).toEqual({ site: github, url: 'https://github.com' });
-    expect(resolveHistoryTarget('GitHub', sites)).toEqual({ site: github, url: 'https://github.com' });
-    expect(resolveHistoryTarget('github.com', sites)).toEqual({ site: github, url: 'https://github.com' });
-    expect(resolveHistoryTarget('http://example.com/archive', sites)).toEqual({ site: undefined, url: 'http://example.com/archive' });
-    expect(resolveHistoryTarget('example.org', sites)).toEqual({ site: undefined, url: 'https://example.org' });
+  it('keeps two saved addresses on one domain apart in the recent list', () => {
+    const docs: SiteRecord = { ...github, id: 'site-docs', title: 'GitHub Docs', url: 'https://github.com/docs' };
+    const opened = recordSiteOpen([github, docs], [], docs, 1, true);
+    expect(recentSites(opened.history, [github, docs]).map(site => site.id)).toEqual(['site-docs']);
+    const both = recordSiteOpen([github, docs], opened.history, github, 2, true);
+    expect(recentSites(both.history, [github, docs]).map(site => site.id)).toEqual(['site-github', 'site-docs']);
+    expect(recentSites(both.history, [github, docs], 1).map(site => site.id)).toEqual(['site-github']);
   });
 });
