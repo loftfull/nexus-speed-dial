@@ -202,25 +202,6 @@ export function App() {
   );
   const activeGroup = categoryGroups.find(item => item.id === groupId) ?? null;
 
-  useEffect(() => {
-    const row = carousel.current;
-    if (!row || !categoryId) return;
-    const selected = row.querySelector<HTMLElement>('.nx-cat-card.on');
-    if (!selected) return;
-
-    const rowRect = row.getBoundingClientRect();
-    const selectedRect = selected.getBoundingClientRect();
-    let delta = 0;
-    if (selectedRect.left < rowRect.left) delta = selectedRect.left - rowRect.left - 2;
-    else if (selectedRect.right > rowRect.right) delta = selectedRect.right - rowRect.right + 2;
-    if (Math.abs(delta) <= 1) return;
-
-    row.scrollBy({
-      left: delta,
-      behavior: ui.animations === false ? 'auto' : 'smooth',
-    });
-  }, [categoryId, activeProjectId, projectCategories, ui.animations]);
-
   useEffect(() => () => window.clearTimeout(swapTimer.current), []);
   useEffect(() => { if (categoryId && !activeCategory) setCategoryId(null); }, [categoryId, activeCategory]);
   useEffect(() => { persistAppState(state) || setToast('Не удалось сохранить: хранилище браузера переполнено'); }, [state]);
