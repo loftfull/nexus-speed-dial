@@ -132,16 +132,33 @@ export function App() {
    * висели всегда: две кнопки, которые в половине случаев ничего не делают.
    * Переполнение измеряется, а не предполагается.
    */
-  const [carouselOverflows, setCarouselOverflows] = useState(false);
+  const [carouselState, setCarouselState] = useState({ overflows: false, canLeft: false, canRight: false });
+  const syncCarouselState = useCallback(() => {
+    const row = carousel.current;
+    if (!row) return;
+    const max = Math.max(0, row.scrollWidth - row.clientWidth);
+    const left = Math.max(0, row.scrollLeft);
+    setCarouselState({
+      overflows: max > 1,
+      canLeft: left > 1,
+      canRight: left < max - 1,
+    });
+  }, []);
   useEffect(() => {
     const row = carousel.current;
-    if (!row || typeof ResizeObserver === 'undefined') return;
-    const check = () => setCarouselOverflows(row.scrollWidth > row.clientWidth + 1);
-    check();
-    const observer = new ResizeObserver(check);
+    if (!row) return;
+    syncCarouselState();
+    row.addEventListener('scroll', syncCarouselState, { passive: true });
+    if (typeof ResizeObserver === 'undefined') {
+      return () => row.removeEventListener('scroll', syncCarouselState);
+    }
+    const observer = new ResizeObserver(syncCarouselState);
     observer.observe(row);
-    return () => observer.disconnect();
-  });
+    return () => {
+      observer.disconnect();
+      row.removeEventListener('scroll', syncCarouselState);
+    };
+  }, [syncCarouselState, projectCategories.length]);
   /** Лента категорий прокручивается на ширину видимой части, а не на пиксели. */
   const scrollCarousel = (direction: 1 | -1) => {
     const row = carousel.current;
@@ -1126,8 +1143,9 @@ export function App() {
                   Категорий у пространства бывает десяток, в строку они не
                   влезают, поэтому лента прокручивается стрелками. */}
               <nav className="nx-carousel" aria-label="Категории пространства">
-                {carouselOverflows && (
+                {carouselState.overflows && (
                 <button type="button" className="nx-carousel-arrow" aria-label="Левее"
+                  disabled={!carouselState.canLeft}
                   onClick={() => scrollCarousel(-1)}><ChevronLeft size={18} /></button>
                 )}
                 <div className="nx-carousel-row" ref={carousel}>
@@ -1153,8 +1171,9 @@ export function App() {
                     <span>Категория</span>
                   </button>
                 </div>
-                {carouselOverflows && (
+                {carouselState.overflows && (
                 <button type="button" className="nx-carousel-arrow" aria-label="Правее"
+                  disabled={!carouselState.canRight}
                   onClick={() => scrollCarousel(1)}><ChevronRight size={18} /></button>
                 )}
               </nav>
