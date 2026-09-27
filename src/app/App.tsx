@@ -182,6 +182,7 @@ export function App() {
   const [pinEdit, setPinEdit] = useState(false);
   const [dragOverDock, setDragOverDock] = useState(false);
   const [toast, setToast] = useState('');
+  const [undoSession, setUndoSession] = useState<(typeof sessions)[number] | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [weather, setWeather] = useState<Weather>(WEATHER_EMPTY);
   // Раскладка узкого экрана — тоже одно значение из настроек.
@@ -337,7 +338,10 @@ export function App() {
 
   useEffect(() => {
     if (!toast) return;
-    const timer = window.setTimeout(() => setToast(''), 2600);
+    const timer = window.setTimeout(() => {
+      setToast('');
+      setUndoSession(null);
+    }, 2600);
     return () => window.clearTimeout(timer);
   }, [toast]);
 
@@ -835,6 +839,7 @@ export function App() {
                   <Pencil size={14} aria-hidden="true" />Переименовать
                 </button>
                 <button type="button" className="danger" onClick={() => {
+                  setUndoSession(session);
                   setSessions(current => removeSession(current, session.id));
                   setToast(`Сессия «${session.name}» удалена`);
                 }}>
@@ -1363,7 +1368,18 @@ export function App() {
           onRun={runPaletteItem}
           onClose={() => setPaletteOpen(false)} />
       )}
-      {toast && <div className="nx-toast" role="status">{toast}</div>}
+      {toast && (
+        <div className="nx-toast" role="status">
+          <span>{toast}</span>
+          {undoSession && toast === `Сессия «${undoSession.name}» удалена` && (
+            <button type="button" aria-label="Отменить удаление сессии" onClick={() => {
+              setSessions(current => current.some(item => item.id === undoSession.id) ? current : [undoSession, ...current]);
+              setToast(`Сессия «${undoSession.name}» восстановлена`);
+              setUndoSession(null);
+            }}>Отменить</button>
+          )}
+        </div>
+      )}
       {calendarOpen && <CalendarPopover onClose={() => setCalendarOpen(false)} />}
       {forecastOpen && <ForecastPanel weather={weather} city={ui.weatherCity} onClose={() => setForecastOpen(false)} />}
       {mobileNav && (
