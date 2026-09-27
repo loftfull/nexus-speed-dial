@@ -1,0 +1,24 @@
+name: Navigator
+
+on:
+  push:
+    paths: ["navigator/**", ".github/workflows/navigator.yml"]
+  pull_request:
+    paths: ["navigator/**", ".github/workflows/navigator.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: navigator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: navigator/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build

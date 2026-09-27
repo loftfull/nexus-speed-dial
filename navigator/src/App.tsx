@@ -1,43 +1,26 @@
-import { ChangeEvent, useEffect, useMemo, useState, useCallback } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "./utils/cn";
-import { Site, Mode, Prefs, SmartCollection } from "./types";
+import type { LibraryData, Mode, Prefs, Site, SiteDraft, SmartCollection } from "./types";
 import { siteTemplates } from "./data/siteTemplates";
 
 /* Components */
 import { Icons } from "./components/ui/Icons";
 import { SidebarSection, SidebarButton } from "./components/ui/Sidebar";
 import { CommandPalette } from "./components/CommandPalette";
-import { SiteCard } from "./components/SiteCard";
-import { AddSiteModal } from "./components/AddSiteModal";
+import { SiteCard, SiteIcon, type SiteActions, type ThemeClasses } from "./components/SiteCard";
+import { SiteEditor } from "./components/SiteEditor";
 import { Toast, Drawer } from "./components/ui/Drawer";
+import { Toggle } from "./components/ui/Toggle";
 import { SettingsSection, SettingRow, SettingSelect, SettingButton } from "./components/Settings";
 
-/* Helpers */
-import { faviconUrl, toSite, hostOf, unique } from "./utils/helpers";
+/* Logic */
+import { hostOf, isEditableTarget, uid, unique } from "./utils/helpers";
+import { ALL_CATEGORIES, ALL_GROUPS, ALL_PROJECTS, filterSites, matchesCollection, reorder, searchSites } from "./lib/filter";
+import { defaultCollections, defaultPrefs, normalizeOrder, parseLibrary, serializeLibrary } from "./lib/schema";
+import { loadAiKey, loadBackup, loadLibrary, saveAiKey, saveBackup, saveLibrary } from "./lib/storage";
+import { fetchMetadata } from "./lib/enrich";
 
-/* Types & Constants */
-interface Session {
-  id: string;
-  name: string;
-  siteIds: string[];
-  createdAt: string;
-  autoOpen?: boolean;
-}
-
-const SITES_KEY = "nexus-v7-sites";
-const PREFS_KEY = "nexus-v7-prefs";
-const AI_KEY = "nexus-v7-ai-key";
-const SESSIONS_KEY = "nexus-v7-sessions";
-
-const ALL_PROJECTS = "All projects";
-const ALL_CATEGORIES = "All categories";
-const ALL_GROUPS = "All groups";
-
-const defaultPrefs: Prefs = {
-  view: "cards", columns: 2, iconSize: 44, showScreenshot: true, sort: "manual",
-  theme: "macLight", density: "compact", floatingCards: true, focusMode: false,
-  automotiveMode: false, showDock: true,
-};
+const PAGE_SIZE = 50;
 
 const seedSites: Site[] = [
   { id: "s1", title: "GitHub", url: "https://github.com", description: "Source code hosting", project: "Work", category: "Engineering", group: "Frontend", tags: ["dev", "git"], favorite: true, visits: 20, order: 1 },
@@ -50,415 +33,452 @@ const seedSites: Site[] = [
   { id: "s8", title: "Dribbble", url: "https://dribbble.com", description: "Design inspiration community", project: "Work", category: "Design", group: "Inspiration", tags: ["design", "inspiration"], favorite: false, visits: 6, order: 8 },
 ];
 
+type Deleted = { site: Site; index: number }[];
+type ToastState = { message: string; undo?: Deleted } | null;
+
+function initialLibrary(): { data: LibraryData; migrated: boolean } {
+  const loaded = typeof localStorage !== "undefined" ? loadLibrary(localStorage) : null;
+  return loaded ?? { data: { sites: seedSites, prefs: defaultPrefs, sessions: [], collections: defaultCollections }, migrated: false };
+}
+
 export default function App() {
-  const [sites, setSites] = useState<Site[]>([]);
-  const [prefs, setPrefs] = useState<Prefs>(defaultPrefs);
+  const [boot] = useState(initialLibrary);
+  const [sites, setSites] = useState<Site[]>(boot.data.sites);
+  const [prefs, setPrefs] = useState<Prefs>(boot.data.prefs);
+  const [sessions, setSessions] = useState(boot.data.sessions);
+  const [collections, setCollections] = useState<SmartCollection[]>(boot.data.collections);
+  const [aiApiKey, setAiApiKey] = useState(() => loadAiKey(localStorage));
+
   const [mode, setMode] = useState<Mode>("all");
   const [project, setProject] = useState(ALL_PROJECTS);
   const [category, setCategory] = useState(ALL_CATEGORIES);
   const [group, setGroup] = useState(ALL_GROUPS);
-  
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [pageCount, setPageCount] = useState(1);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
+  const [editor, setEditor] = useState<{ siteId: string | null } | null>(null);
   const [infoId, setInfoId] = useState<string | null>(null);
-  const [editId, setEditId] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [aiApiKey, setAiApiKey] = useState("");
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [deletedSites, setDeletedSites] = useState<{ site: Site; index: number }[]>([]);
-
-  // Restored Features State
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [collectionEditorOpen, setCollectionEditorOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(new Set());
-  const [smartCollections, setSmartCollections] = useState<SmartCollection[]>([
-    { id: "s1", name: "Favorites", emoji: "", rules: { onlyFavorites: true } },
-    { id: "s2", name: "AI Enriched", emoji: "", rules: { onlyAiEnriched: true } },
-  ]);
-  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
-  const isOverlayOpen = sidebarOpen || addOpen || !!infoId || commandOpen || !!editId || settingsOpen || collectionEditorOpen || templatesOpen;
+  const [toast, setToast] = useState<ToastState>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const isOverlayOpen = sidebarOpen || !!editor || !!infoId || commandOpen || settingsOpen || collectionEditorOpen || templatesOpen || moveOpen;
+
+  const showToast = useCallback((message: string, undo?: Deleted) => {
+    clearTimeout(toastTimer.current);
+    setToast({ message, undo });
+    toastTimer.current = setTimeout(() => setToast(null), undo ? 6000 : 3500);
+  }, []);
+
+  useEffect(() => {
+    if (boot.migrated) showToast("Library migrated from Navigator 2.0 storage");
+  }, [boot.migrated, showToast]);
 
   useEffect(() => {
     document.body.style.overflow = isOverlayOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [isOverlayOpen]);
 
-  /* Persistence */
+  /* Theme: `.dark` enables Tailwind dark: variants, `.contrast` the high-contrast profile */
   useEffect(() => {
-    const s = localStorage.getItem(SITES_KEY);
-    if (s) {
-      const parsed = JSON.parse(s);
-      setSites(parsed.length > 0 ? parsed : seedSites);
-    } else {
-      setSites(seedSites);
-    }
-    const p = localStorage.getItem(PREFS_KEY); if (p) setPrefs(prev => ({ ...prev, ...JSON.parse(p) }));
-    const a = localStorage.getItem(AI_KEY); if (a) setAiApiKey(a);
-    const ss = localStorage.getItem(SESSIONS_KEY); if (ss) setSessions(JSON.parse(ss));
-  }, []);
-
-  useEffect(() => localStorage.setItem(SITES_KEY, JSON.stringify(sites)), [sites]);
-  useEffect(() => localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)), [prefs]);
-  useEffect(() => localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions)), [sessions]);
-  useEffect(() => { aiApiKey ? localStorage.setItem(AI_KEY, aiApiKey) : localStorage.removeItem(AI_KEY) }, [aiApiKey]);
-
-  // Auto backup
-  useEffect(() => {
-    if (sites.length === 0) return;
-    try {
-      localStorage.setItem("nexus-backup", JSON.stringify({
-        version: 2,
-        timestamp: new Date().toISOString(),
-        sites, prefs, sessions
-      }));
-    } catch {}
-  }, [sites, prefs, sessions]);
-
-  const showToast = (m: string) => { setToastMessage(m); setTimeout(() => setToastMessage(null), 4000); };
-  
-  const visibleSites = useMemo(() => {
-    const list = sites.filter(site => {
-      if (mode === "favorites" && !site.favorite) return false;
-      if (mode === "recent" && site.visits < 1) return false;
-      if (project !== ALL_PROJECTS && site.project !== project) return false;
-      if (category !== ALL_CATEGORIES && site.category !== category) return false;
-      if (group !== ALL_GROUPS && site.group !== group) return false;
-      return true;
-    });
-    if (prefs.sort === "alphabetical") return [...list].sort((a, b) => a.title.localeCompare(b.title));
-    if (prefs.sort === "mostVisited") return [...list].sort((a, b) => b.visits - a.visits);
-    return [...list].sort((a, b) => a.order - b.order);
-  }, [sites, mode, project, category, group, prefs.sort]);
-
-  const pinnedSites = useMemo(() => sites.filter(s => s.favorite).sort((a,b) => b.visits - a.visits).slice(0, 8), [sites]);
-  const favoritesCount = useMemo(() => sites.filter(s => s.favorite).length, [sites]);
-  const recentCount = useMemo(() => sites.filter(s => s.visits > 0).length, [sites]);
-
-  const projects = useMemo(() => [ALL_PROJECTS, ...unique(sites.map(s => s.project))], [sites]);
-  const categories = useMemo(() => project === ALL_PROJECTS ? [] : unique(sites.filter(s => s.project === project).map(s => s.category)), [project, sites]);
-  const groups = useMemo(() => (project === ALL_PROJECTS || category === ALL_CATEGORIES) ? [] : unique(sites.filter(s => s.project === project && s.category === category).map(s => s.group)), [project, category, sites]);
-  const allTags = useMemo(() => {
-    const counts: Record<string, number> = {};
-    sites.forEach(s => s.tags.forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 12);
-  }, [sites]);
-
-  const themeClasses = useMemo(() => {
-    if (prefs.theme === "macNight") return {
-      shell: "bg-[#0c0d18] text-slate-100",
-      panel: "glass-dark shadow-panel",
-      card: "glass-dark card-lift",
-      subtle: "text-slate-500",
-      isDark: true,
-    };
-    return {
-      shell: "text-slate-900",
-      panel: "glass shadow-panel",
-      card: "glass-subtle card-lift shadow-float",
-      subtle: "text-slate-400",
-      isDark: false,
-    };
+    const root = document.documentElement;
+    root.classList.toggle("dark", prefs.theme === "macNight");
+    root.classList.toggle("contrast", prefs.theme === "autoContrast");
+    root.style.colorScheme = prefs.theme === "macNight" ? "dark" : "light";
   }, [prefs.theme]);
 
+  /* Persistence */
+  const library = useMemo<LibraryData>(() => ({ sites, prefs, sessions, collections }), [sites, prefs, sessions, collections]);
+  const storageWarned = useRef(false);
+  useEffect(() => {
+    if (!saveLibrary(localStorage, library) && !storageWarned.current) {
+      storageWarned.current = true;
+      showToast("Could not save — browser storage is full or disabled. Export a backup.");
+    }
+  }, [library, showToast]);
+  useEffect(() => saveAiKey(localStorage, aiApiKey), [aiApiKey]);
+  useEffect(() => {
+    const t = setTimeout(() => { if (sites.length) saveBackup(localStorage, library); }, 2000);
+    return () => clearTimeout(t);
+  }, [library, sites.length]);
+
+  /* Derived data */
+  const activeCollection = collections.find((c) => c.id === activeCollectionId) ?? null;
+  const visibleSites = useMemo(
+    () => filterSites(sites, { mode, project, category, group, tag: activeTag, collection: activeCollection?.rules ?? null, sort: prefs.sort }),
+    [sites, mode, project, category, group, activeTag, activeCollection, prefs.sort],
+  );
+  const pagedSites = visibleSites.slice(0, pageCount * PAGE_SIZE);
+  useEffect(() => setPageCount(1), [mode, project, category, group, activeTag, activeCollectionId]);
+
+  const pinnedSites = useMemo(() => sites.filter((s) => s.favorite).sort((a, b) => b.visits - a.visits).slice(0, 8), [sites]);
+  const favoritesCount = useMemo(() => sites.filter((s) => s.favorite).length, [sites]);
+  const recentCount = useMemo(() => sites.filter((s) => s.lastVisitedAt || s.visits > 0).length, [sites]);
+  const projects = useMemo(() => [ALL_PROJECTS, ...unique(sites.map((s) => s.project))], [sites]);
+  const categories = useMemo(() => (project === ALL_PROJECTS ? [] : unique(sites.filter((s) => s.project === project).map((s) => s.category))), [project, sites]);
+  const groups = useMemo(
+    () => (project === ALL_PROJECTS || category === ALL_CATEGORIES ? [] : unique(sites.filter((s) => s.project === project && s.category === category).map((s) => s.group))),
+    [project, category, sites],
+  );
+  const allTags = useMemo(() => {
+    const counts: Record<string, number> = {};
+    sites.forEach((s) => s.tags.forEach((t) => { counts[t] = (counts[t] || 0) + 1; }));
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 16);
+  }, [sites]);
+  const paletteResults = useMemo(() => searchSites(sites, commandQuery), [sites, commandQuery]);
+  const manualDnD = prefs.sort === "manual" && mode !== "recent" && !selectionMode;
+  const filtersActive = project !== ALL_PROJECTS || category !== ALL_CATEGORIES || group !== ALL_GROUPS || mode !== "all" || !!activeTag || !!activeCollectionId;
+
+  const theme: ThemeClasses & { shell: string; panel: string } = useMemo(() => {
+    if (prefs.theme === "macNight") return { shell: "text-slate-100", panel: "glass-dark shadow-panel", card: "glass-dark card-lift", subtle: "text-slate-400", isDark: true };
+    if (prefs.theme === "autoContrast") return { shell: "text-slate-950", panel: "glass shadow-panel", card: "glass card-lift shadow-float", subtle: "text-slate-600", isDark: false };
+    return { shell: "text-slate-900", panel: "glass shadow-panel", card: "glass-subtle card-lift shadow-float", subtle: "text-slate-400", isDark: false };
+  }, [prefs.theme]);
+
+  /* Site actions */
   const openSite = useCallback((site: Site) => {
-    setSites(prev => prev.map(s => s.id === site.id ? { ...s, visits: s.visits + 1 } : s));
+    const now = new Date().toISOString();
+    setSites((prev) => prev.map((s) => (s.id === site.id ? { ...s, visits: s.visits + 1, lastVisitedAt: now } : s)));
     window.open(site.url, "_blank", "noopener,noreferrer");
   }, []);
 
+  /**
+   * Opens several sites from one user gesture. Pop-up blockers may let only the first tab through,
+   * and with "noopener" `window.open` returns null even on success, so blocked tabs cannot be
+   * counted — the toast tells the user what to do instead.
+   */
+  const openMany = useCallback((list: Site[]) => {
+    if (!list.length) return;
+    const now = new Date().toISOString();
+    const ids = new Set(list.map((s) => s.id));
+    setSites((prev) => prev.map((s) => (ids.has(s.id) ? { ...s, visits: s.visits + 1, lastVisitedAt: now } : s)));
+    list.forEach((s) => window.open(s.url, "_blank", "noopener,noreferrer"));
+    showToast(list.length > 1 ? `Opening ${list.length} sites — allow pop-ups for this page if only one opens` : `Opening ${list[0].title}`);
+  }, [showToast]);
+
   const copySiteUrl = useCallback(async (site: Site) => {
-    try { await navigator.clipboard.writeText(site.url); showToast("URL Copied"); } catch {}
-  }, []);
+    try {
+      await navigator.clipboard.writeText(site.url);
+      showToast("URL copied");
+    } catch {
+      showToast("Clipboard is not available");
+    }
+  }, [showToast]);
 
   const toggleFavorite = useCallback((id: string) => {
-    setSites(prev => prev.map(s => s.id === id ? { ...s, favorite: !s.favorite } : s));
+    setSites((prev) => prev.map((s) => (s.id === id ? { ...s, favorite: !s.favorite } : s)));
   }, []);
 
-  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const deleteSites = useCallback((ids: Set<string>) => {
+    const removed: Deleted = [];
+    sites.forEach((s, index) => { if (ids.has(s.id)) removed.push({ site: s, index }); });
+    if (!removed.length) return;
+    setSites((prev) => prev.filter((s) => !ids.has(s.id)));
+    setSessions((prev) => prev.map((ss) => ({ ...ss, siteIds: ss.siteIds.filter((id) => !ids.has(id)) })));
+    showToast(removed.length === 1 ? `Deleted ${removed[0].site.title}` : `Deleted ${removed.length} sites`, removed);
+  }, [sites, showToast]);
 
-  const reorderSite = useCallback((sourceId: string, targetId: string) => {
-    if (sourceId === targetId || prefs.sort !== "manual") return;
-    setSites(prev => {
-      const sorted = [...prev].sort((a, b) => a.order - b.order);
-      const from = sorted.findIndex(s => s.id === sourceId);
-      const to = sorted.findIndex(s => s.id === targetId);
-      if (from < 0 || to < 0) return prev;
-      const next = [...sorted];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next.map((s, i) => ({ ...s, order: i + 1 }));
+  const undoDelete = (removed: Deleted) => {
+    setSites((prev) => {
+      const next = [...prev];
+      removed.forEach(({ site, index }) => next.splice(Math.min(index, next.length), 0, site));
+      return normalizeOrder(next.map((s, i) => ({ ...s, order: i + 1 })));
     });
-  }, [prefs.sort]);
+    clearTimeout(toastTimer.current);
+    setToast(null);
+  };
 
+  const duplicateSite = useCallback((id: string) => {
+    setSites((prev) => {
+      const src = prev.find((s) => s.id === id);
+      if (!src) return prev;
+      const copy: Site = { ...src, id: uid(), title: `${src.title} (copy)`, visits: 0, lastVisitedAt: undefined, favorite: false, order: src.order + 0.5 };
+      return normalizeOrder([...prev, copy]);
+    });
+  }, []);
+
+  const saveDraft = (draft: SiteDraft) => {
+    const editingId = editor?.siteId;
+    if (editingId) {
+      setSites((prev) => prev.map((s) => (s.id === editingId ? { ...s, ...draft } : s)));
+      showToast("Site updated");
+    } else {
+      const site: Site = { ...draft, id: uid(), favorite: false, visits: 0, order: 0 };
+      setSites((prev) => normalizeOrder([site, ...prev]));
+      showToast(`Added ${site.title}`);
+    }
+  };
+
+  const actions: SiteActions = {
+    onOpen: openSite,
+    onCopy: copySiteUrl,
+    onInfo: setInfoId,
+    onEdit: (id) => setEditor({ siteId: id }),
+    onDelete: (id) => { deleteSites(new Set([id])); setMenuId(null); },
+    onDuplicate: duplicateSite,
+    onToggleFavorite: toggleFavorite,
+  };
+
+  /* Sessions */
   const saveCurrentAsSession = () => {
-    const name = prompt("Session name:");
+    const name = window.prompt("Session name:")?.trim();
     if (!name) return;
-    const session: Session = {
-      id: `session-${Date.now()}`,
-      name,
-      siteIds: visibleSites.map(s => s.id),
-      createdAt: new Date().toISOString(),
-    };
-    setSessions(prev => [...prev, session]);
+    setSessions((prev) => [...prev, { id: uid(), name, siteIds: visibleSites.map((s) => s.id), createdAt: new Date().toISOString() }]);
     showToast(`Session "${name}" saved with ${visibleSites.length} sites`);
   };
 
-  const openSession = useCallback((session: Session) => {
-    showToast(`Opening ${session.siteIds.length} sites...`);
-    session.siteIds.forEach((id, i) => {
-      const s = sites.find(x => x.id === id);
-      if (s) setTimeout(() => openSite(s), i * 150);
-    });
-  }, [sites, openSite]);
-
-  const deleteSession = useCallback((id: string) => {
-    setSessions(prev => prev.filter(s => s.id !== id));
-    showToast("Session deleted");
-  }, []);
-
-  const removeSite = (id: string) => {
-    setSites(prev => {
-      const idx = prev.findIndex(x => x.id === id);
-      if (idx > -1) {
-        setDeletedSites([{ site: prev[idx], index: idx }]);
-        showToast(`Deleted ${prev[idx].title}`);
-      }
-      return prev.filter(s => s.id !== id);
-    });
-    setMenuId(null);
+  /* Import / export */
+  const applyLibrary = (data: LibraryData) => {
+    setSites(data.sites);
+    setPrefs(data.prefs);
+    setSessions(data.sessions);
+    setCollections(data.collections);
+    setActiveCollectionId(null);
+    setActiveTag(null);
   };
 
   const importData = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]; if (!file) return;
+    const file = event.target.files?.[0];
+    event.target.value = ""; // allow re-importing the same file
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
+      let json: unknown;
       try {
-        const p = JSON.parse(String(reader.result));
-        if (p.sites) setSites(p.sites.map((s: any, i: number) => toSite(s, i)));
-        if (p.prefs) setPrefs(prev => ({ ...prev, ...p.prefs }));
-        showToast("Data imported");
-      } catch { showToast("Import failed"); }
+        json = JSON.parse(String(reader.result));
+      } catch {
+        showToast("Import failed: file is not valid JSON");
+        return;
+      }
+      const result = parseLibrary(json);
+      if (!result.ok) {
+        showToast(`Import failed: ${result.error}`);
+        return;
+      }
+      if (!window.confirm(`Replace your library (${sites.length} sites) with ${result.data.sites.length} imported sites?`)) return;
+      saveBackup(localStorage, library);
+      applyLibrary(result.data);
+      showToast(`Imported ${result.data.sites.length} sites${result.skipped ? `, skipped ${result.skipped} invalid` : ""}`);
     };
     reader.readAsText(file);
   };
 
   const exportData = () => {
-    const blob = new Blob([JSON.stringify({ version: 2, sites, prefs, sessions }, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(serializeLibrary(library), null, 2)], { type: "application/json" });
+    const href = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `nexus-export-${new Date().toISOString().split('T')[0]}.json`;
+    a.href = href;
+    a.download = `nexus-export-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(href), 0);
     showToast("Exported successfully");
   };
 
-  const undoDelete = () => {
-    if (!deletedSites.length) return;
-    setSites(prev => {
-      const next = [...prev];
-      deletedSites.forEach(({ site, index }) => next.splice(index, 0, site));
-      return next.map((s, i) => ({ ...s, order: i + 1 }));
-    });
-    setDeletedSites([]);
-    setToastMessage(null);
+  const restoreBackup = () => {
+    const backup = loadBackup(localStorage);
+    if (!backup) { showToast("No backup found"); return; }
+    const when = backup.exportedAt ? new Date(backup.exportedAt).toLocaleString() : "unknown time";
+    if (!window.confirm(`Restore ${backup.data.sites.length} sites from backup (${when})?`)) return;
+    applyLibrary(backup.data);
+    showToast(`Restored from ${when}`);
   };
 
-  /* Bulk Actions */
+  /* Bulk actions */
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
     setSelectionMode(false);
   }, []);
-
-  const bulkDelete = () => {
-    if (!selectedIds.size) return;
-    setSites(prev => {
-      const toDelete: { site: Site; index: number }[] = [];
-      const remaining: Site[] = [];
-      prev.forEach((s, i) => {
-        if (selectedIds.has(s.id)) toDelete.push({ site: s, index: i });
-        else remaining.push(s);
-      });
-      setDeletedSites(toDelete);
-      showToast(`Deleted ${toDelete.length} sites`);
-      return remaining;
-    });
-    clearSelection();
-  };
-
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }, []);
   const bulkFavorite = (val: boolean) => {
-    if (!selectedIds.size) return;
-    setSites(prev => prev.map(s => selectedIds.has(s.id) ? { ...s, favorite: val } : s));
-    showToast(`${val ? 'Favorited' : 'Unfavorited'} ${selectedIds.size} sites`);
+    setSites((prev) => prev.map((s) => (selectedIds.has(s.id) ? { ...s, favorite: val } : s)));
+    showToast(`${val ? "Favorited" : "Unfavorited"} ${selectedIds.size} sites`);
+    clearSelection();
+  };
+  const bulkMove = (target: { project: string; category: string; group: string }) => {
+    setSites((prev) => prev.map((s) => (selectedIds.has(s.id)
+      ? { ...s, project: target.project.trim() || s.project, category: target.category.trim() || s.category, group: target.group.trim() || s.group }
+      : s)));
+    showToast(`Moved ${selectedIds.size} sites`);
+    setMoveOpen(false);
     clearSelection();
   };
 
-  const bulkOpen = () => {
-    if (!selectedIds.size) return;
-    sites.filter(s => selectedIds.has(s.id)).forEach((s, i) => {
-      setTimeout(() => openSite(s), i * 150);
-    });
-    showToast(`Opening ${selectedIds.size} sites...`);
-    clearSelection();
-  };
-
-  const selectedInfo = useMemo(() => sites.find(s => s.id === infoId) || null, [infoId, sites]);
+  const selectedInfo = useMemo(() => sites.find((s) => s.id === infoId) || null, [infoId, sites]);
+  const editingSite = editor?.siteId ? sites.find((s) => s.id === editor.siteId) ?? null : null;
 
   const pasteFromClipboard = async () => {
+    let text: string;
     try {
-      const text = await navigator.clipboard.readText();
-      const urlMatch = text.match(/(https?:\/\/[^\s]+)|(www\.[^\s]+)/);
-      if (!urlMatch) { showToast("No URL found in clipboard"); return; }
-      const url = urlMatch[0].startsWith("http") ? urlMatch[0] : `https://${urlMatch[0]}`;
-      
-      showToast("Fetching site data...");
-      const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}&meta=true`);
-      const json = await res.json();
-      const data = json?.data || {};
-      
-      const newSite: Site = {
-        id: `site-${Date.now()}`,
-        title: data.title || hostOf(url),
-        url,
-        description: data.description || "",
-        project: project !== ALL_PROJECTS ? project : "General",
-        category: category !== ALL_CATEGORIES ? category : data.publisher || "General",
-        group: group !== ALL_GROUPS ? group : "General",
-        tags: [],
-        icon: data.logo?.url,
-        screenshot: data.image?.url,
-        extractedAt: new Date().toISOString(),
-        favorite: false,
-        visits: 0,
-        order: 0,
-      };
-      
-      setSites(prev => [newSite, ...prev].map((s, i) => ({ ...s, order: i + 1 })));
-      showToast(`Added ${newSite.title}`);
+      text = await navigator.clipboard.readText();
     } catch {
-      showToast("Failed to read clipboard");
+      showToast("Clipboard access was denied");
+      return;
     }
+    const match = text.match(/https?:\/\/[^\s]+|www\.[^\s]+/);
+    if (!match) { showToast("No URL found in clipboard"); return; }
+    const url = match[0].startsWith("http") ? match[0] : `https://${match[0]}`;
+    if (sites.some((s) => s.url === url)) { showToast("This URL is already in your library"); return; }
+    showToast("Fetching site data…");
+    let meta: Awaited<ReturnType<typeof fetchMetadata>> | null = null;
+    try { meta = await fetchMetadata(url); } catch { /* keep a bare site */ }
+    const site: Site = {
+      id: uid(),
+      title: meta?.title || hostOf(url),
+      url,
+      description: meta?.description || "",
+      project: project !== ALL_PROJECTS ? project : "General",
+      category: category !== ALL_CATEGORIES ? category : meta?.publisher || "General",
+      group: group !== ALL_GROUPS ? group : "General",
+      tags: [],
+      icon: meta?.icon,
+      screenshot: meta?.screenshot,
+      extractedAt: meta ? new Date().toISOString() : undefined,
+      favorite: false,
+      visits: 0,
+      order: 0,
+    };
+    setSites((prev) => normalizeOrder([site, ...prev]));
+    showToast(meta ? `Added ${site.title}` : `Added ${site.title} (metadata unavailable)`);
   };
 
-  // Keyboard shortcuts
+  const resetFilters = () => {
+    setProject(ALL_PROJECTS); setCategory(ALL_CATEGORIES); setGroup(ALL_GROUPS);
+    setMode("all"); setActiveTag(null); setActiveCollectionId(null);
+  };
+
+  /* Keyboard shortcuts */
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setCommandOpen(prev => !prev);
-      }
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); setCommandOpen((v) => !v); return; }
+      if (mod && e.key === ",") { e.preventDefault(); setSettingsOpen(true); return; }
       if (e.key === "Escape") {
-        setSidebarOpen(false);
-        setSettingsOpen(false);
-        setAddOpen(false);
-        setInfoId(null);
-        setEditId(null);
-        setMenuId(null);
-        setCommandOpen(false);
+        setSidebarOpen(false); setSettingsOpen(false); setEditor(null); setInfoId(null); setMenuId(null);
+        setCommandOpen(false); setCollectionEditorOpen(false); setTemplatesOpen(false); setMoveOpen(false);
+        return;
       }
-      if (/^[1-9]$/.test(e.key)) {
-        const target = e.target as HTMLElement;
-        if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
-        const picked = visibleSites[Number(e.key) - 1];
+      if (/^[1-9]$/.test(e.key) && !mod && !e.altKey && !isOverlayOpen && !isEditableTarget(e.target)) {
+        const picked = pagedSites[Number(e.key) - 1];
         if (picked) openSite(picked);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [visibleSites, openSite]);
+  }, [pagedSites, openSite, isOverlayOpen]);
+
+  const closeSidebar = () => setSidebarOpen(false);
+  const pill = "h-9 rounded-xl border border-black/5 bg-white/50 px-3 text-xs font-semibold transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10";
 
   return (
-    <div className={cn("min-h-dvh transition-colors duration-700", themeClasses.shell)}>
-      {/* Mobile sidebar overlay */}
+    <div className={cn("min-h-dvh transition-colors duration-500", theme.shell)}>
       <div
-        className={cn("fixed inset-0 z-40 transition-all duration-300 lg:hidden", sidebarOpen ? "opacity-100 backdrop-blur-sm bg-black/30" : "pointer-events-none opacity-0")}
-        onClick={() => setSidebarOpen(false)}
+        className={cn("fixed inset-0 z-40 transition-all duration-300 lg:hidden", sidebarOpen ? "bg-black/30 opacity-100 backdrop-blur-sm" : "pointer-events-none opacity-0")}
+        onClick={closeSidebar}
       />
 
       <div className={cn("min-h-dvh", !prefs.focusMode && "lg:grid lg:grid-cols-[264px_1fr]")}>
         {!prefs.focusMode && (
-          <aside className={cn(
-            "fixed left-0 top-0 z-50 flex h-dvh w-[264px] flex-col p-4 transition-transform duration-300 ease-out",
-            "lg:sticky lg:h-screen lg:translate-x-0 lg:border-r lg:border-white/40",
-            themeClasses.panel,
-            sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
-          )}>
-            {/* Brand */}
+          <aside
+            aria-label="Library navigation"
+            className={cn(
+              "fixed left-0 top-0 z-50 flex h-dvh w-[264px] flex-col p-4 transition-transform duration-300 ease-out",
+              "lg:sticky lg:h-screen lg:translate-x-0 lg:border-r lg:border-white/40",
+              theme.panel,
+              sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full",
+            )}
+          >
             <div className="mb-6 flex items-center gap-3 px-1 pt-1">
-              <div className={cn(
-                "grid h-9 w-9 place-items-center rounded-2xl text-sm font-bold text-white",
-                "bg-gradient-to-br from-blue-500 to-indigo-600",
-                "shadow-lg shadow-blue-500/25"
-              )}>N</div>
+              <div className="grid h-9 w-9 place-items-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white shadow-lg shadow-blue-500/25">N</div>
               <div>
-                <p className="text-[13px] font-semibold tracking-tight">Nexus</p>
-                <p className="text-[10px] text-slate-400 font-medium">{sites.length} sites</p>
+                <p className="text-[13px] font-semibold tracking-tight">Nexus Navigator</p>
+                <p className="text-[10px] font-medium text-slate-400">{sites.length} sites</p>
               </div>
             </div>
 
-            <div className="flex-1 space-y-6 overflow-y-auto scrollbar-hide pb-4">
+            <nav className="flex-1 space-y-6 overflow-y-auto pb-4">
               <SidebarSection label="Library" icon={<Icons.Library />}>
-                {(["all", "favorites", "recent"] as const).map(m => (
-                  <SidebarButton key={m} active={mode === m} onClick={() => { setMode(m); setSidebarOpen(false); }} count={m === "all" ? sites.length : m === "favorites" ? favoritesCount : recentCount}>{m.charAt(0).toUpperCase() + m.slice(1)}</SidebarButton>
+                {(["all", "favorites", "recent"] as const).map((m) => (
+                  <SidebarButton key={m} active={mode === m} onClick={() => { setMode(m); closeSidebar(); }} count={m === "all" ? sites.length : m === "favorites" ? favoritesCount : recentCount}>
+                    {m.charAt(0).toUpperCase() + m.slice(1)}
+                  </SidebarButton>
                 ))}
               </SidebarSection>
+
               <SidebarSection label="Projects" icon={<Icons.Projects />}>
-                {projects.map(p => <SidebarButton key={p} active={project === p} onClick={() => { setProject(p); setCategory(ALL_CATEGORIES); setGroup(ALL_GROUPS); setSidebarOpen(false); }} count={p !== ALL_PROJECTS ? sites.filter(s => s.project === p).length : undefined}>{p}</SidebarButton>)}
+                {projects.map((p) => (
+                  <SidebarButton key={p} active={project === p} onClick={() => { setProject(p); setCategory(ALL_CATEGORIES); setGroup(ALL_GROUPS); closeSidebar(); }} count={p !== ALL_PROJECTS ? sites.filter((s) => s.project === p).length : undefined}>
+                    {p}
+                  </SidebarButton>
+                ))}
               </SidebarSection>
 
               {categories.length > 0 && (
                 <SidebarSection label="Categories" icon={<Icons.Collections />}>
-                  <SidebarButton active={category === ALL_CATEGORIES} onClick={() => { setCategory(ALL_CATEGORIES); setGroup(ALL_GROUPS); setSidebarOpen(false); }}>All categories</SidebarButton>
-                  {categories.map(c => <SidebarButton key={c} active={category === c} onClick={() => { setCategory(c); setGroup(ALL_GROUPS); setSidebarOpen(false); }}>{c}</SidebarButton>)}
+                  <SidebarButton active={category === ALL_CATEGORIES} onClick={() => { setCategory(ALL_CATEGORIES); setGroup(ALL_GROUPS); closeSidebar(); }}>All categories</SidebarButton>
+                  {categories.map((c) => <SidebarButton key={c} active={category === c} onClick={() => { setCategory(c); setGroup(ALL_GROUPS); closeSidebar(); }}>{c}</SidebarButton>)}
                 </SidebarSection>
               )}
 
               {groups.length > 0 && (
                 <SidebarSection label="Groups" icon={<Icons.Tags />}>
-                  <SidebarButton active={group === ALL_GROUPS} onClick={() => { setGroup(ALL_GROUPS); setSidebarOpen(false); }}>All groups</SidebarButton>
-                  {groups.map(g => <SidebarButton key={g} active={group === g} onClick={() => { setGroup(g); setSidebarOpen(false); }}>{g}</SidebarButton>)}
+                  <SidebarButton active={group === ALL_GROUPS} onClick={() => { setGroup(ALL_GROUPS); closeSidebar(); }}>All groups</SidebarButton>
+                  {groups.map((g) => <SidebarButton key={g} active={group === g} onClick={() => { setGroup(g); closeSidebar(); }}>{g}</SidebarButton>)}
                 </SidebarSection>
               )}
 
-              <SidebarSection label="Collections" icon={<Icons.Collections />}>
-                {smartCollections.map(c => {
-                  const count = sites.filter(s => {
-                    const r = c.rules;
-                    if (r.onlyFavorites && !s.favorite) return false;
-                    if (r.onlyAiEnriched && !s.extractedAt) return false;
-                    if (r.minVisits && s.visits < r.minVisits) return false;
-                    return true;
-                  }).length;
-                  return (
-                    <div key={c.id} className="group flex items-center gap-1">
-                      <SidebarButton active={activeCollectionId === c.id} count={count} onClick={() => {
-                        setActiveCollectionId(activeCollectionId === c.id ? null : c.id);
-                        setSidebarOpen(false);
-                      }}>{c.name}</SidebarButton>
-                      <button onClick={() => setSmartCollections(prev => prev.filter(x => x.id !== c.id))} className="hidden h-6 w-6 items-center justify-center rounded text-xs text-slate-400 hover:text-rose-500 group-hover:flex">×</button>
-                    </div>
-                  );
-                })}
-                <button onClick={() => setCollectionEditorOpen(true)} className="flex h-9 w-full items-center gap-2 rounded-xl px-3 text-[12px] font-medium text-blue-600 hover:bg-blue-50/50 transition">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm shadow-blue-600/20"><Icons.Plus className="w-3 h-3" /></span>
-                  New Collection
+              <SidebarSection label="Smart collections" icon={<Icons.Collections />}>
+                {collections.map((c) => (
+                  <div key={c.id} className="group flex items-center gap-1">
+                    <SidebarButton active={activeCollectionId === c.id} count={sites.filter((s) => matchesCollection(s, c.rules)).length} onClick={() => { setActiveCollectionId(activeCollectionId === c.id ? null : c.id); closeSidebar(); }}>
+                      {c.name}
+                    </SidebarButton>
+                    <button
+                      type="button"
+                      aria-label={`Delete collection ${c.name}`}
+                      onClick={() => { setCollections((prev) => prev.filter((x) => x.id !== c.id)); if (activeCollectionId === c.id) setActiveCollectionId(null); }}
+                      className="h-6 w-6 shrink-0 items-center justify-center rounded text-xs text-slate-400 opacity-0 hover:text-rose-500 focus-visible:opacity-100 group-hover:opacity-100"
+                    >×</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setCollectionEditorOpen(true)} className="flex h-9 w-full items-center gap-2 rounded-xl px-3 text-[12px] font-medium text-blue-600 transition hover:bg-blue-50/50 dark:text-blue-400 dark:hover:bg-white/5">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm shadow-blue-600/20"><Icons.Plus className="h-3 w-3" /></span>
+                  New collection
                 </button>
               </SidebarSection>
 
               {allTags.length > 0 && (
                 <SidebarSection label="Tags" icon={<Icons.Tags />}>
                   <div className="flex flex-wrap gap-1 px-1">
-                    {allTags.map(([tag]) => (
+                    {allTags.map(([tag, count]) => (
                       <button
+                        type="button"
                         key={tag}
-                        onClick={() => { setMode("tag" as Mode); setSidebarOpen(false); }}
-                        className="rounded-lg border border-slate-200/50 bg-white/50 px-2 py-0.5 text-[10px] font-medium text-slate-500 transition hover:border-slate-300 hover:bg-white"
+                        aria-pressed={activeTag === tag}
+                        onClick={() => { setActiveTag(activeTag === tag ? null : tag); closeSidebar(); }}
+                        className={cn(
+                          "rounded-lg border px-2 py-0.5 text-[10px] font-medium transition",
+                          activeTag === tag
+                            ? "border-blue-600 bg-blue-600 text-white"
+                            : "border-slate-200/50 bg-white/50 text-slate-500 hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-300",
+                        )}
                       >
-                        #{tag}
+                        #{tag} <span className="opacity-60">{count}</span>
                       </button>
                     ))}
                   </div>
@@ -467,141 +487,185 @@ export default function App() {
 
               {sessions.length > 0 && (
                 <SidebarSection label="Sessions" icon={<Icons.TopVisited />}>
-                  {sessions.map(s => (
+                  {sessions.map((s) => (
                     <div key={s.id} className="group flex items-center gap-1">
-                      <SidebarButton active={false} onClick={() => openSession(s)} count={s.siteIds.length}>{s.name}</SidebarButton>
-                      <button onClick={() => deleteSession(s.id)} className="hidden h-6 w-6 items-center justify-center rounded text-xs text-slate-400 hover:text-rose-500 group-hover:flex">×</button>
+                      <SidebarButton active={false} onClick={() => openMany(sites.filter((x) => s.siteIds.includes(x.id)))} count={s.siteIds.length}>{s.name}</SidebarButton>
+                      <button
+                        type="button"
+                        aria-label={`Delete session ${s.name}`}
+                        onClick={() => { setSessions((prev) => prev.filter((x) => x.id !== s.id)); showToast("Session deleted"); }}
+                        className="h-6 w-6 shrink-0 rounded text-xs text-slate-400 opacity-0 hover:text-rose-500 focus-visible:opacity-100 group-hover:opacity-100"
+                      >×</button>
                     </div>
                   ))}
                 </SidebarSection>
               )}
 
-              <SidebarSection label="Quick Access" icon={<Icons.TopVisited />}>
+              <SidebarSection label="Quick access" icon={<Icons.TopVisited />}>
                 {pinnedSites.length > 0 ? pinnedSites.slice(0, 5).map((s, i) => (
-                  <button key={s.id} onClick={() => openSite(s)} className="flex h-9 w-full items-center gap-3 rounded-xl px-2.5 text-[13px] text-slate-500 hover:bg-black/5 transition">
-                    <span className={cn("flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold", i === 0 ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-500")}>{i+1}</span>
-                    <img src={faviconUrl(s)} alt="" className="h-4 w-4 rounded" />
+                  <button type="button" key={s.id} onClick={() => openSite(s)} className="flex h-9 w-full items-center gap-3 rounded-xl px-2.5 text-[13px] text-slate-500 transition hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/5">
+                    <span className={cn("flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold", i === 0 ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-500")}>{i + 1}</span>
+                    <SiteIcon site={s} size={16} className="rounded" />
                     <span className="truncate">{s.title}</span>
                   </button>
                 )) : <p className="px-3 text-xs text-slate-400">Star sites to see them here</p>}
               </SidebarSection>
 
-              <div className="pt-4 space-y-1">
-                <button onClick={saveCurrentAsSession} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-medium text-purple-600 hover:bg-purple-50/50 transition">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-white shadow-sm shadow-purple-600/20"><Icons.Plus className="w-3 h-3" /></span>
-                  Save as Session
+              <div className="space-y-1 pt-4">
+                <button type="button" onClick={saveCurrentAsSession} disabled={!visibleSites.length} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-medium text-purple-600 transition hover:bg-purple-50/50 disabled:opacity-40 dark:text-purple-400 dark:hover:bg-white/5">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-white shadow-sm shadow-purple-600/20"><Icons.Plus className="h-3 w-3" /></span>
+                  Save view as session
                 </button>
-                <button onClick={() => setTemplatesOpen(true)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-medium text-emerald-600 hover:bg-emerald-50/50 transition">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm shadow-emerald-600/20"><Icons.Plus className="w-3 h-3" /></span>
-                  Import Templates
+                <button type="button" onClick={() => setTemplatesOpen(true)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-medium text-emerald-600 transition hover:bg-emerald-50/50 dark:text-emerald-400 dark:hover:bg-white/5">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm shadow-emerald-600/20"><Icons.Plus className="h-3 w-3" /></span>
+                  Import templates
                 </button>
               </div>
-            </div>
+            </nav>
           </aside>
         )}
 
-        <main className="min-w-0">
+        <main className="min-w-0 pb-28">
           <header className="sticky top-0 z-30 p-3 md:p-4">
-            <div className={cn(
-              "flex items-center gap-3 rounded-2xl px-3 py-2.5",
-              "glass shadow-header animate-fade-in"
-            )}>
-              <button onClick={() => setSidebarOpen(true)} className="lg:hidden flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-black/5 transition">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-              </button>
-              <div className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-hide text-[11px] font-semibold tracking-[0.08em]">
+            <div className={cn("flex items-center gap-3 rounded-2xl px-3 py-2.5 shadow-header animate-fade-in", theme.panel)}>
+              {!prefs.focusMode && (
+                <button type="button" aria-label="Open navigation" onClick={() => setSidebarOpen(true)} className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-black/5 lg:hidden">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
+              )}
+              <div className="flex flex-1 items-center gap-2 overflow-x-auto text-[11px] font-semibold tracking-[0.08em]">
                 <span className="chip chip-blue">{project}</span>
                 {category !== ALL_CATEGORIES && <><span className="text-slate-300">/</span><span className="chip">{category}</span></>}
                 {group !== ALL_GROUPS && <><span className="text-slate-300">/</span><span className="chip">{group}</span></>}
-                {(project !== ALL_PROJECTS || category !== ALL_CATEGORIES || group !== ALL_GROUPS) && (
-                  <button onClick={() => { setProject(ALL_PROJECTS); setCategory(ALL_CATEGORIES); setGroup(ALL_GROUPS); setMode("all"); }} className="chip hover:bg-black/5">Clear</button>
-                )}
-                <span className={cn("ml-auto chip", themeClasses.subtle)}>{visibleSites.length} sites</span>
+                {mode !== "all" && <span className="chip">{mode}</span>}
+                {activeTag && <span className="chip">#{activeTag}</span>}
+                {activeCollection && <span className="chip">{activeCollection.name}</span>}
+                {filtersActive && <button type="button" onClick={resetFilters} className="chip hover:bg-black/5">Clear</button>}
+                <span className={cn("chip ml-auto", theme.subtle)}>{visibleSites.length} sites</span>
               </div>
               <div className="flex items-center gap-2">
-                {!selectionMode && <button onClick={() => setSelectionMode(true)} className="h-9 px-3 rounded-xl border border-slate-200 bg-white/50 text-xs font-semibold hover:bg-white transition">Select</button>}
-                {selectionMode && selectedIds.size > 0 && (
-                   <>
-                     <button onClick={() => bulkFavorite(true)} className="h-9 px-2 rounded-xl bg-white text-amber-500 shadow-sm text-sm">★</button>
-                     <button onClick={() => bulkFavorite(false)} className="h-9 px-2 rounded-xl bg-white text-slate-400 shadow-sm text-sm">☆</button>
-                     <button onClick={bulkOpen} className="h-9 px-3 rounded-xl bg-white shadow-sm text-xs font-bold">Open {selectedIds.size}</button>
-                     <button onClick={bulkDelete} className="h-9 px-3 rounded-xl bg-rose-500 text-white shadow-sm text-xs font-bold">Delete</button>
-                   </>
+                {!selectionMode && <button type="button" onClick={() => setSelectionMode(true)} className={pill}>Select</button>}
+                {selectionMode && (
+                  <>
+                    <button type="button" onClick={() => setSelectedIds(new Set(visibleSites.map((s) => s.id)))} className={pill}>All</button>
+                    {selectedIds.size > 0 && (
+                      <>
+                        <button type="button" aria-label="Add selected to favorites" onClick={() => bulkFavorite(true)} className={cn(pill, "text-amber-500")}>★</button>
+                        <button type="button" aria-label="Remove selected from favorites" onClick={() => bulkFavorite(false)} className={cn(pill, "text-slate-400")}>☆</button>
+                        <button type="button" onClick={() => setMoveOpen(true)} className={pill}>Move to…</button>
+                        <button type="button" onClick={() => { openMany(sites.filter((s) => selectedIds.has(s.id))); clearSelection(); }} className={pill}>Open {selectedIds.size}</button>
+                        <button
+                          type="button"
+                          onClick={() => { if (window.confirm(`Delete ${selectedIds.size} sites?`)) { deleteSites(selectedIds); clearSelection(); } }}
+                          className="h-9 rounded-xl bg-rose-500 px-3 text-xs font-bold text-white shadow-sm"
+                        >Delete {selectedIds.size}</button>
+                      </>
+                    )}
+                    <button type="button" onClick={clearSelection} className="h-9 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white shadow-sm">Done</button>
+                  </>
                 )}
-                {selectionMode && <button onClick={clearSelection} className="h-9 px-3 rounded-xl bg-blue-600 text-white shadow-sm text-xs font-bold">Done</button>}
 
                 {!selectionMode && (
                   <>
-                    <select value={prefs.sort} onChange={e => setPrefs(p => ({...p, sort: e.target.value as any}))} className="hidden sm:inline-flex h-9 rounded-xl border border-black/5 bg-white/50 px-3 text-xs font-semibold outline-none hover:bg-white transition cursor-pointer">
+                    <select aria-label="Sort" value={prefs.sort} onChange={(e) => setPrefs((p) => ({ ...p, sort: e.target.value as Prefs["sort"] }))} className={cn(pill, "hidden cursor-pointer outline-none sm:inline-flex")}>
                       <option value="manual">Manual</option>
                       <option value="alphabetical">A → Z</option>
                       <option value="mostVisited">Most visited</option>
                     </select>
-                    <button onClick={() => setCommandOpen(true)} className="hidden sm:inline-flex h-9 px-3 rounded-xl border border-black/5 bg-white/50 text-xs font-semibold hover:bg-white transition">⌘K</button>
-                    <button onClick={pasteFromClipboard} className="hidden sm:inline-flex h-9 px-3 rounded-xl border border-black/5 bg-white/50 text-xs font-semibold hover:bg-white transition text-emerald-600">Paste</button>
-                    <button onClick={() => setSettingsOpen(true)} className="h-9 w-9 grid place-items-center rounded-xl border border-black/5 bg-white/50 hover:bg-white transition"><Icons.Settings /></button>
-                    <button onClick={() => setAddOpen(true)} className="h-9 px-4 rounded-xl bg-blue-600 text-white text-xs font-bold transition hover:bg-blue-700 shadow-lg shadow-blue-600/20">+ Add</button>
+                    <select aria-label="View" value={prefs.view} onChange={(e) => setPrefs((p) => ({ ...p, view: e.target.value as Prefs["view"] }))} className={cn(pill, "hidden cursor-pointer outline-none md:inline-flex")}>
+                      <option value="cards">Cards</option>
+                      <option value="icons">Icons</option>
+                      <option value="list">List</option>
+                    </select>
+                    <button type="button" onClick={() => setCommandOpen(true)} className={cn(pill, "hidden sm:inline-flex sm:items-center")}>⌘K</button>
+                    <button type="button" onClick={pasteFromClipboard} className={cn(pill, "hidden text-emerald-600 sm:inline-flex sm:items-center")}>Paste</button>
+                    <button type="button" aria-label="Settings" onClick={() => setSettingsOpen(true)} className={cn(pill, "grid w-9 place-items-center px-0")}><Icons.Settings /></button>
+                    <button type="button" onClick={() => setEditor({ siteId: null })} className="h-9 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">+ Add</button>
                   </>
                 )}
               </div>
             </div>
           </header>
 
-          <div className={cn(
-            "p-3 md:p-5 grid gap-4",
-            prefs.columns === 2 && "sm:grid-cols-2",
-            prefs.columns === 3 && "sm:grid-cols-2 lg:grid-cols-3",
-            prefs.columns === 4 && "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
-            prefs.columns === 5 && "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5",
-            !prefs.columns && "sm:grid-cols-2 xl:grid-cols-3",
-          )}>
-             {visibleSites.map((site, i) => (
-               <div
-                 key={site.id}
-                 className="animate-fade-up"
-                 style={{ animationDelay: `${Math.min(i * 30, 200)}ms` }}
-                 draggable={prefs.sort === "manual"}
-                 onDragStart={() => setDraggedId(site.id)}
-                 onDragOver={(e) => e.preventDefault()}
-                 onDrop={() => { if (draggedId) { reorderSite(draggedId, site.id); setDraggedId(null); } }}
-               >
-                 <SiteCard
-                   site={site} prefs={prefs} theme={themeClasses}
-                   floatingShadow="shadow-float"
-                   onOpen={openSite} onCopy={copySiteUrl} onInfo={setInfoId} onEdit={setEditId} onDelete={removeSite}
-                   onToggleFavorite={toggleFavorite}
-                   menuOpen={menuId === site.id} onToggleMenu={() => setMenuId(menuId === site.id ? null : site.id)}
-                   onDragStart={() => setDraggedId(site.id)}
-                   onDragOver={(e) => e.preventDefault()}
-                   onDrop={() => {}}
-                 />
-               </div>
-             ))}
-             {!visibleSites.length && (
-               <div className="col-span-full flex flex-col items-center justify-center py-24 text-center animate-fade-up">
-                 <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl glass shadow-float">
-                   <Icons.Collections className="w-10 h-10 text-slate-300" />
-                 </div>
-                 <h3 className="mb-2 text-lg font-semibold tracking-tight text-slate-700">Your library is empty</h3>
-                 <p className="mb-6 max-w-xs text-sm leading-relaxed text-slate-400">Start adding sites by clicking + Add, or paste a URL directly from your clipboard.</p>
-                 <div className="flex gap-3">
-                   <button onClick={() => setAddOpen(true)} className="rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700 transition">+ Add Site</button>
-                   <button onClick={pasteFromClipboard} className="rounded-2xl glass px-5 py-2.5 text-sm font-semibold text-emerald-600 hover:bg-white transition">Paste URL</button>
-                 </div>
-               </div>
-             )}
-           </div>
+          <div
+            className={cn(
+              "grid gap-4 p-3 md:p-5",
+              prefs.view === "list" && "gap-2",
+              prefs.view === "icons" && "grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8",
+              prefs.view === "cards" && prefs.columns === 2 && "sm:grid-cols-2",
+              prefs.view === "cards" && prefs.columns === 3 && "sm:grid-cols-2 lg:grid-cols-3",
+              prefs.view === "cards" && prefs.columns === 4 && "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+              prefs.view === "cards" && prefs.columns === 5 && "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5",
+            )}
+          >
+            {pagedSites.map((site, i) => (
+              <div
+                key={site.id}
+                className={cn("animate-fade-up rounded-3xl", dropTargetId === site.id && draggedId !== site.id && "ring-2 ring-blue-400/70", draggedId === site.id && "opacity-50")}
+                style={{ animationDelay: `${Math.min(i * 30, 200)}ms` }}
+                draggable={manualDnD}
+                onDragStart={() => setDraggedId(site.id)}
+                onDragEnd={() => { setDraggedId(null); setDropTargetId(null); }}
+                onDragOver={(e) => { if (manualDnD && draggedId) { e.preventDefault(); setDropTargetId(site.id); } }}
+                onDrop={() => { if (draggedId) setSites((prev) => reorder(prev, draggedId, site.id)); setDraggedId(null); setDropTargetId(null); }}
+              >
+                <SiteCard
+                  site={site}
+                  prefs={prefs}
+                  theme={theme}
+                  actions={actions}
+                  menuOpen={menuId === site.id}
+                  onToggleMenu={() => setMenuId(menuId === site.id ? null : site.id)}
+                  selectionMode={selectionMode}
+                  selected={selectedIds.has(site.id)}
+                  onToggleSelection={toggleSelected}
+                  hotkey={i < 9 ? i + 1 : undefined}
+                />
+              </div>
+            ))}
+
+            {visibleSites.length > pagedSites.length && (
+              <div className="col-span-full flex justify-center py-4">
+                <button type="button" onClick={() => setPageCount((n) => n + 1)} className={pill}>
+                  Show more ({visibleSites.length - pagedSites.length} left)
+                </button>
+              </div>
+            )}
+
+            {!visibleSites.length && (
+              <div className="col-span-full flex flex-col items-center justify-center py-24 text-center animate-fade-up">
+                <div className="glass mb-5 flex h-20 w-20 items-center justify-center rounded-3xl shadow-float">
+                  <Icons.Collections className="h-10 w-10 text-slate-300" />
+                </div>
+                {sites.length ? (
+                  <>
+                    <h3 className="mb-2 text-lg font-semibold tracking-tight">Nothing matches these filters</h3>
+                    <p className="mb-6 max-w-xs text-sm leading-relaxed text-slate-400">Try another project, tag or collection.</p>
+                    <button type="button" onClick={resetFilters} className="rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700">Clear filters</button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="mb-2 text-lg font-semibold tracking-tight">Your library is empty</h3>
+                    <p className="mb-6 max-w-xs text-sm leading-relaxed text-slate-400">Add sites with + Add, paste a URL from the clipboard, or import a template.</p>
+                    <div className="flex gap-3">
+                      <button type="button" onClick={() => setEditor({ siteId: null })} className="rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700">+ Add site</button>
+                      <button type="button" onClick={() => setTemplatesOpen(true)} className="glass rounded-2xl px-5 py-2.5 text-sm font-semibold text-emerald-600 transition hover:bg-white">Templates</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </main>
       </div>
 
-      {/* Info Drawer */}
       {selectedInfo && (
-        <Drawer title="Site Information" onClose={() => setInfoId(null)}>
-          <div className="flex items-center gap-4 mb-6">
-            <img src={faviconUrl(selectedInfo)} alt="" className="h-14 w-14 rounded-2xl shadow-sm" />
-            <div>
-              <p className="font-bold text-lg">{selectedInfo.title}</p>
-              <p className="text-sm text-slate-500">{hostOf(selectedInfo.url)}</p>
+        <Drawer title="Site information" onClose={() => setInfoId(null)}>
+          <div className="mb-6 flex items-center gap-4">
+            <SiteIcon site={selectedInfo} size={56} className="shadow-sm" />
+            <div className="min-w-0">
+              <p className="truncate text-lg font-bold">{selectedInfo.title}</p>
+              <p className="truncate text-sm text-slate-500">{hostOf(selectedInfo.url)}</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -610,199 +674,196 @@ export default function App() {
             {selectedInfo.longDescription && <InfoBlock label="Details" value={selectedInfo.longDescription} />}
             <InfoBlock label="Tags" value={selectedInfo.tags.length ? selectedInfo.tags.join(", ") : "None"} />
             <InfoBlock label="Visits" value={String(selectedInfo.visits)} />
-            {selectedInfo.extractedAt && <InfoBlock label="AI Enriched" value={new Date(selectedInfo.extractedAt).toLocaleDateString()} />}
+            {selectedInfo.lastVisitedAt && <InfoBlock label="Last opened" value={new Date(selectedInfo.lastVisitedAt).toLocaleString()} />}
+            {selectedInfo.extractedAt && <InfoBlock label="Enriched" value={new Date(selectedInfo.extractedAt).toLocaleDateString()} />}
           </div>
-          <div className="flex gap-2 mt-6">
-            <button onClick={() => { copySiteUrl(selectedInfo); }} className="h-10 flex-1 rounded-xl border border-slate-200 text-sm font-semibold hover:bg-slate-50">Copy URL</button>
-            <button onClick={() => { openSite(selectedInfo); setInfoId(null); }} className="h-10 flex-1 rounded-xl bg-blue-600 text-sm font-semibold text-white">Open</button>
+          <div className="mt-6 flex gap-2">
+            <button type="button" onClick={() => setEditor({ siteId: selectedInfo.id })} className="h-10 flex-1 rounded-xl border border-slate-200 text-sm font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-white/5">Edit</button>
+            <button type="button" onClick={() => copySiteUrl(selectedInfo)} className="h-10 flex-1 rounded-xl border border-slate-200 text-sm font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-white/5">Copy URL</button>
+            <button type="button" onClick={() => { openSite(selectedInfo); setInfoId(null); }} className="h-10 flex-1 rounded-xl bg-blue-600 text-sm font-semibold text-white">Open</button>
           </div>
         </Drawer>
       )}
 
-      {/* macOS-style Dock */}
-      {prefs.showDock && pinnedSites.length > 0 && !isOverlayOpen && (
-        <div className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 animate-fade-up">
-          <div className={cn(
-            "flex items-end gap-2 px-3 pt-3 pb-2.5 rounded-[26px]",
-            "glass shadow-dock",
-            "border border-white/70"
-          )}>
-            {pinnedSites.map(s => (
-              <button
-                key={s.id}
-                onClick={() => openSite(s)}
-                className="group relative flex flex-col items-center gap-1"
-              >
-                {/* Tooltip */}
-                <span className={cn(
-                  "absolute -top-9 left-1/2 -translate-x-1/2",
-                  "px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white bg-slate-900/90 backdrop-blur",
-                  "opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none whitespace-nowrap",
-                  "shadow-lg"
-                )}>
-                  {s.title}
-                </span>
-
-                {/* Icon */}
-                <div className="w-11 h-11 rounded-[12px] overflow-hidden shadow-md transition-all duration-300 group-hover:-translate-y-3 group-hover:scale-125 group-active:scale-105 group-active:-translate-y-1">
-                  <img
-                    src={faviconUrl(s)}
-                    alt={s.title}
-                    className="w-full h-full object-cover bg-white"
-                    onError={(e) => { (e.target as HTMLImageElement).src = `https://www.google.com/s2/favicons?sz=128&domain=${s.url}`; }}
-                  />
-                </div>
-
-                {/* Active dot */}
-                <div className={cn(
-                  "w-1 h-1 rounded-full transition-all duration-200",
-                  mode === "all" ? "bg-slate-400/60" : "opacity-0"
-                )} />
-              </button>
+      {prefs.showDock && pinnedSites.length > 0 && !isOverlayOpen && !selectionMode && (
+        <div className="fixed bottom-5 left-1/2 z-40 hidden -translate-x-1/2 animate-fade-up sm:block">
+          <div className={cn("flex items-end gap-2 rounded-[26px] px-3 pb-2.5 pt-3 shadow-dock", theme.isDark ? "glass-dark" : "glass border border-white/70")}>
+            {pinnedSites.map((s) => (
+              <DockButton key={s.id} label={s.title} onClick={() => openSite(s)}>
+                <SiteIcon site={s} size={44} className="rounded-[12px] shadow-md" />
+              </DockButton>
             ))}
-
-            {/* Divider */}
-            <div className="self-stretch w-px bg-black/8 mx-1.5 mb-3" />
-
-            {/* Search */}
-            <button onClick={() => setCommandOpen(true)} className="group relative flex flex-col items-center gap-1">
-              <span className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white bg-slate-900/90 backdrop-blur opacity-0 group-hover:opacity-100 transition whitespace-nowrap shadow-lg">Search</span>
-              <div className="w-11 h-11 rounded-[12px] bg-slate-100/80 flex items-center justify-center shadow-md transition-all duration-300 group-hover:-translate-y-3 group-hover:scale-125 group-active:scale-105">
-                <Icons.Search className="w-5 h-5 text-slate-500" />
-              </div>
-              <div className="w-1 h-1 rounded-full opacity-0" />
-            </button>
-
-            {/* Add */}
-            <button onClick={() => setAddOpen(true)} className="group relative flex flex-col items-center gap-1">
-              <span className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white bg-slate-900/90 backdrop-blur opacity-0 group-hover:opacity-100 transition whitespace-nowrap shadow-lg">Add Site</span>
-              <div className="w-11 h-11 rounded-[12px] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/25 transition-all duration-300 group-hover:-translate-y-3 group-hover:scale-125 group-active:scale-105">
-                <Icons.Plus className="w-5 h-5 text-white" />
-              </div>
-              <div className="w-1 h-1 rounded-full opacity-0" />
-            </button>
+            <div className="mx-1.5 mb-3 w-px self-stretch bg-black/8" />
+            <DockButton label="Search" onClick={() => setCommandOpen(true)}>
+              <div className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-slate-100/80 shadow-md"><Icons.Search className="h-5 w-5 text-slate-500" /></div>
+            </DockButton>
+            <DockButton label="Add site" onClick={() => setEditor({ siteId: null })}>
+              <div className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md shadow-blue-500/25"><Icons.Plus className="h-5 w-5 text-white" /></div>
+            </DockButton>
           </div>
         </div>
       )}
 
-      <CommandPalette open={commandOpen} query={commandQuery} onQueryChange={setCommandQuery} results={visibleSites} onSelect={openSite} onInfo={setInfoId} onClose={() => setCommandOpen(false)} dark={prefs.theme === "macNight"} />
-      <AddSiteModal open={addOpen} onClose={() => setAddOpen(false)} onSave={(s) => setSites(p => [toSite(s as any, 0), ...p])} aiApiKey={aiApiKey} defaultProject={project} defaultCategory={category} defaultGroup={group} dark={prefs.theme === "macNight"} />
-      
+      <CommandPalette
+        open={commandOpen}
+        query={commandQuery}
+        onQueryChange={setCommandQuery}
+        results={paletteResults}
+        onSelect={openSite}
+        onInfo={setInfoId}
+        onClose={() => { setCommandOpen(false); setCommandQuery(""); }}
+        dark={theme.isDark}
+      />
+
+      <SiteEditor
+        open={!!editor}
+        site={editingSite}
+        onClose={() => setEditor(null)}
+        onSave={saveDraft}
+        aiApiKey={aiApiKey}
+        defaults={{
+          project: project !== ALL_PROJECTS ? project : "",
+          category: category !== ALL_CATEGORIES ? category : "",
+          group: group !== ALL_GROUPS ? group : "",
+        }}
+        dark={theme.isDark}
+      />
+
       {settingsOpen && (
         <Drawer title="Settings" onClose={() => setSettingsOpen(false)}>
-           <SettingsSection title="Appearance" icon={<Icons.Settings />}>
-             <SettingRow label="Theme" description="Switch between visual profiles">
-               <SettingSelect value={prefs.theme} onChange={(v) => setPrefs(p => ({...p, theme: v as any}))} options={[{value:'macLight',label:'Light'},{value:'macNight',label:'Night'},{value:'autoContrast',label:'Contrast'}]} />
-             </SettingRow>
-             <SettingRow label="Dock" description="Show bottom favorites bar">
-               <button onClick={() => setPrefs(p => ({...p, showDock: !p.showDock}))} className={cn("h-6 w-11 rounded-full transition-colors", prefs.showDock ? "bg-blue-600" : "bg-slate-300")}>
-                 <span className={cn("block h-5 w-5 rounded-full bg-white transition-transform", prefs.showDock ? "translate-x-5" : "translate-x-1")} />
-               </button>
-             </SettingRow>
-           </SettingsSection>
-           <SettingsSection title="Layout" icon={<Icons.Collections />}>
-             <SettingRow label="View" description="Choose how sites are displayed">
-               <SettingSelect value={prefs.view} onChange={(v) => setPrefs(p => ({...p, view: v as any}))} options={[{value:'cards',label:'Cards'},{value:'icons',label:'Icons'},{value:'list',label:'List'}]} />
-             </SettingRow>
-             <SettingRow label={`Columns: ${prefs.columns}`}>
-               <input type="range" min={2} max={5} value={prefs.columns} onChange={e => setPrefs(p => ({...p, columns: Number(e.target.value) as any}))} className="w-24" />
-             </SettingRow>
-             <SettingRow label={`Icon Size: ${prefs.iconSize}px`}>
-               <input type="range" min={24} max={72} value={prefs.iconSize} onChange={e => setPrefs(p => ({...p, iconSize: Number(e.target.value)}))} className="w-24" />
-             </SettingRow>
-             <SettingRow label="Screenshots" description="Show website previews">
-               <button onClick={() => setPrefs(p => ({...p, showScreenshot: !p.showScreenshot}))} className={cn("h-6 w-11 rounded-full transition-colors", prefs.showScreenshot ? "bg-blue-600" : "bg-slate-300")}>
-                 <span className={cn("block h-5 w-5 rounded-full bg-white transition-transform", prefs.showScreenshot ? "translate-x-5" : "translate-x-1")} />
-               </button>
-             </SettingRow>
-             <SettingRow label="Focus Mode" description="Hide sidebar for distraction-free view">
-               <button onClick={() => setPrefs(p => ({...p, focusMode: !p.focusMode}))} className={cn("h-6 w-11 rounded-full transition-colors", prefs.focusMode ? "bg-blue-600" : "bg-slate-300")}>
-                 <span className={cn("block h-5 w-5 rounded-full bg-white transition-transform", prefs.focusMode ? "translate-x-5" : "translate-x-1")} />
-               </button>
-             </SettingRow>
-           </SettingsSection>
-           <SettingsSection title="AI" icon={<Icons.Search />}>
-             <SettingRow label="API Key" description="For smart auto-fill">
-               <input type="password" value={aiApiKey} onChange={e => setAiApiKey(e.target.value)} placeholder="sk-..." className="h-9 w-40 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-blue-400" />
-             </SettingRow>
-           </SettingsSection>
-           <SettingsSection title="Data" icon={<Icons.Collections />}>
-             <div className="grid grid-cols-2 gap-2">
-                <SettingButton variant="secondary" onClick={exportData}>Export JSON</SettingButton>
-                <label className="flex h-10 cursor-pointer items-center justify-center rounded-xl border border-slate-200 text-sm font-semibold hover:bg-slate-50">
-                  Import <input type="file" accept=".json" onChange={importData} className="hidden" />
-                </label>
-             </div>
-             <SettingButton variant="secondary" onClick={() => {
-               const backup = localStorage.getItem("nexus-backup");
-               if (backup) {
-                 const parsed = JSON.parse(backup);
-                 if (parsed.sites) { setSites(parsed.sites.map((s: any, i: number) => toSite(s, i))); }
-                 if (parsed.prefs) { setPrefs((prev: any) => ({ ...prev, ...parsed.prefs })); }
-                 if (parsed.sessions) { setSessions(parsed.sessions); }
-                 showToast(`Restored from ${new Date(parsed.timestamp).toLocaleString()}`);
-               } else { showToast("No backup found"); }
-             }}>Restore from Backup</SettingButton>
-           </SettingsSection>
-           <SettingsSection title="Info" icon={<Icons.Library />}>
-             <div className="space-y-2 text-sm">
-               <div className="flex justify-between"><span className="text-slate-500">Sites</span><span className="font-semibold">{sites.length}</span></div>
-               <div className="flex justify-between"><span className="text-slate-500">Favorites</span><span className="font-semibold">{favoritesCount}</span></div>
-               <div className="flex justify-between"><span className="text-slate-500">Projects</span><span className="font-semibold">{projects.length - 1}</span></div>
-             </div>
-           </SettingsSection>
-           <SettingButton variant="danger" onClick={() => { if(confirm('Reset all settings?')) setPrefs(defaultPrefs); }}>Reset Settings</SettingButton>
-        </Drawer>
-      )}
-
-      {/* Collection Editor */}
-      {collectionEditorOpen && (
-        <Drawer title="New Smart Collection" onClose={() => setCollectionEditorOpen(false)}>
-          <CollectionEditor onSave={(name, rules) => {
-            setSmartCollections(prev => [...prev, { id: `col-${Date.now()}`, name, emoji: "", rules }]);
-            setCollectionEditorOpen(false);
-            showToast(`Collection "${name}" created`);
-          }} onCancel={() => setCollectionEditorOpen(false)} />
-        </Drawer>
-      )}
-
-      {/* Templates */}
-      {templatesOpen && (
-        <Drawer title="Site Templates" onClose={() => setTemplatesOpen(false)}>
-          <p className="text-sm text-slate-500 mb-4">Import pre-built collections of popular sites</p>
-          {siteTemplates.map(template => (
-            <div key={template.id} className={cn("rounded-2xl border p-4 mb-3 cursor-pointer transition", selectedTemplates.has(template.id) ? "border-blue-600 bg-blue-50" : "hover:bg-black/5")} onClick={() => setSelectedTemplates(prev => { const n = new Set(prev); n.has(template.id) ? n.delete(template.id) : n.add(template.id); return n; })}>
-              <div className="flex items-center gap-3">
-                <input type="checkbox" checked={selectedTemplates.has(template.id)} readOnly className="h-4 w-4 rounded" />
-                <div>
-                  <p className="font-semibold text-sm">{template.name}</p>
-                  <p className="text-xs text-slate-500">{template.sites.length} sites</p>
-                </div>
-              </div>
+          <SettingsSection title="Appearance" icon={<Icons.Settings />}>
+            <SettingRow label="Theme" description="Light, night or high contrast">
+              <SettingSelect value={prefs.theme} onChange={(v) => setPrefs((p) => ({ ...p, theme: v as Prefs["theme"] }))} options={[{ value: "macLight", label: "Light" }, { value: "macNight", label: "Night" }, { value: "autoContrast", label: "High contrast" }]} />
+            </SettingRow>
+            <SettingRow label="Density">
+              <SettingSelect value={prefs.density} onChange={(v) => setPrefs((p) => ({ ...p, density: v as Prefs["density"] }))} options={[{ value: "compact", label: "Compact" }, { value: "comfortable", label: "Comfortable" }]} />
+            </SettingRow>
+            <SettingRow label="Dock" description="Bottom bar with top favorites">
+              <Toggle checked={prefs.showDock} onChange={(v) => setPrefs((p) => ({ ...p, showDock: v }))} />
+            </SettingRow>
+          </SettingsSection>
+          <SettingsSection title="Layout" icon={<Icons.Collections />}>
+            <SettingRow label="View">
+              <SettingSelect value={prefs.view} onChange={(v) => setPrefs((p) => ({ ...p, view: v as Prefs["view"] }))} options={[{ value: "cards", label: "Cards" }, { value: "icons", label: "Icons" }, { value: "list", label: "List" }]} />
+            </SettingRow>
+            <SettingRow label={`Columns: ${prefs.columns}`} description="Cards view, wide screens">
+              <input aria-label="Columns" type="range" min={2} max={5} value={prefs.columns} onChange={(e) => setPrefs((p) => ({ ...p, columns: Number(e.target.value) as Prefs["columns"] }))} className="w-24" />
+            </SettingRow>
+            <SettingRow label={`Icon size: ${prefs.iconSize}px`}>
+              <input aria-label="Icon size" type="range" min={24} max={72} value={prefs.iconSize} onChange={(e) => setPrefs((p) => ({ ...p, iconSize: Number(e.target.value) }))} className="w-24" />
+            </SettingRow>
+            <SettingRow label="Screenshots" description="Website previews in cards view">
+              <Toggle checked={prefs.showScreenshot} onChange={(v) => setPrefs((p) => ({ ...p, showScreenshot: v }))} />
+            </SettingRow>
+            <SettingRow label="Focus mode" description="Hide the sidebar">
+              <Toggle checked={prefs.focusMode} onChange={(v) => setPrefs((p) => ({ ...p, focusMode: v }))} />
+            </SettingRow>
+          </SettingsSection>
+          <SettingsSection title="AI auto-fill" icon={<Icons.Search />}>
+            <SettingRow label="OpenAI API key" description="Stored only in this browser's localStorage and sent only to api.openai.com">
+              <input aria-label="OpenAI API key" type="password" autoComplete="off" value={aiApiKey} onChange={(e) => setAiApiKey(e.target.value.trim())} placeholder="sk-..." className="h-9 w-40 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-900/90" />
+            </SettingRow>
+          </SettingsSection>
+          <SettingsSection title="Data" icon={<Icons.Collections />}>
+            <div className="grid grid-cols-2 gap-2">
+              <SettingButton variant="secondary" onClick={exportData}>Export JSON</SettingButton>
+              <label className="flex h-10 cursor-pointer items-center justify-center rounded-xl border border-slate-200 text-sm font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-white/5">
+                Import <input type="file" accept=".json,application/json" onChange={importData} className="hidden" />
+              </label>
             </div>
-          ))}
-          <SettingButton variant="primary" onClick={() => {
-            selectedTemplates.forEach(id => {
-              const t = siteTemplates.find(x => x.id === id);
-              if (t) {
-                const newSites = t.sites.map((s, i) => ({ ...s, id: `tpl-${id}-${i}-${Date.now()}`, favorite: false, visits: 0, order: sites.length + i + 1 }));
-                setSites(prev => [...prev, ...newSites]);
-              }
-            });
-            showToast(`Imported ${selectedTemplates.size} templates`);
-            setSelectedTemplates(new Set());
-            setTemplatesOpen(false);
-          }} disabled={selectedTemplates.size === 0}>Import ({selectedTemplates.size})</SettingButton>
+            <SettingButton variant="secondary" onClick={restoreBackup}>Restore from backup</SettingButton>
+          </SettingsSection>
+          <SettingsSection title="Info" icon={<Icons.Library />}>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-slate-500">Sites</span><span className="font-semibold">{sites.length}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Favorites</span><span className="font-semibold">{favoritesCount}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Projects</span><span className="font-semibold">{projects.length - 1}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Shortcuts</span><span className="font-mono text-xs">⌘K · ⌘, · 1–9 · Esc</span></div>
+            </div>
+          </SettingsSection>
+          <SettingButton variant="danger" onClick={() => { if (window.confirm("Reset all display settings?")) setPrefs(defaultPrefs); }}>Reset settings</SettingButton>
         </Drawer>
       )}
 
-      {toastMessage && <Toast message={toastMessage} onUndo={undoDelete} />}
+      {collectionEditorOpen && (
+        <Drawer title="New smart collection" onClose={() => setCollectionEditorOpen(false)}>
+          <CollectionEditor
+            projects={projects.filter((p) => p !== ALL_PROJECTS)}
+            tags={allTags.map(([t]) => t)}
+            onSave={(name, rules) => {
+              setCollections((prev) => [...prev, { id: uid(), name, rules }]);
+              setCollectionEditorOpen(false);
+              showToast(`Collection "${name}" created`);
+            }}
+            onCancel={() => setCollectionEditorOpen(false)}
+          />
+        </Drawer>
+      )}
+
+      {moveOpen && (
+        <Drawer title={`Move ${selectedIds.size} sites`} onClose={() => setMoveOpen(false)}>
+          <MoveForm onSubmit={bulkMove} onCancel={() => setMoveOpen(false)} />
+        </Drawer>
+      )}
+
+      {templatesOpen && (
+        <Drawer title="Site templates" onClose={() => setTemplatesOpen(false)}>
+          <p className="mb-4 text-sm text-slate-500">Import curated sets of sites. URLs already in your library are skipped.</p>
+          {siteTemplates.map((template) => {
+            const checked = selectedTemplates.has(template.id);
+            return (
+              <label key={template.id} className={cn("mb-3 flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition", checked ? "border-blue-600 bg-blue-50 dark:bg-blue-950/30" : "border-slate-200 hover:bg-black/5 dark:border-slate-700")}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => setSelectedTemplates((prev) => { const n = new Set(prev); if (n.has(template.id)) n.delete(template.id); else n.add(template.id); return n; })}
+                  className="h-4 w-4 accent-blue-600"
+                />
+                <div>
+                  <p className="text-sm font-semibold">{template.name}</p>
+                  <p className="text-xs text-slate-500">{template.sites.length} sites · {template.description}</p>
+                </div>
+              </label>
+            );
+          })}
+          <SettingButton
+            variant="primary"
+            disabled={selectedTemplates.size === 0}
+            onClick={() => {
+              const existing = new Set(sites.map((s) => s.url.replace(/\/$/, "")));
+              const incoming = siteTemplates
+                .filter((t) => selectedTemplates.has(t.id))
+                .flatMap((t) => t.sites)
+                .filter((s) => { const key = s.url.replace(/\/$/, ""); if (existing.has(key)) return false; existing.add(key); return true; });
+              setSites((prev) => normalizeOrder([...prev, ...incoming.map((s, i) => ({ ...s, id: uid(), favorite: false, visits: 0, order: prev.length + i + 1 }))]));
+              showToast(`Added ${incoming.length} sites from ${selectedTemplates.size} templates`);
+              setSelectedTemplates(new Set());
+              setTemplatesOpen(false);
+            }}
+          >
+            Import ({selectedTemplates.size})
+          </SettingButton>
+        </Drawer>
+      )}
+
+      {toast && <Toast message={toast.message} onUndo={toast.undo ? () => undoDelete(toast.undo!) : undefined} />}
     </div>
   );
 }
 
-/* Collection Editor Component */
-function CollectionEditor({ onSave, onCancel }: {
+function DockButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" aria-label={label} onClick={onClick} className="group relative flex flex-col items-center gap-1">
+      <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900/90 px-2.5 py-1 text-[11px] font-semibold text-white opacity-0 shadow-lg backdrop-blur transition group-hover:opacity-100">{label}</span>
+      <div className="transition-all duration-300 group-hover:-translate-y-3 group-hover:scale-125 group-active:-translate-y-1 group-active:scale-105 motion-reduce:transform-none">{children}</div>
+      <div className="h-1 w-1 rounded-full opacity-0" />
+    </button>
+  );
+}
+
+function CollectionEditor({ projects, tags, onSave, onCancel }: {
+  projects: string[];
+  tags: string[];
   onSave: (name: string, rules: SmartCollection["rules"]) => void;
   onCancel: () => void;
 }) {
@@ -810,33 +871,81 @@ function CollectionEditor({ onSave, onCancel }: {
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [onlyAi, setOnlyAi] = useState(false);
   const [minVisits, setMinVisits] = useState(0);
+  const [project, setProject] = useState("");
+  const [pickedTags, setPickedTags] = useState<string[]>([]);
+  const field = "h-10 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-sm outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-900/90";
 
   return (
     <div className="space-y-4">
-      <input value={name} onChange={e => setName(e.target.value)} placeholder="Collection name" className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-blue-400" />
-      <label className="flex items-center justify-between text-sm"><span>Favorites only</span><input type="checkbox" checked={onlyFavorites} onChange={e => setOnlyFavorites(e.target.checked)} /></label>
-      <label className="flex items-center justify-between text-sm"><span>AI enriched only</span><input type="checkbox" checked={onlyAi} onChange={e => setOnlyAi(e.target.checked)} /></label>
-      <label className="block text-sm"><span>Min visits: {minVisits}</span><input type="range" min={0} max={20} value={minVisits} onChange={e => setMinVisits(Number(e.target.value))} className="w-full" /></label>
+      <input autoFocus aria-label="Collection name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Collection name" className={field} />
+      <label className="flex items-center justify-between text-sm"><span>Favorites only</span><Toggle checked={onlyFavorites} onChange={setOnlyFavorites} /></label>
+      <label className="flex items-center justify-between text-sm"><span>Enriched only</span><Toggle checked={onlyAi} onChange={setOnlyAi} /></label>
+      <label className="block text-sm"><span>Min visits: {minVisits}</span><input type="range" min={0} max={20} value={minVisits} onChange={(e) => setMinVisits(Number(e.target.value))} className="w-full" /></label>
+      <label className="block space-y-1 text-sm">
+        <span>Project</span>
+        <select value={project} onChange={(e) => setProject(e.target.value)} className={field}>
+          <option value="">Any project</option>
+          {projects.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </label>
+      {tags.length > 0 && (
+        <fieldset className="space-y-1 text-sm">
+          <legend>Any of these tags</legend>
+          <div className="flex flex-wrap gap-1">
+            {tags.map((t) => {
+              const on = pickedTags.includes(t);
+              return (
+                <button type="button" key={t} aria-pressed={on} onClick={() => setPickedTags((prev) => (on ? prev.filter((x) => x !== t) : [...prev, t]))} className={cn("rounded-lg border px-2 py-0.5 text-xs", on ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 dark:border-slate-700")}>
+                  #{t}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
       <div className="flex gap-2">
-        <button onClick={onCancel} className="h-10 flex-1 rounded-xl border border-slate-200 text-sm font-semibold">Cancel</button>
-        <button onClick={() => {
-          if (!name.trim()) return;
-          const rules: SmartCollection["rules"] = {};
-          if (onlyFavorites) rules.onlyFavorites = true;
-          if (onlyAi) rules.onlyAiEnriched = true;
-          if (minVisits > 0) rules.minVisits = minVisits;
-          onSave(name.trim(), rules);
-        }} className="h-10 flex-1 rounded-xl bg-blue-600 text-sm font-semibold text-white">Create</button>
+        <button type="button" onClick={onCancel} className="h-10 flex-1 rounded-xl border border-slate-200 text-sm font-semibold dark:border-slate-700">Cancel</button>
+        <button
+          type="button"
+          disabled={!name.trim()}
+          onClick={() => {
+            const rules: SmartCollection["rules"] = {};
+            if (onlyFavorites) rules.onlyFavorites = true;
+            if (onlyAi) rules.onlyAiEnriched = true;
+            if (minVisits > 0) rules.minVisits = minVisits;
+            if (project) rules.project = project;
+            if (pickedTags.length) rules.tags = pickedTags;
+            onSave(name.trim(), rules);
+          }}
+          className="h-10 flex-1 rounded-xl bg-blue-600 text-sm font-semibold text-white disabled:opacity-50"
+        >Create</button>
       </div>
     </div>
   );
 }
 
+function MoveForm({ onSubmit, onCancel }: { onSubmit: (t: { project: string; category: string; group: string }) => void; onCancel: () => void }) {
+  const [target, setTarget] = useState({ project: "", category: "", group: "" });
+  const field = "h-10 w-full rounded-xl border border-slate-200 bg-white/90 px-3 text-sm outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-900/90";
+  return (
+    <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); onSubmit(target); }}>
+      <p className="text-sm text-slate-500">Leave a field empty to keep each site's current value.</p>
+      {(["project", "category", "group"] as const).map((k) => (
+        <input key={k} aria-label={k} value={target[k]} onChange={(e) => setTarget((t) => ({ ...t, [k]: e.target.value }))} placeholder={k.charAt(0).toUpperCase() + k.slice(1)} className={field} />
+      ))}
+      <div className="flex gap-2">
+        <button type="button" onClick={onCancel} className="h-10 flex-1 rounded-xl border border-slate-200 text-sm font-semibold dark:border-slate-700">Cancel</button>
+        <button type="submit" disabled={!target.project.trim() && !target.category.trim() && !target.group.trim()} className="h-10 flex-1 rounded-xl bg-blue-600 text-sm font-semibold text-white disabled:opacity-50">Move</button>
+      </div>
+    </form>
+  );
+}
+
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-slate-50 p-3">
+    <div className="rounded-xl bg-slate-50 p-3 dark:bg-white/5">
       <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">{label}</p>
-      <p className="text-sm text-slate-700">{value}</p>
+      <p className="text-sm text-slate-700 dark:text-slate-200">{value}</p>
     </div>
   );
 }

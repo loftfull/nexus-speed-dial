@@ -1,42 +1,71 @@
 import { useState } from "react";
-import { Site, Prefs } from "../types";
+import type { Prefs, Site } from "../types";
 import { cn } from "../utils/cn";
-import { hostOf, faviconUrl, screenshotUrl } from "../utils/helpers";
+import { faviconUrl, googleFavicon, hostOf, screenshotUrl, thumioUrl } from "../utils/helpers";
 import { TileMenu } from "./TileMenu";
 
-function ScreenshotSkeleton() {
+export type ThemeClasses = { card: string; subtle: string; isDark: boolean };
+
+export type SiteActions = {
+  onOpen: (s: Site) => void;
+  onCopy: (s: Site) => void;
+  onInfo: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onToggleFavorite: (id: string) => void;
+};
+
+/** Favicon with a two-step fallback: custom icon → Google favicon service → first letter. */
+export function SiteIcon({ site, size, className }: { site: Site; size: number; className?: string }) {
+  const [src, setSrc] = useState<string | null>(faviconUrl(site));
+  if (!src) {
+    return (
+      <span
+        aria-hidden
+        className={cn("grid shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 font-semibold text-slate-600", className)}
+        style={{ width: size, height: size, fontSize: size * 0.42 }}
+      >
+        {site.title.charAt(0).toUpperCase()}
+      </span>
+    );
+  }
   return (
-    <div className="flex h-full w-full animate-pulse items-center justify-center bg-slate-200/80 dark:bg-slate-800">
-      <svg className="h-8 w-8 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    </div>
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      className={cn("shrink-0 rounded-2xl bg-white/60 object-contain", className)}
+      style={{ width: size, height: size }}
+      onError={() => setSrc(src === googleFavicon(site.url) ? null : googleFavicon(site.url))}
+    />
   );
 }
 
-function ScreenshotWithFallback({ src, fallbackSrc, className }: { src: string; fallbackSrc: string; className?: string }) {
-  const [imgSrc, setImgSrc] = useState(src);
-  const [loaded, setLoaded] = useState(false);
-
+function Screenshot({ site }: { site: Site }) {
+  const [src, setSrc] = useState(screenshotUrl(site));
+  const [state, setState] = useState<"loading" | "ok" | "failed">("loading");
   return (
     <div className="relative h-full w-full bg-slate-100 dark:bg-slate-900/50">
-      {!loaded && <ScreenshotSkeleton />}
-      <div className="absolute inset-0 overflow-hidden">
+      {state !== "ok" && (
+        <div className={cn("absolute inset-0 grid place-items-center", state === "loading" && "skeleton")}>
+          {state === "failed" && <SiteIcon site={site} size={40} />}
+        </div>
+      )}
+      {state !== "failed" && (
         <img
-          src={imgSrc}
+          src={src}
           alt=""
-          className={cn("h-full w-full object-cover object-top scale-110 blur-2xl opacity-40 transition-opacity duration-300", !loaded && "opacity-0")}
+          loading="lazy"
+          onLoad={() => setState("ok")}
+          onError={() => {
+            const fallback = thumioUrl(site.url);
+            if (src !== fallback) setSrc(fallback);
+            else setState("failed");
+          }}
+          className={cn("h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]", state !== "ok" && "opacity-0")}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/10 to-white/40 dark:via-slate-900/10 dark:to-slate-900/50" />
-      </div>
-      <img
-        src={imgSrc}
-        alt=""
-        loading="lazy"
-        onLoad={() => setLoaded(true)}
-        onError={() => setImgSrc(fallbackSrc)}
-        className={cn("relative h-full w-full object-cover object-top transition duration-500", !loaded && "opacity-0 absolute inset-0", className)}
-      />
+      )}
     </div>
   );
 }
@@ -45,141 +74,130 @@ export function SiteCard({
   site,
   prefs,
   theme,
-  floatingShadow,
-  onOpen,
-  onCopy,
-  onInfo,
-  onEdit,
-  onDelete,
-  onDuplicate,
-  onToggleFavorite,
+  actions,
   menuOpen,
   onToggleMenu,
-  onDragStart,
-  onDragOver,
-  onDrop,
   selectionMode,
-  selectedIds,
+  selected,
   onToggleSelection,
+  hotkey,
 }: {
   site: Site;
   prefs: Prefs;
-  theme: any;
-  floatingShadow: string;
-  onOpen: (s: Site) => void;
-  onCopy: (s: Site) => void;
-  onInfo: (id: string) => void;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-  onDuplicate?: (id: string) => void;
-  onToggleFavorite?: (id: string) => void;
+  theme: ThemeClasses;
+  actions: SiteActions;
   menuOpen: boolean;
   onToggleMenu: () => void;
-  onDragStart: (id: string) => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDrop: (id: string) => void;
-  selectionMode?: boolean;
-  selectedIds?: Set<string>;
-  onToggleSelection?: (id: string) => void;
+  selectionMode: boolean;
+  selected: boolean;
+  onToggleSelection: (id: string) => void;
+  /** 1–9 when the site can be opened with a number key. */
+  hotkey?: number;
 }) {
-  const isNight = prefs.theme === "macNight";
-  const isSelected = selectedIds?.has(site.id) ?? false;
-  const isDraggable = !selectionMode && prefs.sort === "manual";
+  const activate = () => (selectionMode ? onToggleSelection(site.id) : actions.onOpen(site));
+  const compact = prefs.density === "compact";
+
+  const controls = selectionMode ? (
+    <input
+      type="checkbox"
+      aria-label={`Select ${site.title}`}
+      checked={selected}
+      onChange={() => onToggleSelection(site.id)}
+      className="h-5 w-5 cursor-pointer accent-blue-600"
+    />
+  ) : (
+    <div className="flex items-center gap-0.5">
+      <button
+        type="button"
+        aria-label={site.favorite ? `Remove ${site.title} from favorites` : `Add ${site.title} to favorites`}
+        aria-pressed={site.favorite}
+        onClick={() => actions.onToggleFavorite(site.id)}
+        className={cn(
+          "grid h-7 w-7 place-items-center rounded-lg text-sm transition",
+          prefs.view === "cards" && "border border-slate-200/50 bg-white/70 shadow-sm backdrop-blur-md",
+          site.favorite ? "text-amber-500" : "text-slate-400 opacity-0 hover:text-amber-500 focus-visible:opacity-100 group-hover:opacity-100",
+        )}
+      >
+        {site.favorite ? "★" : "☆"}
+      </button>
+      <TileMenu
+        compact
+        open={menuOpen}
+        onToggle={onToggleMenu}
+        onOpen={actions.onOpen}
+        onCopy={actions.onCopy}
+        onInfo={actions.onInfo}
+        onEdit={actions.onEdit}
+        onDelete={actions.onDelete}
+        onDuplicate={actions.onDuplicate}
+        dark={theme.isDark}
+        site={site}
+      />
+    </div>
+  );
+
+  const enrichedDot = site.extractedAt && (
+    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" title="Enriched with metadata/AI" />
+  );
+
+  if (prefs.view === "list") {
+    return (
+      <article className={cn("group relative flex items-center gap-3 rounded-2xl border px-3 backdrop-blur-2xl transition", theme.card, compact ? "py-1.5" : "py-2.5", selected && "ring-2 ring-blue-500")}>
+        <button type="button" onClick={activate} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+          <SiteIcon site={site} size={Math.min(prefs.iconSize, 36)} />
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5">
+              <span className="truncate text-sm font-semibold">{site.title}</span>
+              {enrichedDot}
+            </span>
+            <span className={cn("block truncate text-xs", theme.subtle)}>{hostOf(site.url)}{site.description && ` — ${site.description}`}</span>
+          </span>
+          <span className={cn("hidden shrink-0 text-xs md:block", theme.subtle)}>{site.project} / {site.category}</span>
+          {hotkey && <kbd className={cn("hidden shrink-0 font-mono text-[10px] lg:block", theme.subtle)}>{hotkey}</kbd>}
+        </button>
+        {controls}
+      </article>
+    );
+  }
+
+  if (prefs.view === "icons") {
+    return (
+      <article className={cn("group relative flex flex-col items-center rounded-3xl border backdrop-blur-2xl transition", theme.card, compact ? "p-3" : "p-4", selected && "ring-2 ring-blue-500")}>
+        <div className="absolute right-1 top-1 z-20">{controls}</div>
+        <button type="button" onClick={activate} className="flex w-full flex-col items-center gap-2 pt-2 text-center">
+          <SiteIcon site={site} size={prefs.iconSize} />
+          <span className="w-full truncate text-[13px] font-semibold">{site.title}</span>
+        </button>
+      </article>
+    );
+  }
 
   return (
     <article
-      draggable={isDraggable}
-      onDragStart={() => onDragStart(site.id)}
-      onDragOver={onDragOver}
-      onDrop={() => onDrop(site.id)}
       className={cn(
-        "group relative overflow-hidden rounded-3xl border backdrop-blur-2xl transition duration-200",
+        "group relative overflow-hidden rounded-3xl border backdrop-blur-2xl transition duration-200 hover:shadow-xl",
         theme.card,
-        floatingShadow,
-        selectionMode && isSelected && "ring-2 ring-blue-500 opacity-90",
-        prefs.automotiveMode ? "hover:shadow-xl" : "hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.99]",
+        selected && "ring-2 ring-blue-500",
       )}
     >
-      {selectionMode ? (
-        <div className="absolute right-2 top-2 z-20">
-          <input
-            type="checkbox"
-            readOnly
-            checked={isSelected}
-            onClick={() => onToggleSelection?.(site.id)}
-            className="h-6 w-6 rounded-full border-white bg-white/50 shadow-sm backdrop-blur-sm cursor-pointer"
-          />
-        </div>
-      ) : (
-        <div className="absolute right-1.5 top-1.5 z-20 flex items-center gap-0.5">
-          {onToggleFavorite && (
-            <button
-              onClick={() => onToggleFavorite(site.id)}
-              className={cn(
-                "grid h-7 w-7 place-items-center rounded-lg text-sm transition bg-white/70 backdrop-blur-md shadow-sm border border-slate-200/50",
-                site.favorite ? "text-amber-500" : "text-slate-400 opacity-0 group-hover:opacity-100 hover:text-amber-500"
-              )}
-            >
-              {site.favorite ? "★" : "☆"}
-            </button>
-          )}
-          <TileMenu
-            compact
-            open={menuOpen}
-            onToggle={onToggleMenu}
-            onOpen={() => onOpen(site)}
-            onCopy={() => onCopy(site)}
-            onInfo={() => onInfo(site.id)}
-            onEdit={() => onEdit(site.id)}
-            onDelete={() => onDelete(site.id)}
-            onDuplicate={onDuplicate ? () => onDuplicate(site.id) : undefined}
-            dark={isNight}
-            site={site}
-          />
-        </div>
-      )}
+      <div className="absolute right-1.5 top-1.5 z-20">{controls}</div>
 
       {prefs.showScreenshot && (
-        <button
-          onClick={() => selectionMode ? onToggleSelection?.(site.id) : onOpen(site)}
-          className={cn("block w-full overflow-hidden", prefs.automotiveMode ? "h-36" : "h-28 md:h-32")}
-        >
-          <ScreenshotWithFallback 
-            src={screenshotUrl(site)} 
-            fallbackSrc={`https://image.thum.io/get/width/800/noanimate/${site.url}`} 
-            className="group-hover:scale-[1.03]"
-          />
+        <button type="button" tabIndex={-1} aria-hidden onClick={activate} className="block h-28 w-full overflow-hidden md:h-32">
+          <Screenshot site={site} />
         </button>
       )}
 
-      <button
-        onClick={() => selectionMode ? onToggleSelection?.(site.id) : onOpen(site)}
-        className={cn("flex w-full items-center gap-2.5 text-left", prefs.density === "compact" ? "p-2.5" : "p-3.5")}
-      >
-        <img
-          src={faviconUrl(site)}
-          alt=""
-          className="shrink-0 rounded-2xl"
-          style={{ width: prefs.iconSize, height: prefs.iconSize }}
-        />
+      <button type="button" onClick={activate} className={cn("flex w-full items-center gap-2.5 text-left", compact ? "p-2.5" : "p-3.5")}>
+        <SiteIcon site={site} size={prefs.iconSize} />
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-1.5">
-            <p className="overflow-x-auto whitespace-nowrap text-base font-semibold leading-tight [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {site.title}
-            </p>
-            {site.extractedAt && (
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" title="AI Enriched" />
-            )}
+            <p className="truncate text-base font-semibold leading-tight">{site.title}</p>
+            {enrichedDot}
           </div>
-          <p
-            className={cn(
-              "overflow-x-auto whitespace-nowrap text-sm leading-tight [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-              theme.subtle,
-            )}
-          >
-            {hostOf(site.url)}
-          </p>
+          <p className={cn("truncate text-sm leading-tight", theme.subtle)}>{hostOf(site.url)}</p>
         </div>
+        {hotkey && <kbd className={cn("ml-auto hidden shrink-0 self-end font-mono text-[10px] lg:block", theme.subtle)}>{hotkey}</kbd>}
       </button>
     </article>
   );

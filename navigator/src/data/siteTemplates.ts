@@ -1,4 +1,4 @@
-import { Site } from "../types";
+import type { SiteDraft } from "../types";
 
 export interface SiteTemplate {
   id: string;
@@ -8,7 +8,7 @@ export interface SiteTemplate {
   group: string;
   project: string;
   tags: string[];
-  sites: Omit<Site, "id" | "extractedAt" | "favorite" | "visits" | "order">[];
+  sites: SiteDraft[];
 }
 
 export const siteTemplates: SiteTemplate[] = [
@@ -338,9 +338,10 @@ export const siteTemplates: SiteTemplate[] = [
         tags: ["stocks", "trading", "investing"],
       },
       {
-        title: "Mint",
-        url: "https://mint.com",
-        description: "Personal finance management",
+        // Intuit shut Mint down on 2024-03-23 and moved users to Credit Karma.
+        title: "Credit Karma",
+        url: "https://www.creditkarma.com",
+        description: "Credit scores and net-worth tracking",
         project: "Personal",
         category: "Finance",
         group: "Banking",

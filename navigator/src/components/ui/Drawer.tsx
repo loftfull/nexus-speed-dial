@@ -25,7 +25,7 @@ export function Drawer({
       />
 
       {/* Panel */}
-      <aside className={cn(
+      <aside role="dialog" aria-modal="true" aria-label={title} className={cn(
         "fixed right-0 top-0 z-[70] flex h-full w-full max-w-[380px] flex-col",
         "glass shadow-2xl border-l border-white/40 animate-slide-right"
       )}>
@@ -34,6 +34,7 @@ export function Drawer({
           <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="flex h-7 w-7 items-center justify-center rounded-full bg-black/6 text-slate-500 hover:bg-black/10 hover:text-slate-700 transition text-lg"
           >
             ×
@@ -54,12 +55,13 @@ export function Toast({
   onUndo,
 }: {
   message: string | null;
+  /** Only passed for reversible actions (deletions). */
   onUndo?: () => void;
 }) {
   if (!message) return null;
 
   return (
-    <div className="fixed bottom-24 left-1/2 z-[100] -translate-x-1/2 animate-fade-up">
+    <div role="status" aria-live="polite" className="fixed bottom-24 left-1/2 z-[100] -translate-x-1/2 animate-fade-up">
       <div className={cn(
         "flex items-center gap-3 rounded-2xl px-4 py-3",
         "bg-slate-900/92 text-white backdrop-blur-xl shadow-2xl",
