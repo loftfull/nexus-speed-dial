@@ -32,8 +32,8 @@ async function seedOverflowingCarousel(page: Page, activeCategoryId: string | nu
     localStorage.setItem('nexus-categories', JSON.stringify(categories));
     localStorage.setItem('nexus-groups', JSON.stringify([]));
     localStorage.setItem('nexus-sites', JSON.stringify(sites));
-    localStorage.setItem('nexus-active-project', 'stress-project');
-    if (activeCategoryId) localStorage.setItem('nexus-active-category', activeCategoryId);
+    localStorage.setItem('nexus-active-project', JSON.stringify('stress-project'));
+    if (activeCategoryId) localStorage.setItem('nexus-active-category', JSON.stringify(activeCategoryId));
     else localStorage.removeItem('nexus-active-category');
   }, { activeCategoryId });
 }
