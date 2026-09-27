@@ -125,10 +125,10 @@ export function SettingsPanel(props: SettingsProps) {
   /** Puts one fold back to the values a fresh install starts with. */
   const resetSection = (section: SectionId) => {
     switch (section) {
-      case 'general': patchUi({ compact: false, animations: true, newTab: true, rail: true }); break;
+      case 'general': patchUi({ compact: false, animations: true, newTab: true }); break;
       case 'look': setAppearance({ ...DEFAULT_APPEARANCE }); break;
       case 'tiles': setTile({ ...DEFAULT_TILE }); patchUi({ siteIcons: true, defaultView: 'all', sortBy: 'name', mobileMode: 'table' }); break;
-      case 'panel': patchUi({ sidebarWidth: '292px', projects: true, weather: true, favoritesBar: true, favoritesCount: 8, favoritesLabels: true, panelRecent: true, panelRecentCount: 6, panelRecentLabels: true }); break;
+      case 'panel': patchUi({ sidebarWidth: '292px', projects: true, weather: true, panelRecent: true, panelRecentCount: 6, panelRecentLabels: true }); break;
       case 'search': patchUi({ searchEngine: 'Google', searchLocal: true, searchSuggestions: true }); break;
       case 'weather': patchUi({ weather: true, weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true }); break;
       case 'privacy': patchUi({ saveHistory: true, siteIcons: true, remotePreviews: false }); break;
@@ -195,8 +195,6 @@ export function SettingsPanel(props: SettingsProps) {
               onChange={value => patchUi({ animations: value })} />
             <Switch icon={ExternalLink} label="Открывать в новой вкладке" value={ui.newTab !== false}
               onChange={value => patchUi({ newTab: value })} />
-            <Switch icon={CloudSun} label="Виджеты справа в сетке" value={ui.rail !== false}
-              hint="Часы, погода и недавние" onChange={value => patchUi({ rail: value })} />
           </Group>
         )}
 
@@ -324,16 +322,6 @@ export function SettingsPanel(props: SettingsProps) {
         )}
 
         {section === 'panel' && (
-          <Group title="Главная страница" hint="Полоса избранного одинакова в любом проекте и появляется только на широком экране.">
-            <Switch icon={Star} label="Полоса избранного" value={ui.favoritesBar !== false}
-              onChange={value => patchUi({ favoritesBar: value })} />
-            <Pick icon={Columns3} label="Сколько показывать" options={[['6', '6'], ['8', '8'], ['12', '12']]}
-              value={String(ui.favoritesCount ?? 8)} onChange={value => patchUi({ favoritesCount: Number(value) })}
-              disabled={ui.favoritesBar === false} why="Полоса избранного выключена" />
-            <Switch icon={Type} label="Названия на полосе" value={ui.favoritesLabels !== false}
-              onChange={value => patchUi({ favoritesLabels: value })}
-              disabled={ui.favoritesBar === false} why="Полоса избранного выключена" />
-          </Group>
         )}
 
         {section === 'search' && (
