@@ -1648,6 +1648,8 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 6px 16px -10px rgba(16,24,40,.35);
  transition:color .15s ease}
 .nx-carousel-arrow:hover{color:var(--nx-accent)}
+.nx-carousel-arrow:disabled{opacity:.34;cursor:default;color:var(--nx-muted)}
+.nx-carousel-arrow:disabled:hover{color:var(--nx-muted)}
 /* Полоса прокрутки скрыта: стрелки уже говорят, что лента едет, а вторая
    подсказка о том же съедала бы высоту у карточек. */
 .nx-carousel-row{flex:1;min-width:0;display:flex;gap:10px;overflow-x:auto;scroll-behavior:smooth;
