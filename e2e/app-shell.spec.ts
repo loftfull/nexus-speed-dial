@@ -248,6 +248,26 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-tile-name').filter({ hasText: title! })).toHaveCount(0);
   });
 
+
+  test('Ctrl Z restores the last deleted site without chasing the toast', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Keyboard undo is proven once on the desktop shell.');
+
+    await page.goto('/');
+    const first = page.locator('.nx-tile').first();
+    const title = (await first.locator('.nx-tile-name').textContent())?.trim();
+    expect(title).toBeTruthy();
+
+    await first.getByRole('button', { name: /Действия для/ }).click();
+    await first.getByRole('menuitem', { name: 'Удалить' }).click();
+    await expect(page.getByRole('button', { name: 'Отменить удаление сайта' })).toBeVisible();
+
+    await page.keyboard.press('Control+z');
+
+    await expect(page.locator('.nx-tile-name').filter({ hasText: title! }).first()).toBeVisible();
+    await openSection(page, testInfo, 'Корзина');
+    await expect(page.locator('.nx-tile-name').filter({ hasText: title! })).toHaveCount(0);
+  });
+
   test('calendar is an overlay and closes with Escape', async ({ page }) => {
     await page.goto('/');
     await page.locator('[data-calendar-trigger]:visible').first().click();
