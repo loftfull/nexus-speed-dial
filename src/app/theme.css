@@ -1643,6 +1643,8 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-crumb-options{display:flex;flex-direction:column;gap:1px}
 .nx-crumb-manage{margin-top:5px;border-top:1px solid var(--nx-line);border-radius:var(--nx-r-sm);color:var(--nx-muted)}
 .nx-crumb-manage:hover{color:var(--nx-accent)}
+.nx-crumb-delete{color:var(--nx-danger,#c9364f)}
+.nx-crumb-delete:hover{color:var(--nx-danger,#c9364f);background:color-mix(in srgb,var(--nx-danger,#c9364f) 9%,transparent)}
 .nx-crumb-item{display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;border-radius:var(--nx-r-sm);
  text-align:left;color:var(--nx-text);transition:background .12s ease}
 .nx-crumb-item:hover{background:var(--nx-sunken)}
