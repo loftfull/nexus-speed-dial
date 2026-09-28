@@ -5,6 +5,9 @@ export type NexusBackup = {
   version: 1;
   exportedAt: string;
   sites: unknown[];
+  /** Optional in older backups. Deleted sites and recent history are user data too. */
+  trash?: unknown[];
+  history?: string[];
   projects: unknown[];
   /** Project → Category → Group, so a restore keeps the whole tree. */
   categories: unknown[];
@@ -26,6 +29,8 @@ export function parseBackup(text: string): NexusBackup {
     version: BACKUP_VERSION,
     exportedAt: typeof raw?.exportedAt === 'string' ? raw.exportedAt : new Date().toISOString(),
     sites: data.sites,
+    trash: Array.isArray(data.trash) ? data.trash : undefined,
+    history: Array.isArray(data.history) ? data.history.filter((ref: unknown): ref is string => typeof ref === 'string') : undefined,
     projects: Array.isArray(data.projects) ? data.projects : [],
     categories: Array.isArray(data.categories) ? data.categories : [],
     groups: Array.isArray(data.groups) ? data.groups : [],

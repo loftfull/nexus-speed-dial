@@ -187,11 +187,19 @@ export function applyBackup(state: AppState, backup: NexusBackup): AppState {
   const tilePatch = isRecord(settings.tile) ? settings.tile : {};
   const appearancePatch = isRecord(settings.appearance) ? settings.appearance as Partial<AppearanceState> : {};
   const nextUi = { ...state.ui, ...uiPatch };
+  const trash = backup.trash === undefined ? state.trash : mergeById(
+    backup.trash.map(normalizeBackupSite).filter((site): site is SiteRecord => Boolean(site)),
+    state.trash,
+  ).filter(site => !sites.some(active => active.id === site.id)).slice(0, 100);
+  const history = backup.history === undefined
+    ? replacedIds.size ? state.history.map(resolveSiteRef) : state.history
+    : [...new Set([...backup.history, ...state.history].map(resolveSiteRef))];
 
   return {
     ...state,
     sites,
-    history: replacedIds.size ? state.history.map(resolveSiteRef) : state.history,
+    trash,
+    history,
     projects,
     categories,
     groups,

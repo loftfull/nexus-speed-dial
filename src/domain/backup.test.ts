@@ -35,4 +35,12 @@ describe('backup envelope', () => {
     expect(parsed.groups).toEqual([]);
     expect(parsed.sites).toHaveLength(1);
   });
+
+  it('round-trips deleted sites and opening history while accepting older files without them', () => {
+    const deleted = { id: 'deleted', title: 'Old', domain: 'old.test', url: 'https://old.test/', desc: '', color: '#111', icon: 'O', category: 'Personal' };
+    const text = createBackup({ sites: [], trash: [deleted], history: ['deleted'], projects: [], categories: [], groups: [], sessions: [] });
+    expect(parseBackup(text)).toMatchObject({ trash: [deleted], history: ['deleted'] });
+    expect(parseBackup('{"sites":[]}').trash).toBeUndefined();
+    expect(parseBackup('{"sites":[]}').history).toBeUndefined();
+  });
 });

@@ -18,7 +18,7 @@ const appearance: AppearanceState = { theme: 'light', accent: '#2f6fe4', wallpap
 function setup(overrides: Partial<SettingsProps> = {}) {
   const props: SettingsProps = {
     onClose: vi.fn(),
-    sites: [], setSites: vi.fn(), categories: [], setCategories: vi.fn(),
+    sites: [], trash: [], history: [], setSites: vi.fn(), categories: [], setCategories: vi.fn(),
     groups: [], setGroups: vi.fn(), projects: [], setProjects: vi.fn(),
     sessions: [], setSessions: vi.fn(),
     ui, setUi: vi.fn(), tile, setTile: vi.fn(), appearance, setAppearance: vi.fn(),

@@ -69,6 +69,7 @@ export const DEFAULT_APPEARANCE: AppearanceState = { theme: 'light', accent: '#2
 export type SettingsProps = {
   onClose: () => void;
   sites: Site[]; setSites: (value: Site[] | ((current: Site[]) => Site[])) => void;
+  trash: Site[]; history: string[];
   categories: Category[]; setCategories: (value: Category[] | ((current: Category[]) => Category[])) => void;
   groups: SiteGroup[]; setGroups: (value: SiteGroup[] | ((current: SiteGroup[]) => SiteGroup[])) => void;
   projects: Project[]; setProjects: (value: Project[] | ((current: Project[]) => Project[])) => void;
@@ -395,7 +396,7 @@ export function SettingsPanel(props: SettingsProps) {
 
 
 
-function DataSection({ sites, setSites, categories, groups, projects, setProjects, sessions, setSessions, ui, tile, appearance, onApplyBackup }: SettingsProps) {
+function DataSection({ sites, trash, history, setSites, categories, groups, projects, setProjects, sessions, setSessions, ui, tile, appearance, onApplyBackup }: SettingsProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   const [clearOpen, setClearOpen] = useState(false);
@@ -444,9 +445,9 @@ function DataSection({ sites, setSites, categories, groups, projects, setProject
   return (
     <>
       <BrowserImportPanel sites={sites} setSites={setSites} projects={projects} setProjects={setProjects} sessions={sessions} setSessions={setSessions} />
-      <Card title="Резервная копия" hint="Плитки, проекты, категории и настройки в одном файле.">
+      <Card title="Резервная копия" hint="Плитки, проекты, категории, корзина, история и настройки в одном файле.">
         <div className="nx-card-buttons">
-          <button type="button" onClick={() => download(createBackup({ sites, projects, categories, groups, sessions, settings: { ui, tile, appearance } }), 'application/json', 'nexus-backup.json')}>
+          <button type="button" onClick={() => download(createBackup({ sites, trash, history, projects, categories, groups, sessions, settings: { ui, tile, appearance } }), 'application/json', 'nexus-backup.json')}>
             <Download size={15} /> Экспорт данных
           </button>
           <button type="button" onClick={() => download(createBookmarkHtml(sites), 'text/html', 'nexus-bookmarks.html')}>

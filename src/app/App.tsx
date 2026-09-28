@@ -1651,7 +1651,7 @@ export function App() {
       )}
       {settingsOpen && (
         <SettingsPanel onClose={() => setSettingsOpen(false)}
-          sites={sites} setSites={setSites} categories={categories} setCategories={setCategories}
+          sites={sites} trash={trash} history={history} setSites={setSites} categories={categories} setCategories={setCategories}
           groups={groups} setGroups={setGroups} ui={ui} setUi={setUi} tile={tile} setTile={setTile}
           appearance={appearance} setAppearance={setAppearance} projects={projects} setProjects={setProjects}
           sessions={sessions} setSessions={setSessions} initialSection={settingsSection}

@@ -126,6 +126,20 @@ describe('app store reducer', () => {
     expect(next.history).toEqual(['new-id']);
   });
 
+  it('restores trash and history, deduplicating repeated imports without reviving deleted sites', () => {
+    const deleted = { id: 'deleted', title: 'Old', domain: 'old.test', url: 'https://old.test/', desc: '', color: '#111', icon: 'O', category: 'Personal' };
+    const backup = {
+      version: 1 as const, exportedAt: '2026-09-28T00:00:00.000Z',
+      sites: [], trash: [deleted], history: ['deleted', 'missing'],
+      projects: [], categories: [], groups: [], sessions: [],
+    };
+    const first = appReducer(initial, { type: 'backup/apply', value: backup });
+    const second = appReducer(first, { type: 'backup/apply', value: backup });
+    expect(second.trash).toEqual([deleted]);
+    expect(second.sites.some(site => site.id === 'deleted')).toBe(false);
+    expect(second.history).toEqual(['deleted', 'missing']);
+  });
+
   it('keeps a known mobile arrangement and rejects anything else', () => {
     expect(normalizeMobileMode('rows')).toBe('rows');
     expect(normalizeMobileMode('icons')).toBe('icons');
