@@ -44,7 +44,7 @@ async function settle(page: Page): Promise<MarkCensus> {
   // .nx-board — раскладка «рабочий стол проектов», которая стала главной по
   // умолчанию: плиток на ней нет, и ожидание .nx-tile висело до таймаута на
   // каждом снимке домашнего экрана.
-  await page.waitForSelector('.nx-tile, .nx-empty, .nx-board');
+  await page.waitForSelector('.nx-tile, .nx-empty, .nx-board, .nx-session');
   // `complete` истинно и для картинки, которая не загрузилась, поэтому ждём
   // не её, а состояния самого знака: готовая картинка получает класс `ready`,
   // а неудачная исчезает совсем и остаётся монограмма. Пока есть знак с
