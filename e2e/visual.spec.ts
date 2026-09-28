@@ -192,7 +192,7 @@ test.describe('Nexus visual baselines', () => {
       localStorage.setItem('nexus-categories', JSON.stringify([]));
       localStorage.setItem('nexus-groups', JSON.stringify([]));
       localStorage.setItem('nexus-sites', JSON.stringify([]));
-      localStorage.setItem('nexus-active-project', 'visual-project-7');
+      localStorage.setItem('nexus-active-project', JSON.stringify('visual-project-7'));
     });
     await prepareVisualPage(page);
     await page.goto('/');
