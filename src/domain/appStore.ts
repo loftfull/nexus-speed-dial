@@ -19,7 +19,7 @@ export type AppearanceState = { theme: string; accent: string; wallpaper: string
 export type MobileMode = 'table' | 'rows' | 'icons';
 export const MOBILE_MODES: MobileMode[] = ['table', 'rows', 'icons'];
 
-export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; localOnly: boolean; saveHistory: boolean; analytics: boolean; remotePreviews?: boolean; siteIcons?: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: MobileMode; favoritesBar?: boolean; favoritesCount?: number; favoritesLabels?: boolean; panelRecent?: boolean; panelRecentCount?: number; panelRecentLabels?: boolean; rail?: boolean; sortBy?: 'name' | 'recent' | 'added'; defaultView?: 'all' | 'groups' };
+export type UiState = { sidebar: boolean; weather: boolean; compact: boolean; animations: boolean; newTab: boolean; searchLocal: boolean; searchSuggestions: boolean; searchEngine: string; weatherCity: string; weatherUnits: string; weatherAuto: boolean; saveHistory: boolean; remotePreviews?: boolean; siteIcons?: boolean; projects?: boolean; sidebarWidth?: string; mobileMode?: MobileMode; favoritesBar?: boolean; favoritesCount?: number; favoritesLabels?: boolean; panelRecent?: boolean; panelRecentCount?: number; panelRecentLabels?: boolean; rail?: boolean; sortBy?: 'name' | 'recent' | 'added'; defaultView?: 'all' | 'groups' };
 
 export type AppState = {
   sites: SiteRecord[];
@@ -62,6 +62,13 @@ export function normalizeMobileMode(value: unknown): MobileMode {
   return MOBILE_MODES.includes(value as MobileMode) ? value as MobileMode : 'table';
 }
 
+/** Remove keys retired from the persisted UI schema while preserving unknown future-safe values. */
+function sanitizeUiPatch(value: unknown): Partial<UiState> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const { localOnly: _localOnly, analytics: _analytics, ...rest } = value as Record<string, unknown>;
+  return rest as Partial<UiState>;
+}
+
 export function createInitialAppState(initialSites: SiteRecord[]): AppState {
   const storedSites = readStorage('nexus-sites', initialSites).map((site, index) => {
     const address = normalizeSiteAddress(site.url ?? site.domain);
@@ -81,15 +88,15 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
     sites: storedSites,
   });
   const storedSessions = readStorage<BrowserSession[]>('nexus-sessions', []).map(session => ({ ...session, siteIds: session.siteIds.map(resolveSiteRef), noteSiteIds: session.noteSiteIds?.map(resolveSiteRef) }));
-  const storedUi = readStorage('nexus-ui', null as UiState | null);
-  const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, localOnly: true, saveHistory: true, analytics: false, remotePreviews: false, siteIcons: true, projects: true, sidebarWidth: '292px', mobileMode: 'table', favoritesBar: true, favoritesCount: 8, favoritesLabels: true, panelRecent: true, panelRecentCount: 6, panelRecentLabels: true };
+  const storedUi = sanitizeUiPatch(readStorage<unknown>('nexus-ui', null));
+  const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, saveHistory: true, remotePreviews: false, siteIcons: true, projects: true, sidebarWidth: '292px', mobileMode: 'table', favoritesBar: true, favoritesCount: 8, favoritesLabels: true, panelRecent: true, panelRecentCount: 6, panelRecentLabels: true };
   return {
     sites: hierarchy.sites,
     trash: readStorage<SiteRecord[]>('nexus-trash', []),
     categories: hierarchy.categories,
     groups: hierarchy.groups,
     history: readStorage('nexus-history', []),
-    ui: { ...defaultUi, ...(storedUi ?? {}), sidebarWidth: normalizeSidebarWidth(storedUi?.sidebarWidth), mobileMode: normalizeMobileMode(storedUi?.mobileMode) },
+    ui: { ...defaultUi, ...storedUi, sidebarWidth: normalizeSidebarWidth(storedUi.sidebarWidth), mobileMode: normalizeMobileMode(storedUi.mobileMode) },
     tile: normalizeTileAppearance(readStorage<unknown>('nexus-tile', null)),
     appearance: readStorage('nexus-appearance', { theme: 'light', accent: '#2f7cf6', wallpaper: 'lake' }),
     sessions: storedSessions,
@@ -165,7 +172,7 @@ export function applyBackup(state: AppState, backup: NexusBackup): AppState {
   );
 
   const settings = isRecord(backup.settings) ? backup.settings : {};
-  const uiPatch = isRecord(settings.ui) ? settings.ui as Partial<UiState> : {};
+  const uiPatch = sanitizeUiPatch(settings.ui);
   const tilePatch = isRecord(settings.tile) ? settings.tile : {};
   const appearancePatch = isRecord(settings.appearance) ? settings.appearance as Partial<AppearanceState> : {};
   const nextUi = { ...state.ui, ...uiPatch };
