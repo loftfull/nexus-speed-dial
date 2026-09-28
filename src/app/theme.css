@@ -976,6 +976,17 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-root.compact .nx-head h1{font-size:var(--nx-fs-5)}
 .nx-root.still *,.nx-root.still *:before,.nx-root.still *:after{transition:none!important;animation:none!important}
 
+/* Системное предпочтение важнее локальной настройки. Премиальная глубина
+   остаётся через свет, тень и материал, но движение не навязывается тем,
+   кто явно попросил ОС его уменьшить. */
+@media(prefers-reduced-motion:reduce){
+ .nx-root,.nx-root *,.nx-root *:before,.nx-root *:after{
+  scroll-behavior:auto!important;
+  transition:none!important;
+  animation:none!important
+ }
+}
+
 /* ── цветная иконка выбранного узла проводника ────────────────── */
 .nx-tree-row.on{background:color-mix(in srgb,var(--nx-node,var(--nx-accent)) 13%,transparent);color:var(--nx-text)}
 .nx-tree-row.on>svg:not(.nx-tree-caret){color:var(--nx-node,var(--nx-accent))}
