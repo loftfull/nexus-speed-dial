@@ -235,6 +235,28 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeHidden();
   });
 
+  test('settings trap focus and return it to the opener', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Focus return is proven once on the desktop shell.');
+    await page.goto('/');
+
+    const opener = page.getByRole('button', { name: 'Настройки' }).first();
+    await opener.focus();
+    await expect(opener).toBeFocused();
+    await opener.click();
+
+    const dialog = page.getByRole('dialog', { name: 'Настройки' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute('aria-modal', 'true');
+    await expect.poll(() => page.evaluate(() => {
+      const modal = document.querySelector('[role="dialog"][aria-modal="true"]');
+      return Boolean(modal && modal.contains(document.activeElement));
+    })).toBe(true);
+
+    await page.getByRole('button', { name: 'Закрыть настройки' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(opener).toBeFocused();
+  });
+
   test('the compact settings panel applies changes on the page behind it', async ({ page }, testInfo) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Настройки' }).first().click();
