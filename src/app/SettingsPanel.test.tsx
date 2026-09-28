@@ -25,14 +25,30 @@ function setup(overrides: Partial<SettingsProps> = {}) {
     onApplyBackup: vi.fn(),
     ...overrides,
   };
-  render(<SettingsPanel {...props} />);
-  return props;
+  const view = render(<SettingsPanel {...props} />);
+  return Object.assign(props, { view });
 }
 
 describe('SettingsPanel', () => {
   it('открывается на разделе оформления', () => {
     setup();
     expect(screen.getByRole('heading', { name: 'Оформление окна' })).toBeInTheDocument();
+  });
+
+  it('ведёт себя как модальное окно: удерживает фокус и возвращает его назад', () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Открыть настройки';
+    document.body.append(trigger);
+    trigger.focus();
+
+    const props = setup();
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+
+    props.view.unmount();
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
   });
 
   it('переключает тему', async () => {
