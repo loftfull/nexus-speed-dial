@@ -1670,6 +1670,37 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-tile.picked')).toHaveCount(0);
   });
 
+  test('массовое удаление откатывается одним действием', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Batch undo is proven once on the desktop shell.');
+
+    await page.goto('/');
+    const tiles = page.locator('.nx-main .nx-tile');
+    const before = await tiles.count();
+    expect(before).toBeGreaterThan(2);
+
+    const firstTitle = (await tiles.nth(0).locator('.nx-tile-name').textContent())?.trim();
+    const secondTitle = (await tiles.nth(1).locator('.nx-tile-name').textContent())?.trim();
+
+    await tiles.nth(0).locator('.nx-tile-face').click({ modifiers: ['ControlOrMeta'] });
+    await tiles.nth(1).locator('.nx-tile-face').click();
+    await expect(page.locator('.nx-tile.picked')).toHaveCount(2);
+
+    await page.locator('.nx-picked').getByRole('button', { name: 'В корзину' }).click();
+    await expect(page.locator('.nx-main .nx-tile')).toHaveCount(before - 2);
+
+    const undo = page.getByRole('button', { name: 'Отменить удаление сайтов' });
+    await expect(undo).toBeVisible();
+    await undo.click();
+
+    await expect(page.locator('.nx-main .nx-tile')).toHaveCount(before);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: firstTitle! }).first()).toBeVisible();
+    await expect(page.locator('.nx-tile-name').filter({ hasText: secondTitle! }).first()).toBeVisible();
+
+    await openSection(page, testInfo, 'Корзина');
+    await expect(page.locator('.nx-tile-name').filter({ hasText: firstTitle! })).toHaveCount(0);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: secondTitle! })).toHaveCount(0);
+  });
+
   test('ни одна подпись на экране не обрезана', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('.nx-tile');
