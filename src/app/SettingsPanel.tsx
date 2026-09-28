@@ -17,6 +17,7 @@ import { sites as countSites } from '../domain/plural';
 import { dataUrlBytes, readWallpaperPhoto, saveWallpaperPhoto, shrinkImage } from '../domain/wallpaper';
 import { BrowserImportPanel } from '../components/BrowserImportPanel';
 import { ActionDialog } from './ActionDialog';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 export type SectionId = 'general' | 'look' | 'tiles' | 'panel' | 'search' | 'weather' | 'privacy' | 'keys' | 'data';
 /**
@@ -86,6 +87,7 @@ export type SettingsProps = {
 
 export function SettingsPanel(props: SettingsProps) {
   const { onClose, ui, setUi, tile, setTile, appearance, setAppearance, initialSection } = props;
+  const dialogRef = useFocusTrap<HTMLElement>(true);
   const [open, setOpen] = useState<SectionId>(initialSection ?? 'look');
   const current = SECTIONS.find(item => item.id === open) ?? SECTIONS[0];
   const resettable = current.id !== 'data' && current.id !== 'keys';
@@ -137,7 +139,7 @@ export function SettingsPanel(props: SettingsProps) {
   };
 
   return (
-    <section className="nx-settings" role="dialog" aria-labelledby="nx-settings-title"
+    <section ref={dialogRef} className="nx-settings" role="dialog" aria-modal="true" aria-labelledby="nx-settings-title"
       onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); onClose(); } }}>
       <header className="nx-settings-head">
         <div>
