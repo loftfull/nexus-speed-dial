@@ -56,6 +56,7 @@ type AppActionDialog =
   | { kind: 'category-rename'; id: string; name: string; projectId: string }
   | { kind: 'group'; categoryId: string }
   | { kind: 'group-rename'; id: string; name: string; categoryId: string }
+  | { kind: 'group-delete'; id: string; name: string; categoryId: string }
   | { kind: 'empty-trash' };
 
 const SECTIONS: { id: SectionId; label: string; icon: ControlIcon }[] = [
@@ -187,6 +188,7 @@ export function App() {
   const [toast, setToast] = useState('');
   const [undoSites, setUndoSites] = useState<Site[] | null>(null);
   const [undoSession, setUndoSession] = useState<(typeof sessions)[number] | null>(null);
+  const [undoGroup, setUndoGroup] = useState<{ group: SiteGroup; siteIds: string[] } | null>(null);
   const undoLast = useCallback(() => {
     if (undoSites?.length) {
       const restored = undoSites;
@@ -199,6 +201,7 @@ export function App() {
       setToast(restored.length === 1 ? `«${restored[0].title}» восстановлен` : `Восстановлено ${countSites(restored.length)}`);
       setUndoSites(null);
       setUndoSession(null);
+      setUndoGroup(null);
       return true;
     }
     if (undoSession) {
@@ -207,10 +210,24 @@ export function App() {
       setToast(`Сессия «${restored.name}» восстановлена`);
       setUndoSession(null);
       setUndoSites(null);
+      setUndoGroup(null);
+      return true;
+    }
+    if (undoGroup) {
+      const { group, siteIds } = undoGroup;
+      const ids = new Set(siteIds);
+      setGroups(current => current.some(item => item.id === group.id) ? current : [...current, group]);
+      setSites(current => current.map(item => item.id && ids.has(item.id)
+        ? { ...item, categoryId: group.categoryId, groupId: group.id }
+        : item));
+      setToast(`Группа «${group.name}» восстановлена`);
+      setUndoGroup(null);
+      setUndoSites(null);
+      setUndoSession(null);
       return true;
     }
     return false;
-  }, [undoSites, undoSession]);
+  }, [undoSites, undoSession, undoGroup]);
   const [now, setNow] = useState(() => new Date());
   const [weather, setWeather] = useState<Weather>(WEATHER_EMPTY);
   // Раскладка узкого экрана — тоже одно значение из настроек.
@@ -376,6 +393,7 @@ export function App() {
       setToast('');
       setUndoSites(null);
       setUndoSession(null);
+      setUndoGroup(null);
     }, 2600);
     return () => window.clearTimeout(timer);
   }, [toast]);
@@ -408,6 +426,7 @@ export function App() {
     ]);
     setSites(current => current.filter(item => !item.id || !ids.has(item.id)));
     setUndoSession(null);
+    setUndoGroup(null);
     setUndoSites(targets);
     setToast(targets.length === 1 ? `«${targets[0].title}» в корзине` : `${countSites(targets.length)} в корзине`);
   };
@@ -478,6 +497,23 @@ export function App() {
       }
       setGroups(current => current.map(item => item.id === action.id ? { ...item, name: value } : item));
       setToast('Группа переименована');
+      setActionDialog(null);
+      return;
+    }
+
+    if (action.kind === 'group-delete') {
+      const group = groups.find(item => item.id === action.id);
+      if (!group) { setActionDialog(null); return; }
+      const affectedSiteIds = sites
+        .filter(item => item.groupId === group.id && item.id)
+        .map(item => item.id as string);
+      setUndoSites(null);
+      setUndoSession(null);
+      setUndoGroup({ group, siteIds: affectedSiteIds });
+      setGroups(current => current.filter(item => item.id !== group.id));
+      setSites(current => current.map(item => item.groupId === group.id ? { ...item, groupId: undefined } : item));
+      if (groupId === group.id) setGroupId(null);
+      setToast(`Группа «${group.name}» удалена`);
       setActionDialog(null);
       return;
     }
@@ -924,6 +960,7 @@ export function App() {
                 </button>
                 <button type="button" className="danger" onClick={() => {
                   setUndoSites(null);
+                  setUndoGroup(null);
                   setUndoSession(session);
                   setSessions(current => removeSession(current, session.id));
                   setToast(`Сессия «${session.name}» удалена`);
@@ -1179,6 +1216,9 @@ export function App() {
                     onClear={() => setGroupId(null)}
                     onRename={activeGroup ? () => setActionDialog({
                       kind: 'group-rename', id: activeGroup.id, name: activeGroup.name, categoryId: activeGroup.categoryId,
+                    }) : undefined}
+                    onDelete={activeGroup ? () => setActionDialog({
+                      kind: 'group-delete', id: activeGroup.id, name: activeGroup.name, categoryId: activeGroup.categoryId,
                     }) : undefined} />
                 </>
               )}
@@ -1470,6 +1510,9 @@ export function App() {
           {undoSession && toast === `Сессия «${undoSession.name}» удалена` && (
             <button type="button" aria-label="Отменить удаление сессии" onClick={undoLast}>Отменить</button>
           )}
+          {undoGroup && toast === `Группа «${undoGroup.group.name}» удалена` && (
+            <button type="button" aria-label="Отменить удаление группы" onClick={undoLast}>Отменить</button>
+          )}
         </div>
       )}
       {calendarOpen && <CalendarPopover onClose={() => setCalendarOpen(false)} />}
@@ -1524,6 +1567,16 @@ export function App() {
           title="Переименовать группу"
           input={{ label: 'Название группы', initialValue: actionDialog.name }}
           confirmLabel="Сохранить"
+          onConfirm={submitActionDialog}
+          onClose={() => setActionDialog(null)}
+        />
+      )}
+      {actionDialog?.kind === 'group-delete' && (
+        <ActionDialog
+          title={`Удалить группу «${actionDialog.name}»?`}
+          description="Сайты останутся в категории и будут показаны без группы. Действие можно сразу отменить."
+          confirmLabel="Удалить группу"
+          danger
           onConfirm={submitActionDialog}
           onClose={() => setActionDialog(null)}
         />
