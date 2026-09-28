@@ -48,11 +48,14 @@ import { NotesWorkspace } from '../components/NotesWorkspace';
 type SectionId = 'sites' | 'favorites' | 'trash' | 'recent' | 'notes' | 'sessions';
 type AppActionDialog =
   | { kind: 'project' }
+  | { kind: 'project-rename'; id: string; name: string }
   | { kind: 'session-save'; sites: Site[] }
   | { kind: 'session-rename'; id: string; name: string }
   | { kind: 'session-open'; id: string; count: number }
   | { kind: 'category' }
+  | { kind: 'category-rename'; id: string; name: string; projectId: string }
   | { kind: 'group'; categoryId: string }
+  | { kind: 'group-rename'; id: string; name: string; categoryId: string }
   | { kind: 'empty-trash' };
 
 const SECTIONS: { id: SectionId; label: string; icon: ControlIcon }[] = [
@@ -437,6 +440,47 @@ export function App() {
   const submitActionDialog = (value: string) => {
     const action = actionDialog;
     if (!action) return;
+
+    if (action.kind === 'project-rename') {
+      const normalized = value.trim().toLocaleLowerCase();
+      if (projects.some(item => item.id !== action.id && item.name.trim().toLocaleLowerCase() === normalized)) {
+        setToast('Такое пространство уже есть');
+        return;
+      }
+      setProjects(current => current.map(item => item.id === action.id
+        ? { ...item, name: value, updatedAt: Date.now() }
+        : item));
+      setToast('Пространство переименовано');
+      setActionDialog(null);
+      return;
+    }
+
+    if (action.kind === 'category-rename') {
+      const normalized = value.trim().toLocaleLowerCase();
+      if (categories.some(item => item.id !== action.id && item.projectId === action.projectId
+        && item.name.trim().toLocaleLowerCase() === normalized)) {
+        setToast('Такая категория уже есть');
+        return;
+      }
+      setCategories(current => current.map(item => item.id === action.id ? { ...item, name: value } : item));
+      setSites(current => current.map(item => item.categoryId === action.id ? { ...item, category: value } : item));
+      setToast('Категория переименована');
+      setActionDialog(null);
+      return;
+    }
+
+    if (action.kind === 'group-rename') {
+      const normalized = value.trim().toLocaleLowerCase();
+      if (groups.some(item => item.id !== action.id && item.categoryId === action.categoryId
+        && item.name.trim().toLocaleLowerCase() === normalized)) {
+        setToast('Такая группа уже есть');
+        return;
+      }
+      setGroups(current => current.map(item => item.id === action.id ? { ...item, name: value } : item));
+      setToast('Группа переименована');
+      setActionDialog(null);
+      return;
+    }
 
     if (action.kind === 'project') {
       if (projects.some(item => item.name.trim().toLocaleLowerCase() === value.toLocaleLowerCase())) {
@@ -1116,19 +1160,26 @@ export function App() {
             <nav className="nx-crumbs-row" aria-label="Путь">
               <Crumb kind="space" current={activeProject ? { id: activeProject.id, name: activeProject.name } : null}
                 options={projects.map(item => ({ id: item.id, name: item.name, count: treeCounts.byProject.get(item.id) }))}
-                onPick={selectProject} />
+                onPick={selectProject}
+                onRename={activeProject ? () => setActionDialog({ kind: 'project-rename', id: activeProject.id, name: activeProject.name }) : undefined} />
               <ChevronRight size={15} className="nx-crumb-sep" aria-hidden="true" />
               <Crumb kind="category" current={activeCategory ? { id: activeCategory.id, name: activeCategory.name } : null}
                 options={projectCategories.map(item => ({ id: item.id, name: item.name, count: treeCounts.byCategory.get(item.id) }))}
                 onPick={value => { setCategoryId(value); setGroupId(null); }}
-                onClear={() => { setCategoryId(null); setGroupId(null); }} />
+                onClear={() => { setCategoryId(null); setGroupId(null); }}
+                onRename={activeCategory ? () => setActionDialog({
+                  kind: 'category-rename', id: activeCategory.id, name: activeCategory.name, projectId: activeCategory.projectId,
+                }) : undefined} />
               {activeCategory && (
                 <>
                   <ChevronRight size={15} className="nx-crumb-sep" aria-hidden="true" />
                   <Crumb kind="group" current={activeGroup ? { id: activeGroup.id, name: activeGroup.name } : null}
                     options={categoryGroups.map(item => ({ id: item.id, name: item.name, count: treeCounts.byGroup.get(item.id) }))}
                     onPick={value => setGroupId(value)}
-                    onClear={() => setGroupId(null)} />
+                    onClear={() => setGroupId(null)}
+                    onRename={activeGroup ? () => setActionDialog({
+                      kind: 'group-rename', id: activeGroup.id, name: activeGroup.name, categoryId: activeGroup.categoryId,
+                    }) : undefined} />
                 </>
               )}
             </nav>
@@ -1449,6 +1500,33 @@ export function App() {
             setAddOpen(false);
             setEditing(null);
           }} />
+      )}
+      {actionDialog?.kind === 'project-rename' && (
+        <ActionDialog
+          title="Переименовать пространство"
+          input={{ label: 'Название пространства', initialValue: actionDialog.name }}
+          confirmLabel="Сохранить"
+          onConfirm={submitActionDialog}
+          onClose={() => setActionDialog(null)}
+        />
+      )}
+      {actionDialog?.kind === 'category-rename' && (
+        <ActionDialog
+          title="Переименовать категорию"
+          input={{ label: 'Название категории', initialValue: actionDialog.name }}
+          confirmLabel="Сохранить"
+          onConfirm={submitActionDialog}
+          onClose={() => setActionDialog(null)}
+        />
+      )}
+      {actionDialog?.kind === 'group-rename' && (
+        <ActionDialog
+          title="Переименовать группу"
+          input={{ label: 'Название группы', initialValue: actionDialog.name }}
+          confirmLabel="Сохранить"
+          onConfirm={submitActionDialog}
+          onClose={() => setActionDialog(null)}
+        />
       )}
       {actionDialog?.kind === 'project' && (
         <ActionDialog
