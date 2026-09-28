@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Camera, CloudSun, Columns2, Columns3, Database, Download, Droplets, ExternalLink, Eye, FolderTree,
   Globe, Grid2X2, Grid3X3, History, Image as ImageIcon, Keyboard, ListFilter, MapPin, Minimize2,
@@ -17,7 +17,6 @@ import { sites as countSites } from '../domain/plural';
 import { dataUrlBytes, readWallpaperPhoto, saveWallpaperPhoto, shrinkImage } from '../domain/wallpaper';
 import { BrowserImportPanel } from '../components/BrowserImportPanel';
 import { ActionDialog } from './ActionDialog';
-import { useFocusTrap } from '../hooks/useFocusTrap';
 
 export type SectionId = 'general' | 'look' | 'tiles' | 'panel' | 'search' | 'weather' | 'privacy' | 'keys' | 'data';
 /**
@@ -87,7 +86,21 @@ export type SettingsProps = {
 
 export function SettingsPanel(props: SettingsProps) {
   const { onClose, ui, setUi, tile, setTile, appearance, setAppearance, initialSection } = props;
-  const dialogRef = useFocusTrap<HTMLElement>(true);
+  const panelRef = useRef<HTMLElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const active = document.activeElement as HTMLElement | null;
+    if (active && active !== document.body && !panel.contains(active)) openerRef.current = active;
+    const preferred = panel.querySelector<HTMLElement>('.nx-rail-item[aria-current="true"]');
+    const fallback = panel.querySelector<HTMLElement>('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])');
+    (preferred ?? fallback)?.focus();
+    return () => {
+      const opener = openerRef.current;
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
   const [open, setOpen] = useState<SectionId>(initialSection ?? 'look');
   const current = SECTIONS.find(item => item.id === open) ?? SECTIONS[0];
   const resettable = current.id !== 'data' && current.id !== 'keys';
@@ -139,7 +152,7 @@ export function SettingsPanel(props: SettingsProps) {
   };
 
   return (
-    <section ref={dialogRef} className="nx-settings" role="dialog" aria-modal="true" aria-labelledby="nx-settings-title"
+    <section ref={panelRef} className="nx-settings" role="dialog" aria-labelledby="nx-settings-title"
       onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); onClose(); } }}>
       <header className="nx-settings-head">
         <div>
