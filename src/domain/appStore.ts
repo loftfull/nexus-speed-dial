@@ -143,22 +143,29 @@ export function applyBackup(state: AppState, backup: NexusBackup): AppState {
     .map(normalizeBackupSite)
     .filter((site): site is SiteRecord => Boolean(site));
   const incomingIds = new Set(incomingSites.map(site => site.id).filter((id): id is string => Boolean(id)));
-  const incomingDestinations = new Set(incomingSites.map(siteDestination));
+  const incomingByDestination = new Map(incomingSites.map(site => [siteDestination(site), site]));
+  const replacedIds = new Map<string, string>();
+  for (const site of state.sites) {
+    const replacement = incomingSites.find(incoming => incoming.id === site.id)
+      ?? incomingByDestination.get(siteDestination(site));
+    if (site.id && replacement?.id && site.id !== replacement.id) replacedIds.set(site.id, replacement.id);
+  }
   const sites = [
     ...incomingSites,
     ...state.sites.filter(site =>
-      (!site.id || !incomingIds.has(site.id)) && !incomingDestinations.has(siteDestination(site))),
+      (!site.id || !incomingIds.has(site.id)) && !incomingByDestination.has(siteDestination(site))),
   ];
 
   const resolveSiteRef = (reference: string) =>
-    sites.find(site => site.id === reference || site.url === reference || site.domain === reference || site.title === reference)?.id || reference;
+    replacedIds.get(reference) ?? sites.find(site => site.id === reference || site.url === reference || site.domain === reference || site.title === reference)?.id ?? reference;
+  const remapExistingRefs = (references: string[]) => [...new Set(references.map(resolveSiteRef))];
 
   const projects = mergeById(
     (backup.projects.filter(isRecord) as unknown as Project[]).map(project => ({
       ...project,
       siteIds: Array.isArray(project.siteIds) ? project.siteIds.map(resolveSiteRef) : [],
     })),
-    state.projects,
+    state.projects.map(project => ({ ...project, siteIds: remapExistingRefs(project.siteIds) })),
   );
   const categories = mergeById(backup.categories.filter(isRecord) as unknown as Category[], state.categories);
   const groups = mergeById(backup.groups.filter(isRecord) as unknown as SiteGroup[], state.groups);
@@ -168,7 +175,11 @@ export function applyBackup(state: AppState, backup: NexusBackup): AppState {
       siteIds: Array.isArray(session.siteIds) ? session.siteIds.map(resolveSiteRef) : [],
       noteSiteIds: Array.isArray(session.noteSiteIds) ? session.noteSiteIds.map(resolveSiteRef) : session.noteSiteIds,
     })),
-    state.sessions,
+    state.sessions.map(session => ({
+      ...session,
+      siteIds: remapExistingRefs(session.siteIds),
+      noteSiteIds: session.noteSiteIds?.map(resolveSiteRef),
+    })),
   );
 
   const settings = isRecord(backup.settings) ? backup.settings : {};
@@ -180,6 +191,7 @@ export function applyBackup(state: AppState, backup: NexusBackup): AppState {
   return {
     ...state,
     sites,
+    history: replacedIds.size ? state.history.map(resolveSiteRef) : state.history,
     projects,
     categories,
     groups,

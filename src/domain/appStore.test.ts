@@ -105,6 +105,27 @@ describe('app store reducer', () => {
     expect(next.trash).toBe(initial.trash);
   });
 
+  it('keeps existing project, session and history links when a backup replaces a site by URL', () => {
+    const existing = {
+      ...initial,
+      sites: [{ ...initial.sites[0], id: 'old-id', url: 'https://figma.com/docs' }],
+      projects: [{ ...initial.projects[0], siteIds: ['old-id'] }],
+      sessions: [{ id: 'old-session', name: 'Open tabs', siteIds: ['old-id'], noteSiteIds: ['old-id'], createdAt: 1 }],
+      history: ['old-id'],
+    };
+    const next = appReducer(existing, { type: 'backup/apply', value: {
+      version: 1, exportedAt: '2026-09-28T00:00:00.000Z',
+      sites: [{ ...existing.sites[0], id: 'new-id' }],
+      projects: [], categories: [], groups: [], sessions: [],
+    } });
+
+    expect(next.sites.filter(site => site.url === 'https://figma.com/docs')).toHaveLength(1);
+    expect(next.projects[0].siteIds).toEqual(['new-id']);
+    expect(next.sessions[0].siteIds).toEqual(['new-id']);
+    expect(next.sessions[0].noteSiteIds).toEqual(['new-id']);
+    expect(next.history).toEqual(['new-id']);
+  });
+
   it('keeps a known mobile arrangement and rejects anything else', () => {
     expect(normalizeMobileMode('rows')).toBe('rows');
     expect(normalizeMobileMode('icons')).toBe('icons');
