@@ -890,6 +890,31 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-settings .nx-rail-item[aria-current="true"]')).toHaveCount(1);
   });
 
+  test('system reduced motion disables interface animation automatically', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Motion preference is proven once on the desktop shell.');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+
+    const tile = page.locator('.nx-main .nx-tile').first();
+    await expect(tile).toBeVisible();
+    const tileMotion = await tile.evaluate(element => {
+      const style = getComputedStyle(element);
+      return { transition: style.transitionDuration, animation: style.animationName };
+    });
+    expect(tileMotion.transition.split(',').every(value => value.trim() === '0s')).toBe(true);
+    expect(tileMotion.animation).toBe('none');
+
+    await page.getByRole('button', { name: 'Настройки' }).last().click();
+    const settings = page.locator('.nx-settings');
+    await expect(settings).toBeVisible();
+    const settingsMotion = await settings.evaluate(element => {
+      const style = getComputedStyle(element);
+      return { transition: style.transitionDuration, animation: style.animationName };
+    });
+    expect(settingsMotion.transition.split(',').every(value => value.trim() === '0s')).toBe(true);
+    expect(settingsMotion.animation).toBe('none');
+  });
+
   test('the compact switch really tightens the page behind the settings', async ({ page }) => {
     await page.goto('/');
     const scroll = page.locator('.nx-main-scroll');
