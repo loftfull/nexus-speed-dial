@@ -176,6 +176,42 @@ test.describe('Nexus visual baselines', () => {
     await expect(page).toHaveScreenshot('desktop-sessions.png', { ...screenshotOptions, fullPage: true });
   });
 
+  test('desktop explorer with many workspaces', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Desktop baseline only.');
+    await page.addInitScript(() => {
+      const projects = Array.from({ length: 8 }, (_, index) => ({
+        id: `visual-project-${index}`,
+        name: index === 7 ? 'Исследования и долгосрочные материалы' : `Пространство ${index + 1}`,
+        color: `hsl(${(index * 43) % 360} 58% 50%)`,
+        icon: String(index + 1),
+        siteIds: [],
+        createdAt: index + 1,
+        updatedAt: index + 1,
+      }));
+      localStorage.setItem('nexus-projects', JSON.stringify(projects));
+      localStorage.setItem('nexus-categories', JSON.stringify([]));
+      localStorage.setItem('nexus-groups', JSON.stringify([]));
+      localStorage.setItem('nexus-sites', JSON.stringify([]));
+      localStorage.setItem('nexus-active-project', 'visual-project-7');
+    });
+    await prepareVisualPage(page);
+    await page.goto('/');
+
+    const explorer = page.locator('.nx-panel');
+    await expect(explorer).toBeVisible();
+    await expect(explorer.getByRole('button', { name: /Исследования и долгосрочные материалы/ })).toBeVisible();
+    const more = explorer.getByRole('button', { name: /Ещё 3/ });
+    await expect(more).toBeVisible();
+    await more.click();
+    await expect(explorer.getByRole('button', { name: 'Свернуть' })).toBeVisible();
+    await expect(explorer.getByRole('button', { name: /Пространство 7/ })).toBeVisible();
+
+    await expect(page).toHaveScreenshot('desktop-explorer-many-workspaces.png', {
+      ...screenshotOptions,
+      fullPage: true,
+    });
+  });
+
   test('mobile home', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'Mobile baseline only.');
     await prepareVisualPage(page);
