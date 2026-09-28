@@ -325,6 +325,8 @@ describe('SettingsPanel', () => {
     await user.click(screen.getByRole('button', { name: 'Горячие клавиши' }));
     expect(screen.getByText('Ctrl + N')).toBeInTheDocument();
     expect(screen.getByText('Добавить сайт')).toBeInTheDocument();
+    expect(screen.getByText('Ctrl + Z')).toBeInTheDocument();
+    expect(screen.getByText('Отменить последнее удаление')).toBeInTheDocument();
   });
 
   it('сбрасывает раздел к значениям по умолчанию', async () => {
