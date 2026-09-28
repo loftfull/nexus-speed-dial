@@ -35,7 +35,7 @@ describe('SettingsPanel', () => {
     expect(screen.getByRole('heading', { name: 'Оформление окна' })).toBeInTheDocument();
   });
 
-  it('ведёт себя как модальное окно: удерживает фокус и возвращает его назад', () => {
+  it('ведёт себя как боковая панель: получает фокус и возвращает его назад', () => {
     const trigger = document.createElement('button');
     trigger.textContent = 'Открыть настройки';
     document.body.append(trigger);
@@ -43,7 +43,7 @@ describe('SettingsPanel', () => {
 
     const props = setup();
     const dialog = screen.getByRole('dialog');
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).not.toHaveAttribute('aria-modal');
     expect(dialog).toContainElement(document.activeElement as HTMLElement);
 
     props.view.unmount();
