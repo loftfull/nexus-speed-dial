@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Folder, Home, Layers3, Tag } from './icons.generated';
+import { Check, ChevronDown, Folder, Home, Layers3, Pencil, Tag } from './icons.generated';
 
 export type CrumbOption = { id: string; name: string; count?: number };
 
@@ -11,13 +11,15 @@ export type CrumbOption = { id: string; name: string; count?: number };
  * соседей: из «Программирование» видно «Дизайн» и «DevOps», и переход в
  * соседнюю категорию стоит одного нажатия вместо трёх.
  */
-export function Crumb({ kind, current, options, onPick, onClear }: {
+export function Crumb({ kind, current, options, onPick, onClear, onRename }: {
   kind: 'space' | 'category' | 'group';
   current: CrumbOption | null;
   options: CrumbOption[];
   onPick: (id: string) => void;
   /** Показывается как «Все» — снимает выбор этого уровня. */
   onClear?: () => void;
+  /** Контекстное управление текущим узлом без постоянной кнопки в шапке. */
+  onRename?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -52,27 +54,37 @@ export function Crumb({ kind, current, options, onPick, onClear }: {
       </button>
 
       {open && (
-        <div className="nx-crumb-menu" role="listbox" aria-label={title}>
-          {onClear && (
-            <button type="button" role="option" aria-selected={!current}
-              className={'nx-crumb-item' + (current ? '' : ' on')}
-              onClick={() => { onClear(); setOpen(false); }}>
-              <Folder size={16} aria-hidden="true" />
-              <span>{kind === 'category' ? 'Все категории' : 'Все группы'}</span>
-              {!current && <Check size={15} aria-hidden="true" />}
+        <div className="nx-crumb-menu">
+          <div className="nx-crumb-options" role="listbox" aria-label={title}>
+            {onClear && (
+              <button type="button" role="option" aria-selected={!current}
+                className={'nx-crumb-item' + (current ? '' : ' on')}
+                onClick={() => { onClear(); setOpen(false); }}>
+                <Folder size={16} aria-hidden="true" />
+                <span>{kind === 'category' ? 'Все категории' : 'Все группы'}</span>
+                {!current && <Check size={15} aria-hidden="true" />}
+              </button>
+            )}
+            {options.length === 0 && <p className="nx-crumb-empty">Здесь пока пусто</p>}
+            {options.map(option => (
+              <button key={option.id} type="button" role="option" aria-selected={option.id === current?.id}
+                className={'nx-crumb-item' + (option.id === current?.id ? ' on' : '')}
+                onClick={() => { onPick(option.id); setOpen(false); }}>
+                <Glyph size={16} aria-hidden="true" />
+                <span>{option.name}</span>
+                {option.count !== undefined && <i>{option.count}</i>}
+                {option.id === current?.id && <Check size={15} aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+          {current && onRename && (
+            <button type="button" className="nx-crumb-item nx-crumb-manage"
+              aria-label={`Переименовать ${kind === 'space' ? 'пространство' : kind === 'category' ? 'категорию' : 'группу'} «${current.name}»`}
+              onClick={() => { setOpen(false); onRename(); }}>
+              <Pencil size={16} aria-hidden="true" />
+              <span>Переименовать</span>
             </button>
           )}
-          {options.length === 0 && <p className="nx-crumb-empty">Здесь пока пусто</p>}
-          {options.map(option => (
-            <button key={option.id} type="button" role="option" aria-selected={option.id === current?.id}
-              className={'nx-crumb-item' + (option.id === current?.id ? ' on' : '')}
-              onClick={() => { onPick(option.id); setOpen(false); }}>
-              <Glyph size={16} aria-hidden="true" />
-              <span>{option.name}</span>
-              {option.count !== undefined && <i>{option.count}</i>}
-              {option.id === current?.id && <Check size={15} aria-hidden="true" />}
-            </button>
-          ))}
         </div>
       )}
     </div>
