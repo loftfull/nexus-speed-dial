@@ -184,6 +184,30 @@ export function App() {
   const [toast, setToast] = useState('');
   const [undoSites, setUndoSites] = useState<Site[] | null>(null);
   const [undoSession, setUndoSession] = useState<(typeof sessions)[number] | null>(null);
+  const undoLast = useCallback(() => {
+    if (undoSites?.length) {
+      const restored = undoSites;
+      const ids = new Set(restored.map(item => item.id).filter((id): id is string => Boolean(id)));
+      setSites(current => [
+        ...restored,
+        ...current.filter(item => !item.id || !ids.has(item.id)),
+      ]);
+      setTrash(current => current.filter(item => !item.id || !ids.has(item.id)));
+      setToast(restored.length === 1 ? `«${restored[0].title}» восстановлен` : `Восстановлено ${countSites(restored.length)}`);
+      setUndoSites(null);
+      setUndoSession(null);
+      return true;
+    }
+    if (undoSession) {
+      const restored = undoSession;
+      setSessions(current => current.some(item => item.id === restored.id) ? current : [restored, ...current]);
+      setToast(`Сессия «${restored.name}» восстановлена`);
+      setUndoSession(null);
+      setUndoSites(null);
+      return true;
+    }
+    return false;
+  }, [undoSites, undoSession]);
   const [now, setNow] = useState(() => new Date());
   const [weather, setWeather] = useState<Weather>(WEATHER_EMPTY);
   // Раскладка узкого экрана — тоже одно значение из настроек.
@@ -325,6 +349,12 @@ export function App() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
+      const target = event.target as HTMLElement | null;
+      const editingText = Boolean(target?.isContentEditable || target?.matches('input, textarea, select'));
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && key === 'z' && !editingText && undoLast()) {
+        event.preventDefault();
+        return;
+      }
       if (event.ctrlKey && key === 'n') { event.preventDefault(); setAddOpen(true); }
       if (event.ctrlKey && key === ',') { event.preventDefault(); setSettingsOpen(true); }
       if (event.ctrlKey && key === 'b') { event.preventDefault(); setSection('favorites'); }
@@ -335,7 +365,7 @@ export function App() {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  }, [undoLast]);
 
   useEffect(() => {
     if (!toast) return;
@@ -1383,23 +1413,11 @@ export function App() {
         <div className="nx-toast" role="status">
           <span>{toast}</span>
           {undoSites && toast === (undoSites.length === 1 ? `«${undoSites[0].title}» в корзине` : `${countSites(undoSites.length)} в корзине`) && (
-            <button type="button" aria-label={undoSites.length === 1 ? 'Отменить удаление сайта' : 'Отменить удаление сайтов'} onClick={() => {
-              const ids = new Set(undoSites.map(item => item.id).filter((id): id is string => Boolean(id)));
-              setSites(current => [
-                ...undoSites,
-                ...current.filter(item => !item.id || !ids.has(item.id)),
-              ]);
-              setTrash(current => current.filter(item => !item.id || !ids.has(item.id)));
-              setToast(undoSites.length === 1 ? `«${undoSites[0].title}» восстановлен` : `Восстановлено ${countSites(undoSites.length)}`);
-              setUndoSites(null);
-            }}>Отменить</button>
+            <button type="button" aria-label={undoSites.length === 1 ? 'Отменить удаление сайта' : 'Отменить удаление сайтов'}
+              onClick={undoLast}>Отменить</button>
           )}
           {undoSession && toast === `Сессия «${undoSession.name}» удалена` && (
-            <button type="button" aria-label="Отменить удаление сессии" onClick={() => {
-              setSessions(current => current.some(item => item.id === undoSession.id) ? current : [undoSession, ...current]);
-              setToast(`Сессия «${undoSession.name}» восстановлена`);
-              setUndoSession(null);
-            }}>Отменить</button>
+            <button type="button" aria-label="Отменить удаление сессии" onClick={undoLast}>Отменить</button>
           )}
         </div>
       )}
