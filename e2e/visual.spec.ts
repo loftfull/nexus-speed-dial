@@ -147,6 +147,35 @@ test.describe('Nexus visual baselines', () => {
     await expect(page).toHaveScreenshot('desktop-calendar-popover.png', { ...screenshotOptions, fullPage: true });
   });
 
+  test('desktop sessions', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Desktop baseline only.');
+    await page.addInitScript(() => {
+      localStorage.setItem('nexus-sessions', JSON.stringify([{
+        id: 'visual-session',
+        name: 'Утренний рабочий набор',
+        projectId: 'project-home',
+        siteIds: ['site-youtube', 'site-vk', 'site-telegram', 'site-mail', 'site-spotify', 'site-dribbble'],
+        createdAt: 1,
+        lastOpenedAt: 1,
+      }]));
+    });
+    await prepareVisualPage(page);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Сессии' }).click();
+
+    const card = page.locator('.nx-session').first();
+    await expect(card).toBeVisible();
+    await expect(card.locator('b')).toHaveText('Утренний рабочий набор');
+    await expect(card.locator('.nx-session-name span')).toContainText('Дом');
+    await expect(card.locator('.nx-session-mark')).toHaveCount(6);
+    await expect(card.getByRole('button', { name: 'Открыть' })).toBeEnabled();
+    await expect(card.getByRole('button', { name: 'Переименовать' })).toBeVisible();
+    await expect(card.getByRole('button', { name: 'Удалить' })).toBeVisible();
+
+    expect((await settle(page)).pending).toBe(0);
+    await expect(page).toHaveScreenshot('desktop-sessions.png', { ...screenshotOptions, fullPage: true });
+  });
+
   test('mobile home', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'Mobile baseline only.');
     await prepareVisualPage(page);
