@@ -182,7 +182,7 @@ export function App() {
   const [pinEdit, setPinEdit] = useState(false);
   const [dragOverDock, setDragOverDock] = useState(false);
   const [toast, setToast] = useState('');
-  const [undoSite, setUndoSite] = useState<Site | null>(null);
+  const [undoSites, setUndoSites] = useState<Site[] | null>(null);
   const [undoSession, setUndoSession] = useState<(typeof sessions)[number] | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [weather, setWeather] = useState<Weather>(WEATHER_EMPTY);
@@ -341,7 +341,7 @@ export function App() {
     if (!toast) return;
     const timer = window.setTimeout(() => {
       setToast('');
-      setUndoSite(null);
+      setUndoSites(null);
       setUndoSession(null);
     }, 2600);
     return () => window.clearTimeout(timer);
@@ -366,13 +366,19 @@ export function App() {
     if (target.site) openSite(target.site); else openUrl(target.url);
   };
   const toggleFavorite = (site: Site) => setSites(current => current.map(item => (item.id === site.id ? { ...item, favorite: !item.favorite } : item)));
-  const removeSite = (site: Site) => {
-    setTrash(current => [site, ...current.filter(item => item.id !== site.id)]);
-    setSites(current => current.filter(item => item.id !== site.id));
+  const removeSites = (targets: Site[]) => {
+    if (!targets.length) return;
+    const ids = new Set(targets.map(item => item.id).filter((id): id is string => Boolean(id)));
+    setTrash(current => [
+      ...targets,
+      ...current.filter(item => !item.id || !ids.has(item.id)),
+    ]);
+    setSites(current => current.filter(item => !item.id || !ids.has(item.id)));
     setUndoSession(null);
-    setUndoSite(site);
-    setToast(`«${site.title}» в корзине`);
+    setUndoSites(targets);
+    setToast(targets.length === 1 ? `«${targets[0].title}» в корзине` : `${countSites(targets.length)} в корзине`);
   };
+  const removeSite = (site: Site) => removeSites([site]);
 
   /**
    * Выделение. Пока оно пусто, на экране нет ни одного органа управления,
@@ -843,7 +849,7 @@ export function App() {
                   <Pencil size={14} aria-hidden="true" />Переименовать
                 </button>
                 <button type="button" className="danger" onClick={() => {
-                  setUndoSite(null);
+                  setUndoSites(null);
                   setUndoSession(session);
                   setSessions(current => removeSession(current, session.id));
                   setToast(`Сессия «${session.name}» удалена`);
@@ -1260,7 +1266,7 @@ export function App() {
                 <Star size={16} weight="regular" aria-hidden="true" />
                 <span>В избранное</span>
               </button>
-              <button type="button" className="danger" onClick={() => { pickedSites.forEach(removeSite); clearPicked(); }}>
+              <button type="button" className="danger" onClick={() => { removeSites(pickedSites); clearPicked(); }}>
                 <Trash2 size={16} aria-hidden="true" />
                 <span>В корзину</span>
               </button>
@@ -1376,12 +1382,16 @@ export function App() {
       {toast && (
         <div className="nx-toast" role="status">
           <span>{toast}</span>
-          {undoSite && toast === `«${undoSite.title}» в корзине` && (
-            <button type="button" aria-label="Отменить удаление сайта" onClick={() => {
-              setSites(current => current.some(item => item.id === undoSite.id) ? current : [undoSite, ...current]);
-              setTrash(current => current.filter(item => item.id !== undoSite.id));
-              setToast(`«${undoSite.title}» восстановлен`);
-              setUndoSite(null);
+          {undoSites && toast === (undoSites.length === 1 ? `«${undoSites[0].title}» в корзине` : `${countSites(undoSites.length)} в корзине`) && (
+            <button type="button" aria-label={undoSites.length === 1 ? 'Отменить удаление сайта' : 'Отменить удаление сайтов'} onClick={() => {
+              const ids = new Set(undoSites.map(item => item.id).filter((id): id is string => Boolean(id)));
+              setSites(current => [
+                ...undoSites,
+                ...current.filter(item => !item.id || !ids.has(item.id)),
+              ]);
+              setTrash(current => current.filter(item => !item.id || !ids.has(item.id)));
+              setToast(undoSites.length === 1 ? `«${undoSites[0].title}» восстановлен` : `Восстановлено ${countSites(undoSites.length)}`);
+              setUndoSites(null);
             }}>Отменить</button>
           )}
           {undoSession && toast === `Сессия «${undoSession.name}» удалена` && (
