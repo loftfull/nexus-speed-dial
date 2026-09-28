@@ -807,6 +807,32 @@ test.describe('Nexus shell', () => {
     await expect.poll(() => page.locator('.nx-tile').count()).toBe(all);
   });
 
+
+  test('текущее пространство переименовывается из крошки без отдельной страницы', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Rename flow is proven once on the desktop shell.');
+
+    await page.goto('/');
+
+    const crumb = page.getByRole('button', { name: /^Пространство:/ });
+    const oldLabel = await crumb.getAttribute('aria-label');
+    const oldName = oldLabel?.replace(/^Пространство:\s*/, '') ?? '';
+    expect(oldName).toBeTruthy();
+
+    await crumb.click();
+    const rename = page.getByRole('button', { name: `Переименовать пространство «${oldName}»` });
+    await expect(rename).toBeVisible();
+    await rename.click();
+
+    const dialog = page.getByRole('dialog', { name: 'Переименовать пространство' });
+    await expect(dialog).toBeVisible();
+    const field = dialog.getByLabel('Название пространства');
+    await field.fill('Моё пространство');
+    await dialog.getByRole('button', { name: 'Сохранить' }).click();
+
+    await expect(page.getByRole('button', { name: 'Пространство: Моё пространство' })).toBeVisible();
+    await expect(page.locator('.nx-panel').getByText('Моё пространство', { exact: true })).toBeVisible();
+  });
+
   test('имя пространства названо один раз — в цепочке крошек', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'Крошки живут на широком экране.');
     await page.goto('/');
