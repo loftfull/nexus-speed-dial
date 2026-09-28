@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Folder, Home, Layers3, Pencil, Tag } from './icons.generated';
+import { Check, ChevronDown, Folder, Home, Layers3, Pencil, Tag, Trash2 } from './icons.generated';
 
 export type CrumbOption = { id: string; name: string; count?: number };
 
@@ -11,7 +11,7 @@ export type CrumbOption = { id: string; name: string; count?: number };
  * соседей: из «Программирование» видно «Дизайн» и «DevOps», и переход в
  * соседнюю категорию стоит одного нажатия вместо трёх.
  */
-export function Crumb({ kind, current, options, onPick, onClear, onRename }: {
+export function Crumb({ kind, current, options, onPick, onClear, onRename, onDelete }: {
   kind: 'space' | 'category' | 'group';
   current: CrumbOption | null;
   options: CrumbOption[];
@@ -20,6 +20,8 @@ export function Crumb({ kind, current, options, onPick, onClear, onRename }: {
   onClear?: () => void;
   /** Контекстное управление текущим узлом без постоянной кнопки в шапке. */
   onRename?: () => void;
+  /** Безопасное удаление текущего узла; подтверждение живёт в общем Nexus Dialog. */
+  onDelete?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -83,6 +85,14 @@ export function Crumb({ kind, current, options, onPick, onClear, onRename }: {
               onClick={() => { setOpen(false); onRename(); }}>
               <Pencil size={16} aria-hidden="true" />
               <span>Переименовать</span>
+            </button>
+          )}
+          {current && onDelete && (
+            <button type="button" className={'nx-crumb-item nx-crumb-delete' + (onRename ? '' : ' nx-crumb-manage')}
+              aria-label={`Удалить ${kind === 'space' ? 'пространство' : kind === 'category' ? 'категорию' : 'группу'} «${current.name}»`}
+              onClick={() => { setOpen(false); onDelete(); }}>
+              <Trash2 size={16} aria-hidden="true" />
+              <span>Удалить</span>
             </button>
           )}
         </div>
