@@ -1,1 +1,2 @@
-mode=accept
+mode=candidate
+review=sessions-baseline-complete
