@@ -182,6 +182,7 @@ export function App() {
   const [pinEdit, setPinEdit] = useState(false);
   const [dragOverDock, setDragOverDock] = useState(false);
   const [toast, setToast] = useState('');
+  const [undoSite, setUndoSite] = useState<Site | null>(null);
   const [undoSession, setUndoSession] = useState<(typeof sessions)[number] | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [weather, setWeather] = useState<Weather>(WEATHER_EMPTY);
@@ -340,6 +341,7 @@ export function App() {
     if (!toast) return;
     const timer = window.setTimeout(() => {
       setToast('');
+      setUndoSite(null);
       setUndoSession(null);
     }, 2600);
     return () => window.clearTimeout(timer);
@@ -367,6 +369,8 @@ export function App() {
   const removeSite = (site: Site) => {
     setTrash(current => [site, ...current.filter(item => item.id !== site.id)]);
     setSites(current => current.filter(item => item.id !== site.id));
+    setUndoSession(null);
+    setUndoSite(site);
     setToast(`«${site.title}» в корзине`);
   };
 
@@ -839,6 +843,7 @@ export function App() {
                   <Pencil size={14} aria-hidden="true" />Переименовать
                 </button>
                 <button type="button" className="danger" onClick={() => {
+                  setUndoSite(null);
                   setUndoSession(session);
                   setSessions(current => removeSession(current, session.id));
                   setToast(`Сессия «${session.name}» удалена`);
@@ -1371,6 +1376,14 @@ export function App() {
       {toast && (
         <div className="nx-toast" role="status">
           <span>{toast}</span>
+          {undoSite && toast === `«${undoSite.title}» в корзине` && (
+            <button type="button" aria-label="Отменить удаление сайта" onClick={() => {
+              setSites(current => current.some(item => item.id === undoSite.id) ? current : [undoSite, ...current]);
+              setTrash(current => current.filter(item => item.id !== undoSite.id));
+              setToast(`«${undoSite.title}» восстановлен`);
+              setUndoSite(null);
+            }}>Отменить</button>
+          )}
           {undoSession && toast === `Сессия «${undoSession.name}» удалена` && (
             <button type="button" aria-label="Отменить удаление сессии" onClick={() => {
               setSessions(current => current.some(item => item.id === undoSession.id) ? current : [undoSession, ...current]);
