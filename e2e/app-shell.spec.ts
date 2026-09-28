@@ -235,7 +235,7 @@ test.describe('Nexus shell', () => {
     await expect(page.getByRole('dialog', { name: 'Календарь' })).toBeHidden();
   });
 
-  test('settings trap focus and return it to the opener', async ({ page }, testInfo) => {
+  test('settings receive focus and return it without becoming modal', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'Focus return is proven once on the desktop shell.');
     await page.goto('/');
 
@@ -246,11 +246,8 @@ test.describe('Nexus shell', () => {
 
     const dialog = page.getByRole('dialog', { name: 'Настройки' });
     await expect(dialog).toBeVisible();
-    await expect(dialog).toHaveAttribute('aria-modal', 'true');
-    await expect.poll(() => page.evaluate(() => {
-      const modal = document.querySelector('[role="dialog"][aria-modal="true"]');
-      return Boolean(modal && modal.contains(document.activeElement));
-    })).toBe(true);
+    await expect(dialog).not.toHaveAttribute('aria-modal', 'true');
+    await expect.poll(() => dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
 
     await page.getByRole('button', { name: 'Закрыть настройки' }).click();
     await expect(dialog).toHaveCount(0);
