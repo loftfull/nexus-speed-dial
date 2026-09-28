@@ -1641,7 +1641,7 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  box-shadow:inset 0 0 0 1px var(--nx-line),var(--nx-shadow-lg);
  display:flex;flex-direction:column;gap:1px}
 .nx-crumb-options{display:flex;flex-direction:column;gap:1px}
-.nx-crumb-manage{margin-top:5px;border-top:1px solid var(--nx-line);border-radius:0 0 var(--nx-r-sm) var(--nx-r-sm);color:var(--nx-muted)}
+.nx-crumb-manage{margin-top:5px;border-top:1px solid var(--nx-line);border-radius:var(--nx-r-sm);color:var(--nx-muted)}
 .nx-crumb-manage:hover{color:var(--nx-accent)}
 .nx-crumb-item{display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;border-radius:var(--nx-r-sm);
  text-align:left;color:var(--nx-text);transition:background .12s ease}
