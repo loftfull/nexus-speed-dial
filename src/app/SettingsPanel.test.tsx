@@ -10,7 +10,7 @@ const ui: UiState = {
   sidebar: true, weather: true, compact: false, animations: true, newTab: true,
   searchLocal: true, searchSuggestions: true, searchEngine: 'Google',
   weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true,
-  localOnly: true, saveHistory: true, analytics: false,
+  saveHistory: true,
 };
 const tile: TileState = { ...DEFAULT_TILE_APPEARANCE };
 const appearance: AppearanceState = { theme: 'light', accent: '#2f6fe4', wallpaper: 'lake' };
