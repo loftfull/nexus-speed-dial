@@ -24,11 +24,26 @@ describe('app store reducer', () => {
     expect(fresh.groups.filter(group => group.categoryId === 'cat-home-social').map(group => group.name)).toEqual(['Видео', 'Чаты', 'Почта']);
   });
 
-  it('starts in strict local-first mode without remote screenshots', () => {
+  it('starts without remote screenshots and does not keep retired UI flags', () => {
     localStorage.removeItem('nexus-ui');
     const fresh = createInitialAppState([]);
-    expect(fresh.ui.localOnly).toBe(true);
     expect(fresh.ui.remotePreviews).toBe(false);
+    expect(fresh.ui).not.toHaveProperty('localOnly');
+    expect(fresh.ui).not.toHaveProperty('analytics');
+  });
+
+  it('drops retired UI flags from legacy persisted state', () => {
+    localStorage.setItem('nexus-ui', JSON.stringify({
+      sidebar: true,
+      localOnly: false,
+      analytics: true,
+      searchEngine: 'Яндекс',
+    }));
+    const migrated = createInitialAppState([]);
+    expect(migrated.ui.searchEngine).toBe('Яндекс');
+    expect(migrated.ui).not.toHaveProperty('localOnly');
+    expect(migrated.ui).not.toHaveProperty('analytics');
+    localStorage.removeItem('nexus-ui');
   });
 
 
