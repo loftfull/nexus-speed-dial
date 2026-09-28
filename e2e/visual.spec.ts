@@ -203,7 +203,7 @@ test.describe('Nexus visual baselines', () => {
     const more = explorer.getByRole('button', { name: /Ещё 3/ });
     await expect(more).toBeVisible();
     await more.click();
-    await expect(explorer.getByRole('button', { name: 'Свернуть' })).toBeVisible();
+    await expect(explorer.getByRole('button', { name: 'Свернуть', exact: true })).toBeVisible();
     await expect(explorer.getByRole('button', { name: /Пространство 7/ })).toBeVisible();
 
     await expect(page).toHaveScreenshot('desktop-explorer-many-workspaces.png', {
