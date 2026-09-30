@@ -26,6 +26,7 @@ export type ViewMode = "cards" | "icons" | "list";
 export type SortMode = "manual" | "alphabetical" | "mostVisited";
 export type ThemeProfile = "macLight" | "macNight" | "autoContrast";
 export type Density = "comfortable" | "compact";
+export type Accent = "blue" | "indigo" | "violet" | "teal" | "rose" | "amber";
 
 export type CollectionRules = {
   tags?: string[];
@@ -55,6 +56,7 @@ export type Prefs = {
   showScreenshot: boolean;
   sort: SortMode;
   theme: ThemeProfile;
+  accent: Accent;
   density: Density;
   focusMode: boolean;
   showDock: boolean;

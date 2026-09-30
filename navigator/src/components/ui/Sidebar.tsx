@@ -5,8 +5,8 @@ export function SidebarSection({ label, children, icon }: { label: string; child
   return (
     <section className="space-y-0.5">
       <div className="flex items-center gap-2 px-3 py-1 mb-1">
-        {icon && <span className="text-slate-400 opacity-70">{icon}</span>}
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+        {icon && <span className="text-subtle opacity-70">{icon}</span>}
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-subtle">
           {label}
         </p>
       </div>
@@ -43,8 +43,8 @@ export function SidebarButton({
         <span className={cn(
           "ml-2 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold transition-colors",
           active
-            ? "bg-blue-500/12 text-blue-600 dark:bg-white/10 dark:text-white"
-            : "bg-black/6 text-slate-500 group-hover:bg-black/8 dark:bg-white/5 dark:text-slate-400"
+            ? "bg-accent-soft text-accent-text dark:bg-white/10 dark:text-white"
+            : "bg-black/6 text-muted group-hover:bg-black/8 dark:bg-white/5 dark:text-slate-400"
         )}>
           {count}
         </span>

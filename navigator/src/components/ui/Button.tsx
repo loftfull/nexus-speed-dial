@@ -8,7 +8,7 @@ export function Button({ children, variant = "outline", loading, dark, className
       disabled={loading || props.disabled}
       className={cn(
         "flex h-10 items-center justify-center rounded-xl px-4 text-sm font-medium transition",
-        variant === "primary" ? "bg-blue-600 text-white hover:bg-blue-700" : dark ? "border border-slate-700 hover:bg-white/10" : "border border-slate-200 hover:bg-slate-50",
+        variant === "primary" ? "bg-accent text-white hover:bg-accent-hover" : dark ? "border border-slate-700 hover:bg-white/10" : "border border-slate-200 hover:bg-slate-50",
         (loading || props.disabled) && "opacity-50 pointer-events-none",
         className
       )}

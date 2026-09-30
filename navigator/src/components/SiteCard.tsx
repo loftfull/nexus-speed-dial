@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Prefs, Site } from "../types";
 import { cn } from "../utils/cn";
 import { faviconUrl, googleFavicon, hostOf, screenshotUrl, thumioUrl } from "../utils/helpers";
+import { domainHue, monogramColors } from "../lib/theme";
 import { TileMenu } from "./TileMenu";
 
 export type ThemeClasses = { card: string; subtle: string; isDark: boolean };
@@ -20,11 +21,12 @@ export type SiteActions = {
 export function SiteIcon({ site, size, className }: { site: Site; size: number; className?: string }) {
   const [src, setSrc] = useState<string | null>(faviconUrl(site));
   if (!src) {
+    const { background, color } = monogramColors(domainHue(hostOf(site.url)));
     return (
       <span
         aria-hidden
-        className={cn("grid shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 font-semibold text-slate-600", className)}
-        style={{ width: size, height: size, fontSize: size * 0.42 }}
+        className={cn("grid shrink-0 place-items-center rounded-2xl font-semibold", className)}
+        style={{ width: size, height: size, fontSize: size * 0.42, background, color }}
       >
         {site.title.charAt(0).toUpperCase()}
       </span>
@@ -42,16 +44,27 @@ export function SiteIcon({ site, size, className }: { site: Site; size: number; 
   );
 }
 
+/** Shown when no preview can be loaded. The gradient only gets lighter than the tested monogram background, so the text keeps >= 4.5:1. */
+function ScreenshotPlaceholder({ site }: { site: Site }) {
+  const hue = domainHue(hostOf(site.url));
+  const { color } = monogramColors(hue);
+  return (
+    <div
+      className="absolute inset-0 grid place-items-center"
+      style={{ background: `linear-gradient(135deg, hsl(${hue} 70% 92%), hsl(${hue} 70% 97%))` }}
+    >
+      <span className="text-sm font-semibold tracking-tight" style={{ color }}>{hostOf(site.url)}</span>
+    </div>
+  );
+}
+
 function Screenshot({ site }: { site: Site }) {
   const [src, setSrc] = useState(screenshotUrl(site));
   const [state, setState] = useState<"loading" | "ok" | "failed">("loading");
   return (
     <div className="relative h-full w-full bg-slate-100 dark:bg-slate-900/50">
-      {state !== "ok" && (
-        <div className={cn("absolute inset-0 grid place-items-center", state === "loading" && "skeleton")}>
-          {state === "failed" && <SiteIcon site={site} size={40} />}
-        </div>
-      )}
+      {state === "loading" && <div className="skeleton absolute inset-0" />}
+      {state === "failed" && <ScreenshotPlaceholder site={site} />}
       {state !== "failed" && (
         <img
           src={src}
@@ -103,7 +116,7 @@ export function SiteCard({
       aria-label={`Select ${site.title}`}
       checked={selected}
       onChange={() => onToggleSelection(site.id)}
-      className="h-5 w-5 cursor-pointer accent-blue-600"
+      className="h-5 w-5 cursor-pointer accent-accent"
     />
   ) : (
     <div className="flex items-center gap-0.5">
@@ -115,7 +128,7 @@ export function SiteCard({
         className={cn(
           "grid h-7 w-7 place-items-center rounded-lg text-sm transition",
           prefs.view === "cards" && "border border-slate-200/50 bg-white/70 shadow-sm backdrop-blur-md",
-          site.favorite ? "text-amber-500" : "text-slate-400 opacity-0 hover:text-amber-500 focus-visible:opacity-100 group-hover:opacity-100",
+          site.favorite ? "text-star" : "text-subtle opacity-0 hover:text-star focus-visible:opacity-100 group-hover:opacity-100",
         )}
       >
         {site.favorite ? "★" : "☆"}
@@ -137,12 +150,12 @@ export function SiteCard({
   );
 
   const enrichedDot = site.extractedAt && (
-    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" title="Enriched with metadata/AI" />
+    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" title="Enriched with metadata/AI" />
   );
 
   if (prefs.view === "list") {
     return (
-      <article className={cn("group relative flex items-center gap-3 rounded-2xl border px-3 backdrop-blur-2xl transition", theme.card, compact ? "py-1.5" : "py-2.5", selected && "ring-2 ring-blue-500")}>
+      <article className={cn("group relative flex items-center gap-3 rounded-2xl border px-3 backdrop-blur-2xl transition", theme.card, compact ? "py-1.5" : "py-2.5", selected && "is-selected")}>
         <button type="button" onClick={activate} className="flex min-w-0 flex-1 items-center gap-3 text-left">
           <SiteIcon site={site} size={Math.min(prefs.iconSize, 36)} />
           <span className="min-w-0 flex-1">
@@ -162,7 +175,7 @@ export function SiteCard({
 
   if (prefs.view === "icons") {
     return (
-      <article className={cn("group relative flex flex-col items-center rounded-3xl border backdrop-blur-2xl transition", theme.card, compact ? "p-3" : "p-4", selected && "ring-2 ring-blue-500")}>
+      <article className={cn("group relative flex flex-col items-center rounded-3xl border backdrop-blur-2xl transition", theme.card, compact ? "p-3" : "p-4", selected && "is-selected")}>
         <div className="absolute right-1 top-1 z-20">{controls}</div>
         <button type="button" onClick={activate} className="flex w-full flex-col items-center gap-2 pt-2 text-center">
           <SiteIcon site={site} size={prefs.iconSize} />
@@ -177,7 +190,7 @@ export function SiteCard({
       className={cn(
         "group relative overflow-hidden rounded-3xl border backdrop-blur-2xl transition duration-200 hover:shadow-xl",
         theme.card,
-        selected && "ring-2 ring-blue-500",
+        selected && "is-selected",
       )}
     >
       <div className="absolute right-1.5 top-1.5 z-20">{controls}</div>

@@ -6,7 +6,7 @@ export function SettingsSection({ title, children, icon }: { title: string; chil
   return (
     <section className="space-y-3 rounded-[22px] border border-white/60 bg-white/72 p-4 backdrop-blur-2xl shadow-float dark:border-slate-700/60 dark:bg-slate-900/72">
       <div className="flex items-center gap-2 text-slate-700 dark:text-slate-100">
-        {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
+        {icon && <span className="text-subtle dark:text-slate-500">{icon}</span>}
         <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
       </div>
       <div className="space-y-3">{children}</div>
@@ -19,7 +19,7 @@ export function SettingRow({ label, description, children }: { label: string; de
     <div className="flex items-center justify-between gap-4">
       <div className="space-y-0.5">
         <p className="text-sm font-medium text-slate-700 dark:text-slate-100">{label}</p>
-        {description && <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>}
+        {description && <p className="text-xs text-muted dark:text-slate-400">{description}</p>}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
@@ -39,7 +39,7 @@ export function SettingSelect({ value, onChange, options }: {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="h-10 min-w-[132px] rounded-xl border border-slate-200/80 bg-white/90 px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100"
+      className="h-10 min-w-[132px] rounded-xl border border-slate-200/80 bg-white/90 px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent-soft dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100"
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -57,13 +57,13 @@ export function SettingInput({ value, onChange, placeholder, type = "text", labe
 }) {
   return (
     <div className="space-y-1">
-      <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</label>
+      <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-10 w-full rounded-xl border border-slate-200/80 bg-white/90 px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100"
+        className="h-10 w-full rounded-xl border border-slate-200/80 bg-white/90 px-3 text-sm font-medium text-slate-700 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent-soft dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100"
       />
     </div>
   );
@@ -76,7 +76,7 @@ export function SettingButton({ children, variant = "primary", onClick, disabled
   disabled?: boolean;
 }) {
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-600/20",
+    primary: "bg-accent text-white hover:bg-accent-hover shadow-md shadow-accent/20",
     secondary: "bg-white/90 text-slate-700 border border-slate-200/80 hover:bg-white dark:bg-slate-900/90 dark:text-slate-100 dark:border-slate-700",
     danger: "bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-600/20",
   };

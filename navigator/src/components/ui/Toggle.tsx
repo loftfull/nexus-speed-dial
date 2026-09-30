@@ -7,7 +7,7 @@ export function Toggle({ checked, onChange, className }: { checked: boolean; onC
       onClick={() => onChange(!checked)}
       className={cn(
         "toggle-track",
-        checked ? "bg-blue-600" : "bg-slate-300",
+        checked ? "bg-accent" : "bg-slate-300",
         className,
       )}
       aria-pressed={checked}

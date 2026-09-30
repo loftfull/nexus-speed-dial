@@ -35,7 +35,7 @@ export function Drawer({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-black/6 text-slate-500 hover:bg-black/10 hover:text-slate-700 transition text-lg"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-black/6 text-muted hover:bg-black/10 hover:text-slate-700 transition text-lg"
           >
             ×
           </button>

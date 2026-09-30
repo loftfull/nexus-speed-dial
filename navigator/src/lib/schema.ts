@@ -13,11 +13,12 @@ export const MAX_IMPORT_SITES = 1000;
 
 export const defaultPrefs: Prefs = {
   view: "cards",
-  columns: 2,
+  columns: 3,
   iconSize: 44,
   showScreenshot: true,
   sort: "manual",
   theme: "macLight",
+  accent: "blue",
   density: "compact",
   focusMode: false,
   showDock: true,
@@ -81,6 +82,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     showScreenshot: typeof p.showScreenshot === "boolean" ? p.showScreenshot : defaultPrefs.showScreenshot,
     sort: oneOf(p.sort, ["manual", "alphabetical", "mostVisited"] as const, defaultPrefs.sort),
     theme: oneOf(p.theme, ["macLight", "macNight", "autoContrast"] as const, defaultPrefs.theme),
+    accent: oneOf(p.accent, ["blue", "indigo", "violet", "teal", "rose", "amber"] as const, defaultPrefs.accent),
     density: oneOf(p.density, ["comfortable", "compact"] as const, defaultPrefs.density),
     focusMode: typeof p.focusMode === "boolean" ? p.focusMode : defaultPrefs.focusMode,
     showDock: typeof p.showDock === "boolean" ? p.showDock : defaultPrefs.showDock,

@@ -16,7 +16,7 @@ const fromSite = (s: Site): Draft => ({
   project: s.project,
   category: s.category,
   group: s.group,
-  tags: s.tags.join(", "),
+  tags: s.tags.join(","),
   icon: s.icon ?? "",
   screenshot: s.screenshot ?? "",
 });
@@ -120,7 +120,7 @@ export function SiteEditor({
           ...p,
           description: p.description || ai.shortDescription || "",
           longDescription: p.longDescription || ai.longDescription || "",
-          tags: p.tags || (ai.tags ?? []).join(", "),
+          tags: p.tags || (ai.tags ?? []).join(","),
           category: p.category || ai.category || "",
           group: p.group || ai.group || "",
         }));
@@ -134,13 +134,13 @@ export function SiteEditor({
       !messages.length
         ? { tone: "info", text: aiApiKey ? "Filled from metadata and AI." : "Filled from metadata. Add an AI key in Settings for tags and descriptions." }
         : filled
-          ? { tone: "warn", text: `Partially filled. ${messages.join(" ")}` }
-          : { tone: "error", text: messages.join(" ") },
+          ? { tone: "warn", text: `Partially filled. ${messages.join("")}` }
+          : { tone: "error", text: messages.join("") },
     );
     setLoading(false);
   };
 
-  const toneClass = { info: "text-slate-500", warn: "text-amber-600", error: "text-rose-600" };
+  const toneClass = { info: "text-muted", warn: "text-amber-600", error: "text-rose-600" };
 
   return (
     <Modal onClose={onClose} dark={dark} labelledBy="site-editor-title">
@@ -153,7 +153,7 @@ export function SiteEditor({
         {status && <p role="status" className={`text-xs ${toneClass[status.tone]}`}>{status.text}</p>}
         <Input aria-label="Title" value={draft.title} onChange={(e) => set("title")(e.target.value)} placeholder="Title" dark={dark} />
         <Input aria-label="Short description" value={draft.description} onChange={(e) => set("description")(e.target.value)} placeholder="Short description" dark={dark} />
-        <textarea aria-label="Detailed description" value={draft.longDescription} onChange={(e) => set("longDescription")(e.target.value)} placeholder="Detailed description" className={`min-h-24 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 ${dark ? "border-slate-700 bg-slate-900/80 text-slate-100" : "border-slate-200 bg-white"}`} />
+        <textarea aria-label="Detailed description" value={draft.longDescription} onChange={(e) => set("longDescription")(e.target.value)} placeholder="Detailed description" className={`min-h-24 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft ${dark ? "border-slate-700 bg-slate-900/80 text-slate-100" : "border-slate-200 bg-white"}`} />
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Input aria-label="Project" value={draft.project} onChange={(e) => set("project")(e.target.value)} placeholder="Project" dark={dark} />
           <Input aria-label="Category" value={draft.category} onChange={(e) => set("category")(e.target.value)} placeholder="Category" dark={dark} />

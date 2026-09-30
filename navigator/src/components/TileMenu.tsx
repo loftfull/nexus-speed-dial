@@ -41,7 +41,7 @@ export function TileMenu({
         aria-expanded={open}
         onClick={onToggle}
         className={cn(
-          "grid place-items-center rounded-lg bg-transparent text-slate-500 transition hover:bg-black/5 hover:text-slate-800",
+          "grid place-items-center rounded-lg bg-transparent text-muted transition hover:bg-black/5 hover:text-slate-800",
           compact ? "h-7 w-7 text-sm" : "h-8 w-8 text-base",
           dark && "text-slate-300 hover:bg-white/10 hover:text-white",
         )}

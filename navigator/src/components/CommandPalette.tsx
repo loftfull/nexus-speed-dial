@@ -61,7 +61,7 @@ export function CommandPalette({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-2 flex items-center gap-3 border-b border-black/5 px-3 py-2 dark:border-white/5">
-          <Icons.Search className="h-5 w-5 text-slate-400" />
+          <Icons.Search className="h-5 w-5 text-subtle" />
           <input
             autoFocus
             role="combobox"
@@ -75,7 +75,7 @@ export function CommandPalette({
             placeholder="Search by title, domain, tag, project…"
             className="flex-1 border-none bg-transparent py-2 text-base outline-none dark:text-white"
           />
-          <kbd className="hidden rounded bg-black/5 px-2 py-1 font-mono text-[10px] text-slate-400 sm:block dark:bg-white/5">ESC</kbd>
+          <kbd className="hidden rounded bg-black/5 px-2 py-1 font-mono text-[10px] text-subtle sm:block dark:bg-white/5">ESC</kbd>
         </div>
 
         <div ref={listRef} id="palette-results" role="listbox" className="max-h-[50vh] overflow-y-auto px-1 pb-1">
@@ -96,7 +96,7 @@ export function CommandPalette({
               <img src={faviconUrl(site)} alt="" className="h-10 w-10 rounded-xl bg-white shadow-sm" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold dark:text-white">{site.title}</p>
-                <p className={cn("truncate text-xs", dark ? "text-slate-500" : "text-slate-400")}>
+                <p className={cn("truncate text-xs", dark ? "text-muted" : "text-subtle")}>
                   {hostOf(site.url)} · {site.project} / {site.category} / {site.group}
                 </p>
               </div>
@@ -114,14 +114,14 @@ export function CommandPalette({
           ))}
           {!results.length && (
             <div className="py-12 text-center">
-              <p className="text-sm text-slate-400">No results for “{query}”</p>
+              <p className="text-sm text-subtle">No results for “{query}”</p>
             </div>
           )}
         </div>
 
         <div className="flex items-center justify-between border-t border-black/5 px-4 py-2 dark:border-white/5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{results.length} results</p>
-          <div className="flex gap-4 text-[10px] text-slate-500">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-subtle">{results.length} results</p>
+          <div className="flex gap-4 text-[10px] text-muted">
             <span><kbd className="rounded bg-black/5 px-1.5 py-0.5 font-mono dark:bg-white/5">↵</kbd> Open</span>
             <span><kbd className="rounded bg-black/5 px-1.5 py-0.5 font-mono dark:bg-white/5">⇧↵</kbd> Details</span>
             <span><kbd className="rounded bg-black/5 px-1.5 py-0.5 font-mono dark:bg-white/5">↑↓</kbd> Navigate</span>

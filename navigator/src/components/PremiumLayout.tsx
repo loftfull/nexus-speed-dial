@@ -22,10 +22,10 @@ export function PremiumButton({
   variant?: "primary" | "secondary" | "ghost";
   size?: "sm" | "md" | "lg";
 }) {
-  const baseStyles = "inline-flex items-center justify-center font-semibold rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
+  const baseStyles = "inline-flex items-center justify-center font-semibold rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/20";
   
   const variants = {
-    primary: "bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-600/25 hover:-translate-y-0.5",
+    primary: "bg-accent text-white shadow-lg shadow-accent/20 hover:bg-accent-hover hover:shadow-xl hover:shadow-accent/20 hover:-translate-y-0.5",
     secondary: "bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:shadow-md",
     ghost: "bg-transparent text-slate-600 hover:bg-slate-100",
   };
@@ -58,7 +58,7 @@ export function PremiumSection({
   return (
     <section className={cn("space-y-4", className)}>
       <div className="px-1">
-        <h3 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-subtle">
           {title}
         </h3>
       </div>
@@ -80,8 +80,8 @@ export function PremiumBadge({
 }) {
   const variants = {
     default: "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
-    active: "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/15",
-    neutral: "bg-slate-100 text-slate-500 border-slate-200",
+    active: "bg-accent text-white border-accent shadow-md shadow-accent/20",
+    neutral: "bg-slate-100 text-muted border-slate-200",
   };
 
   return (

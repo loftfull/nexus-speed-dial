@@ -65,10 +65,15 @@ describe("parseLibrary", () => {
 });
 
 describe("sanitizePrefs", () => {
+  it("keeps a valid accent and preserves stored columns", () => {
+    expect(sanitizePrefs({ accent: "teal", columns: 2 })).toMatchObject({ accent: "teal", columns: 2 });
+  });
+
   it("maps the unrendered v2 'table' view to 'list' and drops unknown values", () => {
-    const p = sanitizePrefs({ view: "table", columns: 7, theme: "neon", iconSize: 500, automotiveMode: true });
+    const p = sanitizePrefs({ view: "table", columns: 7, theme: "neon", accent: "neon", iconSize: 500, automotiveMode: true });
     expect(p.view).toBe("list");
-    expect(p.columns).toBe(2);
+    expect(p.columns).toBe(3);
+    expect(p.accent).toBe("blue");
     expect(p.theme).toBe("macLight");
     expect(p.iconSize).toBe(72);
     expect("automotiveMode" in p).toBe(false);
