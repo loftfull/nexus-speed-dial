@@ -244,11 +244,11 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
         ? 'Extension не подключён'
         : 'Подключение не проверено';
 
-  return <div className="settings-card browser-import-card">
+  return <div className="browser-import-card">
     <div className="browser-import-head">
       <div>
         <h4>Подключение браузера</h4>
-        <p className="card-text">Получайте список открытых вкладок только после явного запроса через Nexus Workspace Bridge.</p>
+        <p>Получайте список открытых вкладок только после явного запроса через Nexus Workspace Bridge.</p>
       </div>
       <span className={`browser-status ${connection}`}><span></span>{statusText}</span>
     </div>

@@ -978,7 +978,17 @@ export function App() {
         action={{ label: 'Сохранить текущие сайты', icon: Plus, onClick: () => saveSession(scoped) }} />
     );
   } else if (section === 'notes') {
-    body = <NotesWorkspace sites={sites.filter(site => site.note)} onEdit={setEditing} />;
+    const noted = sites.filter(site => site.note);
+    body = noted.length ? (
+      <NotesWorkspace sites={noted} onEdit={setEditing} logos={useFavicons} />
+    ) : (
+      // Пустое состояние общее для всех разделов: у заметок было своё, на
+      // классе без единого правила в стилях, и выглядело оно одной слипшейся
+      // строкой поверх фотографии.
+      <Empty icon={StickyNote} title="Заметок пока нет"
+        hint="Заметка живёт на самом сайте: её можно вписать при добавлении или в редактировании"
+        action={{ label: 'Добавить сайт', icon: Plus, onClick: () => setAddOpen(true) }} />
+    );
   } else {
     body = grid;
   }

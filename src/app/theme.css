@@ -267,7 +267,16 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-cat-add:hover{background:var(--nx-sunken);color:var(--nx-accent)}
 .nx-cats-side{display:flex;align-items:center;gap:10px;flex:none;padding-bottom:6px;position:relative}
 
+/* Заголовок раздела лежит на сцене так же, как заголовок главной, и получает
+   ту же стеклянную подложку. Прежде её имела только главная: «Избранное»,
+   «Недавние», «Заметки», «Сессии» и «Корзина» стояли тёмным текстом прямо на
+   небе, где он читался через раз. Плитка хугает текст — растягивать её на
+   всю ширину незачем. */
 .nx-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex:none}
+.nx-head>div{align-self:flex-start;padding:7px 15px;border-radius:var(--nx-r-md);
+ background:color-mix(in srgb,var(--nx-surface) 84%,transparent);
+ -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
 .nx-head.bare{margin-top:-6px}
 .nx-head h1{font-size:var(--nx-fs-6);font-weight:700;letter-spacing:-.5px}
 .nx-head p{font-size:var(--nx-fs-3);color:var(--nx-muted);margin-top:4px}
@@ -434,7 +443,16 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  background:var(--nx-surface);box-shadow:var(--nx-shadow-sm);color:var(--nx-muted);font-size:var(--nx-fs-3);font-weight:600}
 .nx-more:hover{color:var(--nx-accent)}
 
-.nx-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:56px 20px;color:var(--nx-muted);text-align:center}
+/* Пустое состояние стоит на сцене так же, как заголовок, и по той же причине
+   получает подложку: «Удалённые сайты можно восстановить отсюда» приглушённым
+   цветом поверх озера почти не читалось. Блок хугает текст и стоит по центру,
+   а не растягивается полосой во всю ширину. */
+.nx-empty{display:flex;flex-direction:column;align-items:center;gap:8px;
+ width:fit-content;max-width:min(460px,100%);margin:32px auto;padding:30px 34px;
+ border-radius:var(--nx-r-lg);color:var(--nx-muted);text-align:center;
+ background:color-mix(in srgb,var(--nx-surface) 84%,transparent);
+ -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
 .nx-empty b{font-size:var(--nx-fs-4);color:var(--nx-text)}
 .nx-empty span{font-size:var(--nx-fs-3)}
 
@@ -894,6 +912,10 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 :root[data-wallpaper="photo"] .nx-chip,
 :root[data-wallpaper="lake"] .nx-content-title,
 :root[data-wallpaper="photo"] .nx-content-title,
+:root[data-wallpaper="lake"] .nx-head>div,
+:root[data-wallpaper="photo"] .nx-head>div,
+:root[data-wallpaper="lake"] .nx-empty,
+:root[data-wallpaper="photo"] .nx-empty,
 :root[data-wallpaper="lake"] .nx-topbar .nx-icon-btn,
 :root[data-wallpaper="photo"] .nx-topbar .nx-icon-btn,
 :root[data-wallpaper="lake"] .nx-mobile-top .nx-icon-btn,
@@ -1347,6 +1369,30 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 
 /* ─── Сессии ─────────────────────────────────────────────────────────────────
    Папка с набором сайтов проекта: открыть всю сразу или зайти в один сайт. */
+/* ── заметки ──────────────────────────────────────────────────
+   Раздел не имел стилей вовсе: ни одного правила на .notes-workspace,
+   .note-card и .note-mini-icon. Карточка повторяет сессию — та же
+   поверхность, та же кромка, тот же радиус, — потому что это соседние
+   разделы одного рабочего пространства. Колонка уже, чем у сессий: в
+   заметке нет ряда иконок, ей достаточно ширины абзаца. */
+.nx-notes{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:var(--nx-gap,16px);
+ flex:1 0 auto;align-content:start}
+.nx-note{display:flex;flex-direction:column;gap:11px;padding:15px 16px;border-radius:var(--nx-r-md);
+ background:var(--nx-surface);box-shadow:var(--nx-shadow-sm),inset 0 0 0 1px rgba(var(--nx-ring-rgb),.07)}
+.nx-note-head{display:flex;align-items:center;gap:11px}
+.nx-note-mark{width:34px;height:34px;flex:none;border-radius:var(--nx-r-sm);font-size:var(--nx-fs-2)}
+.nx-note-mark img{width:20px;height:20px}
+.nx-note-name{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.nx-note-name b{font-size:var(--nx-fs-3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nx-note-name small{font-size:var(--nx-fs-1);color:var(--nx-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Кнопка правки проявляется на карточке, а не висит на каждой: тот же приём,
+   что у действий плитки. С клавиатуры она доступна всегда. */
+.nx-note .nx-icon-btn{flex:none;opacity:0;transition:opacity .14s ease}
+.nx-note:hover .nx-icon-btn,.nx-note:focus-within .nx-icon-btn{opacity:1}
+.nx-note-text{font-size:var(--nx-fs-2);line-height:1.5;color:var(--nx-muted);
+ padding-top:11px;border-top:1px solid var(--nx-line);overflow-wrap:anywhere}
+@media (pointer:coarse){.nx-note .nx-icon-btn{opacity:1}}
+
 .nx-sessions{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:var(--nx-gap,16px);flex:1 0 auto;align-content:start}
 .nx-session{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:var(--nx-r-md);
  background:var(--nx-surface);box-shadow:var(--nx-shadow-sm),inset 0 0 0 1px rgba(var(--nx-ring-rgb),.07)}
@@ -1359,6 +1405,11 @@ button.nx-rail-card:hover{transform:translateY(-2px);
  font-size:var(--nx-fs-3);font-weight:600}
 .nx-session-open:disabled{background:var(--nx-sunken);color:var(--nx-muted);cursor:default}
 .nx-session-sites{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+/* Знак сайта в сессии — кнопка, а не картинка: у неё должен быть отклик на
+   наведение и видимый фокус. Своего правила у класса не было вовсе. */
+.nx-session-site{display:flex;border-radius:var(--nx-r-sm);transition:transform .14s ease,opacity .14s ease}
+.nx-session-site:hover{transform:translateY(-1px)}
+.nx-session-site:active{opacity:.75}
 .nx-session-mark{width:30px;height:30px;border-radius:var(--nx-r-sm);font-size:var(--nx-fs-2)}
 .nx-session-mark img{width:18px;height:18px}
 .nx-session-more{font-size:var(--nx-fs-2);color:var(--nx-muted);font-variant-numeric:tabular-nums}

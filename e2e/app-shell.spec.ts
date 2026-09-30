@@ -588,6 +588,16 @@ test.describe('Nexus shell', () => {
     // Иконка у каждого состояния своя, а не одна лупа на все.
     expect(recent.path).not.toBe(trash.path);
 
+    // Заметки были единственным разделом со своим пустым состоянием — на
+    // классе без единого правила в стилях. Теперь состояние общее.
+    await openSection(page, testInfo, 'Заметки');
+    const notes = (await shape())!;
+    expect(notes.title).toBe('Заметок пока нет');
+    expect(notes.action).toBe('Добавить сайт');
+    expect(notes.path).not.toBe(trash.path);
+    expect(notes.path).not.toBe(recent.path);
+    await openSection(page, testInfo, 'Недавние');
+
     // Кнопка возвращает в «Быстрый доступ», а не просто нарисована.
     await page.locator('.nx-empty-action').click();
     await expect(page.locator('.nx-main .nx-tile').first()).toBeVisible();
@@ -603,6 +613,74 @@ test.describe('Nexus shell', () => {
     expect(missing.action).toBe('Сбросить фильтр');
     await page.locator('.nx-empty-action').click();
     await expect(page.locator('.nx-main .nx-tile').first()).toBeVisible();
+  });
+
+  /**
+   * Раздел «Заметки» был написан на классах, у которых не было ни одного
+   * правила в стилях: `notes-workspace`, `note-card`, `note-mini-icon`,
+   * `empty`. Браузер рисовал его умолчаниями — без сетки, без карточек, а
+   * подписи пустого состояния слипались в строку поверх фотографии.
+   * Проверка меряет раскладку, а не наличие разметки.
+   */
+  test('заметки выложены карточками, а не голым потоком', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Сетка в несколько колонок живёт на широком экране.');
+    await page.goto('/');
+    await page.waitForSelector('.nx-grid');
+    // Набор по умолчанию складывается самим приложением при первом запуске,
+    // поэтому заметки дописываются уже к сохранённому состоянию.
+    await page.evaluate(() => {
+      const sites = JSON.parse(localStorage.getItem('nexus-sites') ?? '[]');
+      sites.slice(0, 3).forEach((site: { note?: string }, index: number) => {
+        site.note = `Заметка номер ${index + 1}`;
+      });
+      localStorage.setItem('nexus-sites', JSON.stringify(sites));
+    });
+    await page.reload();
+    await page.waitForSelector('.nx-grid');
+    await openSection(page, testInfo, 'Заметки');
+
+    const cards = page.locator('.nx-note');
+    await expect(cards).toHaveCount(3);
+
+    // Сетка, а не поток: у контейнера есть колонки, и они не одна.
+    const columns = await page.locator('.nx-notes').evaluate(
+      el => getComputedStyle(el).gridTemplateColumns.split(' ').length,
+    );
+    expect(columns).toBeGreaterThan(1);
+
+    // Карточка — карточка: своя подложка и свой радиус, а не умолчание браузера.
+    const card = await cards.first().evaluate(el => {
+      const style = getComputedStyle(el);
+      return { radius: parseFloat(style.borderTopLeftRadius), padding: parseFloat(style.paddingTop), display: style.display };
+    });
+    expect(card.radius).toBeGreaterThan(4);
+    expect(card.padding).toBeGreaterThan(8);
+    expect(card.display).toBe('flex');
+
+    // Знак сайта — настоящий фирменный логотип, а не первая буква названия.
+    await expect(cards.first().locator('.nx-note-mark img')).toHaveCount(1);
+
+    // Кнопка правки существует и названа сайтом, а не «редактировать».
+    await expect(page.getByRole('button', { name: /^Редактировать заметку «/ })).toHaveCount(3);
+  });
+
+  /**
+   * Стеклянную подложку под заголовком имела только главная: остальные пять
+   * разделов стояли тёмным текстом прямо на фотографии.
+   */
+  test('заголовок раздела стоит на подложке, а не на голой сцене', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'На узком экране заголовок в другой раскладке.');
+    await page.goto('/');
+    await page.waitForSelector('.nx-grid');
+    for (const section of ['Заметки', 'Сессии', 'Корзина']) {
+      await openSection(page, testInfo, section);
+      const plate = await page.locator('.nx-head>div').first().evaluate(el => {
+        const style = getComputedStyle(el);
+        return { background: style.backgroundColor, radius: parseFloat(style.borderTopLeftRadius) };
+      });
+      expect(plate.radius, `${section}: у заголовка нет подложки`).toBeGreaterThan(4);
+      expect(plate.background, `${section}: подложка прозрачна`).not.toBe('rgba(0, 0, 0, 0)');
+    }
   });
 
   test('a session saves the sites on screen and opens them all back', async ({ page }, testInfo) => {

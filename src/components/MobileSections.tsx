@@ -53,7 +53,7 @@ export function MobileSections({
         {(projects.length > 0 || onAddProject) && <span className="mobile-sections-label">Проекты</span>}
         {projects.map(project => (
           <button
-            className={activeProjectId === project.id ? 'active mobile-project' : 'mobile-project'}
+            className={activeProjectId === project.id ? 'active' : undefined}
             key={project.id}
             aria-label={`Проект «${project.name}»`}
             onClick={() => selectProject(project.id)}
