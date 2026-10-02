@@ -177,7 +177,12 @@
 .nx-link{display:flex;align-items:center;gap:11px;padding:8px 11px;border-radius:var(--nx-r-md);
  color:var(--nx-text);font-size:var(--nx-fs-3);transition:background .15s,color .15s;text-align:left;width:100%}
 .nx-link svg{flex:none;color:var(--nx-muted)}
-.nx-link span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Подпись растягивается, монограмма — нет. Без :not() правило ловило и знак
+   пространства: `.nx-link span` специфичнее, чем `.nx-node-mono{flex:none}`,
+   поэтому круглая монограмма в 18 px растягивалась в овал на 98 px — замерено
+   в проводнике с семью пространствами. Инлайновая ширина тут не спасает:
+   flex-basis:0% с flex-grow:1 её перебивает. */
+.nx-link span:not(.nx-node-mono){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nx-link:hover{background:var(--nx-sunken)}
 .nx-link.on{background:var(--nx-accent-soft);color:var(--nx-accent)}
 .nx-link.on svg{color:var(--nx-accent)}

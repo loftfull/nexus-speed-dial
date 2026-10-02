@@ -665,6 +665,40 @@ test.describe('Nexus shell', () => {
   });
 
   /**
+   * Запасной знак — круг, и он обязан оставаться кругом везде, где стоит.
+   *
+   * В проводнике с семью пространствами он растягивался в овал 98×18 вместо
+   * 18×18: правило `.nx-link span{flex:1}` специфичнее, чем `flex:none` у
+   * самой монограммы, а flex-basis:0% перебивает инлайновую ширину. Дефект
+   * попал в принятый эталон и прожил там незамеченным — снимок доказывает
+   * совпадение с эталоном, а не правильность эталона.
+   *
+   * Проверка меряет каждую монограмму на экране, а не одно известное место:
+   * тот же капкан ждёт любой будущий ряд с правилом на `span`.
+   */
+  test('запасной знак остаётся кругом везде, где стоит', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Проводник пространств живёт на широком экране.');
+    await page.goto('/');
+    await page.waitForSelector('.nx-grid');
+    await page.evaluate(() => {
+      const projects = Array.from({ length: 7 }, (_, index) => ({
+        id: `space-${index}`, name: `Пространство ${index + 1}`, siteIds: [],
+      }));
+      localStorage.setItem('nexus-projects', JSON.stringify(projects));
+    });
+    await page.reload();
+    await page.waitForSelector('.nx-panel');
+
+    const marks = await page.locator('.nx-node-mono').evaluateAll(nodes => nodes.map(node => {
+      const box = node.getBoundingClientRect();
+      return { width: Math.round(box.width), height: Math.round(box.height) };
+    }));
+    expect(marks.length, 'монограммы на экране есть').toBeGreaterThan(2);
+    const stretched = marks.filter(mark => Math.abs(mark.width - mark.height) > 1);
+    expect(stretched, `растянутые знаки: ${stretched.map(m => `${m.width}x${m.height}`).join(', ')}`).toEqual([]);
+  });
+
+  /**
    * Стеклянную подложку под заголовком имела только главная: остальные пять
    * разделов стояли тёмным текстом прямо на фотографии.
    */
