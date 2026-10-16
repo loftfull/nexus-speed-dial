@@ -9,7 +9,7 @@
  */
 import { readFileSync } from 'node:fs';
 
-const FILES = ['src/app/theme.css', 'src/components/browser-import.css'];
+const FILES = ['src/app/theme.css'];
 const css = FILES.map(file => readFileSync(file, 'utf8')).join('\n');
 
 const values = property => [...css.matchAll(new RegExp(`${property}:([^;}]+)`, 'g'))].map(m => m[1].trim());

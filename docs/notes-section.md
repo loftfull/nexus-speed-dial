@@ -5,13 +5,15 @@
 Раздел «Заметки» не имел оформления вовсе. Компонент был написан на классах
 `notes-workspace`, `note-card`, `note-card-head`, `note-mini-icon` и `empty`,
 и ни один из них не встречался ни в `src/app/theme.css`, ни в
-`src/components/browser-import.css`.
+`src/components/browser-import.css` — отдельном листе стилей панели импорта,
+который с тех пор переехал в `theme.css` и удалён.
 
 Проверяется двумя способами, оба воспроизводимы:
 
 ```
-grep -n "notes-workspace\|note-card\|note-mini-icon" src/app/theme.css src/components/browser-import.css
+grep -n "notes-workspace\|note-card\|note-mini-icon" src/app/theme.css
 # ни одного совпадения
+# (тогда проверялись две таблицы стилей; второй, browser-import.css, больше нет)
 ```
 
 и на собранном приложении:

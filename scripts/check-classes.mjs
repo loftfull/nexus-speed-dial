@@ -5,7 +5,8 @@
  * Проверка заведена по следу настоящей поломки. Раздел «Заметки» был написан
  * на классах `notes-workspace`, `note-card`, `note-card-head`, `note-mini-icon`
  * и `empty`, и ни один из них не имел правила ни в `theme.css`, ни в
- * `browser-import.css`. Браузер рисовал раздел своими умолчаниями: подписи
+ * `browser-import.css` — отдельном листе панели импорта, который с тех пор
+ * переехал в `theme.css`. Браузер рисовал раздел своими умолчаниями: подписи
  * пустого состояния слипались в строку, карточек не было вовсе. Никакая
  * проверка этого не ловила — юнит-тесты смотрят разметку, снимки сверяются с
  * эталоном, а эталон был снят с той же неоформленной страницы.
@@ -22,7 +23,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const CSS_FILES = ['src/app/theme.css', 'src/components/browser-import.css'];
+const CSS_FILES = ['src/app/theme.css'];
 const ROOT = 'src';
 
 /**

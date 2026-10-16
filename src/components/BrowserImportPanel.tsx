@@ -12,7 +12,6 @@ import {
   requestBrowserTabs,
   type BrowserTab,
 } from '../domain/browserBridge';
-import './browser-import.css';
 
 type Setter<T> = (value: T | ((current: T) => T)) => void;
 
