@@ -11,6 +11,11 @@ on:
 
 permissions:
   contents: write
+  # Нужно, чтобы шлюз мог сам запустить проверку по принятым эталонам: пуш,
+  # сделанный с GITHUB_TOKEN, рабочих процессов не запускает — так GitHub
+  # защищается от бесконечной рекурсии. Без этого шага принятые эталоны
+  # оставались непроверенными до следующего ручного пуша.
+  actions: write
 
 jobs:
   capture:
@@ -87,3 +92,12 @@ jobs:
           git add e2e/visual.spec.ts-snapshots
           git commit -m 'test: accept reviewed visual baseline'
           git push origin HEAD:${GITHUB_REF_NAME}
+      # Пуш выше сделан GITHUB_TOKEN, поэтому сам он `Nexus QA` не поднимет:
+      # коммит с принятыми эталонами так и остался бы без прогона, и краснота
+      # обнаружилась бы только при следующей правке руками. Запуск через API —
+      # это не событие пуша, его такое ограничение не касается.
+      - name: Check the accepted baselines
+        if: steps.review.outputs.mode == 'accept'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run qa.yml --ref "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}"

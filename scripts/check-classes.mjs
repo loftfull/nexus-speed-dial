@@ -32,6 +32,8 @@ const ROOT = 'src';
 const MARKERS = new Map([
   ['nx-tile-standard', 'обычная плитка — умолчание модели, своих правил у неё нет'],
   ['active', 'состояние читается родителем: .nx-mobile-sections-card>button.active'],
+  ['filled', 'правил у него нет и не нужно: это отметка «картинка знака отрисована», '
+    + 'её читает перепись марок в e2e/visual.spec.ts, чтобы не снять эталон с монограммами'],
 ]);
 
 /**
@@ -57,6 +59,22 @@ const STATES = new Set([
   // рядом в одном правиле и названы одинаково во всех окнах.
   'primary', 'danger',
   'error', 'success', 'missing', 'checking', 'connected', 'unsupported',
+  // Эти десять проверка раньше не видела: они доходят до разметки склейкой
+  // или массивом, а разборщик читал только первый литерал в `className`.
+  // В долг они не записаны намеренно — это именно модификаторы, а не блоки:
+  // в стилях каждое встречается только видом `.nx-блок.имя` (`.nx-root.compact`,
+  // `.nx-panel.collapsed`, `.nx-tile.menu-open`, `.nx-head.bare`,
+  // `.nx-dock.drop`) и ни одно — самостоятельным классом.
+  'panel-collapsed', 'compact', 'still', 'swapping', 'collapsed',
+  'menu-open', 'is-hover', 'is-press', 'bare', 'drop',
+  // `brand` и `add` лежали в долге, хотя по тому же признаку это состояния:
+  // `.nx-mark.brand`, `.nx-dock-mark.brand`, `.nx-project-card.add`,
+  // `.nx-strip-card.add` — и ни одного самостоятельного правила. Долг от
+  // этого убывает, а не растёт: `outline` и `save` остаются в нём, потому что
+  // они как раз самостоятельные блоки.
+  'brand', 'add',
+  // `filled` правил не имеет вовсе — это отметка для переписи марок, см. MARKERS.
+  'filled',
 ]);
 
 /**
@@ -81,7 +99,7 @@ const OUTSIDE_NAMESPACE = new Set([
   'browser-status', 'browser-tab-copy', 'browser-tab-icon', 'browser-tab-row',
   'browser-tabs-list', 'browser-tabs-preview', 'save',
   // прочее
-  'add', 'brand', 'outline',
+  'outline',
 ]);
 
 function walk(dir) {
@@ -95,17 +113,74 @@ function walk(dir) {
 const css = CSS_FILES.map(file => readFileSync(file, 'utf8')).join('\n');
 const styled = name => new RegExp(`[.\\s,>+~]${name.replace(/[-]/g, '\\-')}(?![\\w-])`).test(css);
 
+/**
+ * Выражение в фигурных скобках читается по балансу скобок, а не регулярным
+ * выражением.
+ *
+ * Прежний разборщик брал из `className={...}` первую строку в кавычках и на
+ * этом останавливался, а класс доходит до разметки и склейкой. В
+ * `className={'nx-panel' + (panelOpen ? '' : ' collapsed')}` он видел
+ * `nx-panel` и терял ` collapsed`. Так мимо проверки прошли десять имён вне
+ * пространства `nx-`: `collapsed`, `menu-open`, `is-hover`, `is-press`,
+ * `bare`, `drop` — склейкой, и `panel-collapsed`, `compact`, `still`,
+ * `swapping` — массивом `rootClass`. У каждого есть правила в стилях, и
+ * обещание «новое имя вне `nx-` не пройдёт вовсе» для них не работало.
+ */
+function expression(source, start) {
+  let depth = 0;
+  for (let i = start; i < source.length; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}') {
+      depth--;
+      if (depth === 0) return source.slice(start + 1, i);
+    }
+  }
+  return '';
+}
+
+/**
+ * Все строковые литералы выражения: и в кавычках, и шаблонные.
+ *
+ * Кроме тех, с которыми сравнивают. В `className={'nx-cell nx-cell-pick' +
+ * ((ui.mobileMode ?? 'table') === value ? ' on' : '')}` литерал `table` — это
+ * значение по умолчанию, а не класс; так же читались `hover` и `press` из
+ * `state === 'hover'`. Поэтому операнды сравнений и `??` вычёркиваются до
+ * разбора, иначе проверка требует правил для значений.
+ */
+function literals(code) {
+  const classes = code.replace(/(?:===|!==|==|!=|\?\?)\s*(['"`])(?:\\.|(?!\1)[^\\])*\1/g, ' ');
+  const found = [];
+  for (const match of classes.matchAll(/'([^'\n]*)'|"([^"\n]*)"|`([^`]*)`/g)) {
+    found.push((match[1] ?? match[2] ?? match[3] ?? '').replace(/\$\{[^}]*\}/g, ' '));
+  }
+  return found;
+}
+
 const used = new Map();
 for (const file of walk(ROOT)) {
   const source = readFileSync(file, 'utf8');
-  for (const match of source.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`|\{[^}]*?'([^']*)')/g)) {
-    for (const chunk of [match[1], match[2]?.replace(/\$\{[^}]*\}/g, ' '), match[3]]) {
-      if (!chunk) continue;
-      for (const name of chunk.split(/\s+/)) {
-        // Обрывок склейки: проверять в нём нечего.
-        if (!name || name.endsWith('-')) continue;
-        if (!used.has(name)) used.set(name, file);
-      }
+  const chunks = [];
+
+  for (const match of source.matchAll(/className=(?:"([^"]*)"|')/g)) {
+    if (match[1] !== undefined) chunks.push(match[1]);
+  }
+  for (const match of source.matchAll(/className=\{/g)) {
+    const code = expression(source, match.index + 'className='.length);
+    chunks.push(...literals(code));
+    // `className={rootClass}` — имя переменной: читаем литералы её объявления.
+    const variable = code.trim().match(/^([A-Za-z_$][\w$]*)$/);
+    if (!variable) continue;
+    const declaration = source.match(
+      new RegExp(`(?:const|let|var)\\s+${variable[1]}\\s*=([\\s\\S]*?);\\n`));
+    if (declaration) chunks.push(...literals(declaration[1]));
+  }
+
+  for (const chunk of chunks) {
+    if (!chunk) continue;
+    for (const name of chunk.split(/\s+/)) {
+      // Обрывок склейки: проверять в нём нечего.
+      if (!name || name.endsWith('-')) continue;
+      if (!used.has(name)) used.set(name, file);
     }
   }
 }
