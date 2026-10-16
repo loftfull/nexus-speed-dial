@@ -227,6 +227,51 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-tile-name').filter({ hasText: title! }).first()).toBeVisible();
   });
 
+  /**
+   * Правка сайта меняет его, а не добавляет второй — и переживает перезагрузку.
+   *
+   * Весь путь правки до сих пор не был закрыт ни одним браузерным тестом:
+   * юнит-тесты смотрели только заполнение полей формы. Между тем форма
+   * собирает запись поверх существующей, и ошибка в этой сборке видна не
+   * сразу: на сетке сайт остаётся, а ссылки на него по `id` — в проектах,
+   * сессиях и доке — молча теряются.
+   *
+   * Поэтому проверяется и число плиток (новая не появилась), и имя после
+   * перезагрузки (правка дошла до хранилища, а не осталась в памяти).
+   */
+  test('правка сайта меняет его, а не добавляет второй', async ({ page }) => {
+    await page.goto('/');
+    const tiles = page.locator('.nx-tile');
+    const before = await tiles.count();
+    expect(before).toBeGreaterThan(1);
+
+    const first = tiles.first();
+    const was = (await first.locator('.nx-tile-name').textContent())?.trim();
+    expect(was).toBeTruthy();
+    const now = `${was} правленый`;
+
+    await first.getByRole('button', { name: /Действия для/ }).click();
+    await first.getByRole('menuitem', { name: 'Редактировать' }).click();
+
+    const form = page.locator('.nx-site-form');
+    await expect(form).toBeVisible();
+    const name = form.getByLabel('Название');
+    await expect(name).toHaveValue(was!);
+    await name.fill(now);
+    await form.getByRole('button', { name: 'Сохранить' }).click();
+    await expect(form).toHaveCount(0);
+
+    // Числа плиток достаточно: второй записи не появилось. Искать прежнее имя
+    // отдельно нельзя — новое его содержит, и такая проверка проходила бы
+    // всегда, ничего не доказывая.
+    await expect(tiles).toHaveCount(before);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: now })).toHaveCount(1);
+
+    await page.reload();
+    await expect(tiles).toHaveCount(before);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: now })).toHaveCount(1);
+  });
+
   test('site deletion offers immediate undo from the toast', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'Undo is proven once on the desktop shell.');
 
