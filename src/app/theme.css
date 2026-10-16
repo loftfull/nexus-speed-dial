@@ -693,7 +693,18 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 :root[data-theme="dark"] .nx-settings .browser-status.checking{background:rgba(57,136,238,.18);color:#7fb2ff}
 :root[data-theme="dark"] .nx-settings .browser-status.missing{background:rgba(220,72,72,.18);color:#ff9b9b}
 
-/* Панель импорта рассчитана на широкое окно — в узком ставим всё в столбец. */
+/* Панель импорта стоит в столбец на любой ширине, и это не упущение.
+   Заголовок здесь раньше обещал «в узком ставим всё в столбец», хотя правила
+   стояли вне всякого @media. Я попробовал привести код к обещанию — и замер
+   показал, что обещание было хуже кода. Своя раскладка панели —
+   `grid-template-columns:minmax(0,1fr) auto`, поле ID расширения и кнопки
+   рядом — в окне настроек не помещается: пара кнопок забирает колонкой `auto`
+   352 px из 514, полю остаётся 148, подпись переносится, и ряд становится
+   205 px высотой против 166 в столбце. То есть «широкая» раскладка выше и
+   теснее узкой.
+   Причина простая: окно настроек само по себе узкое — 514 px внутренней
+   ширины, — и вторая колонка в нём лишняя независимо от размера экрана.
+   Поэтому правила остаются без @media, а заголовок теперь говорит правду. */
 .nx-settings .browser-import-card{display:flex;flex-direction:column;gap:12px}
 .nx-settings .browser-import-head{flex-direction:column;align-items:flex-start;gap:8px}
 .nx-settings .browser-extension-row,
