@@ -243,16 +243,16 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
         ? 'Extension не подключён'
         : 'Подключение не проверено';
 
-  return <div className="browser-import-card">
-    <div className="browser-import-head">
+  return <div className="nx-browser-import-card">
+    <div className="nx-browser-import-head">
       <div>
         <h4>Подключение браузера</h4>
         <p>Получайте список открытых вкладок только после явного запроса через Nexus Workspace Bridge.</p>
       </div>
-      <span className={`browser-status ${connection}`}><span></span>{statusText}</span>
+      <span className={`nx-browser-status ${connection}`}><span></span>{statusText}</span>
     </div>
 
-    <div className="browser-extension-row">
+    <div className="nx-browser-extension-row">
       <label>
         <span>ID расширения Chrome / Edge</span>
         <input
@@ -265,27 +265,27 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
         />
         <small>Developer mode → Nexus Workspace Bridge → ID. Это идентификатор расширения, не пароль и не токен.</small>
       </label>
-      <div className="browser-extension-actions">
-        <button type="button" className="outline" onClick={checkConnection} disabled={connection === 'checking'}>
+      <div className="nx-browser-extension-actions">
+        <button type="button" className="nx-browser-btn" onClick={checkConnection} disabled={connection === 'checking'}>
           {connection === 'connected' ? <CheckCircle2 size={15}/> : <Unplug size={15}/>} Проверить
         </button>
-        <button type="button" className="save" onClick={loadTabs} disabled={connection === 'checking'}>
+        <button type="button" className="nx-browser-btn primary" onClick={loadTabs} disabled={connection === 'checking'}>
           <RefreshCw size={15}/> Запросить открытые вкладки
         </button>
       </div>
     </div>
 
-    <div className="browser-manual-import">
+    <div className="nx-browser-manual-import">
       <label htmlFor="manual-browser-urls">Ручной импорт вкладок</label>
       <textarea id="manual-browser-urls" aria-label="URL для ручного импорта" value={manualUrls} onChange={event => setManualUrls(event.target.value)} placeholder="Вставьте URL вкладок, по одному на строку" rows={3}/>
-      <button type="button" className="outline" onClick={prepareManualImport}>Подготовить URL</button>
+      <button type="button" className="nx-browser-btn" onClick={prepareManualImport}>Подготовить URL</button>
     </div>
 
-    {error && <div className="browser-import-message error" role="alert">{error}</div>}
-    {result && <div className="browser-import-message success" role="status">{result}</div>}
+    {error && <div className="nx-browser-import-message error" role="alert">{error}</div>}
+    {result && <div className="nx-browser-import-message success" role="status">{result}</div>}
 
-    {tabs.length > 0 && <div className="browser-tabs-preview">
-      <div className="browser-preview-head">
+    {tabs.length > 0 && <div className="nx-browser-tabs-preview">
+      <div className="nx-browser-preview-head">
         <div>
           <b>Предпросмотр вкладок</b>
           <small>{selectedTabs.length} выбрано · {countTabs(tabs.length)} без дублей · {countDomains(previewPlan.newSites.length)}</small>
@@ -296,19 +296,19 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
         </div>
       </div>
 
-      <div className="browser-tabs-list">
+      <div className="nx-browser-tabs-list">
         {tabs.map(tab => {
           const supported = isSupportedBrowserImportUrl(tab.url);
           const checked = selectedUrls.includes(tab.url);
-          return <label key={tab.url} className={`browser-tab-row ${supported ? '' : 'unsupported'}`}>
+          return <label key={tab.url} className={`nx-browser-tab-row ${supported ? '' : 'unsupported'}`}>
             <input
               type="checkbox"
               checked={checked}
               disabled={!supported}
               onChange={() => setSelectedUrls(items => items.includes(tab.url) ? items.filter(url => url !== tab.url) : [...items, tab.url])}
             />
-            <span className="browser-tab-icon"><Monitor size={15}/></span>
-            <span className="browser-tab-copy">
+            <span className="nx-browser-tab-icon"><Monitor size={15}/></span>
+            <span className="nx-browser-tab-copy">
               <b>{tab.title}</b>
               <small>{hostLabel(tab.url)}{tab.pinned ? ' · закреплена' : ''}{!supported ? ' · только preview' : ''}</small>
             </span>
@@ -316,13 +316,13 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
         })}
       </div>
 
-      <div className="browser-import-destination">
-        <div className="browser-model-note">
+      <div className="nx-browser-import-destination">
+        <div className="nx-browser-model-note">
           <b>Speed Dial + Library</b>
           <span>В текущей модели оба раздела используют общий SiteRecord. Новые домены появятся в общем наборе сайтов; отдельный Library-only тип относится к следующему этапу.</span>
         </div>
 
-        <div className="browser-import-metadata">
+        <div className="nx-browser-import-metadata">
           <label>
             <span>Категория новых сайтов</span>
             <select aria-label="Категория новых сайтов" value={importCategory} onChange={event => setImportCategory(event.target.value)}>
@@ -340,11 +340,11 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
           </label>
         </div>
 
-        <label className="browser-option">
+        <label className="nx-browser-option">
           <input type="checkbox" checked={addToProject} onChange={event => setAddToProject(event.target.checked)}/>
           <span><FolderPlus size={16}/> Назначить в Project</span>
         </label>
-        {addToProject && <div className="browser-project-fields">
+        {addToProject && <div className="nx-browser-project-fields">
           <select aria-label="Проект для вкладок" value={projectId} onChange={event => setProjectId(event.target.value)}>
             <option value="">Создать новый проект</option>
             {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
@@ -352,20 +352,20 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
           {!projectId && <input aria-label="Название нового проекта" value={newProjectName} onChange={event => setNewProjectName(event.target.value)} placeholder="Название нового проекта"/>}
         </div>}
 
-        <label className="browser-option">
+        <label className="nx-browser-option">
           <input type="checkbox" checked={saveSession} onChange={event => setSaveSession(event.target.checked)}/>
           <span><Save size={16}/> Сохранить как Session</span>
         </label>
-        {saveSession && <input className="browser-session-name" aria-label="Название сессии" value={sessionName} onChange={event => setSessionName(event.target.value)} placeholder="Название сессии"/>}
+        {saveSession && <input className="nx-browser-session-name" aria-label="Название сессии" value={sessionName} onChange={event => setSessionName(event.target.value)} placeholder="Название сессии"/>}
       </div>
 
-      <div className="browser-import-summary">
+      <div className="nx-browser-import-summary">
         <span>{countTabs(previewPlan.existingDomainMatches)} уже представлены сохранёнными сайтами</span>
         <span>{previewPlan.collapsedTabCount} будут объединены по домену</span>
         {unsupportedTabCount > 0 && <span>{countTabs(unsupportedTabCount)} по FTP доступны только для просмотра</span>}
       </div>
 
-      <button type="button" className="save browser-import-apply" onClick={applyImport} disabled={!selectedTabs.length}>
+      <button type="button" className="nx-browser-btn primary nx-browser-import-apply" onClick={applyImport} disabled={!selectedTabs.length}>
         Импортировать выбранные вкладки
       </button>
     </div>}

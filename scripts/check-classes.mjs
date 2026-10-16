@@ -91,16 +91,14 @@ const STATES = new Set([
  * ним.
  */
 const OUTSIDE_NAMESPACE = new Set([
-  // src/components/BrowserImportPanel.tsx — свой лист стилей
-  'browser-extension-actions', 'browser-extension-row', 'browser-import-apply',
-  'browser-import-card', 'browser-import-destination', 'browser-import-head',
-  'browser-import-message', 'browser-import-metadata', 'browser-import-summary',
-  'browser-manual-import', 'browser-model-note', 'browser-option',
-  'browser-preview-head', 'browser-project-fields', 'browser-session-name',
-  'browser-status', 'browser-tab-copy', 'browser-tab-icon', 'browser-tab-row',
-  'browser-tabs-list', 'browser-tabs-preview', 'save',
-  // прочее
-  'outline',
+  // Пусто — и это утверждение, а не умолчание: всё оформление живёт в
+  // пространстве `nx-`. Последними уехали двадцать одно имя панели импорта
+  // вместе с её листом стилей, а `save` и `outline` — две породы её кнопок —
+  // стали одним блоком `nx-browser-btn` с модификатором `primary`.
+  //
+  // Храповик с этого места работает в одну сторону: пополнять список нельзя.
+  // Новое имя вне `nx-` проверка не пропустит, и обойти её, собрав класс
+  // склейкой, тоже не выйдет — выражение `className` читается целиком.
 ]);
 
 function walk(dir) {

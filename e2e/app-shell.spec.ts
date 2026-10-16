@@ -1283,20 +1283,20 @@ test.describe('Nexus shell', () => {
     const before = await stored();
 
     await openSettings(page, 'Данные');
-    await expect(page.locator('.browser-status')).toHaveText(/Подключение не проверено/);
+    await expect(page.locator('.nx-browser-status')).toHaveText(/Подключение не проверено/);
 
     await page.getByLabel('URL для ручного импорта')
       .fill('https://example.com/docs\nhttps://developer.mozilla.org/ru/');
     await page.getByRole('button', { name: 'Подготовить URL' }).click();
 
-    const preview = page.locator('.browser-tabs-preview');
+    const preview = page.locator('.nx-browser-tabs-preview');
     await expect(preview).toBeVisible();
-    await expect(preview.locator('.browser-tab-row')).toHaveCount(2);
+    await expect(preview.locator('.nx-browser-tab-row')).toHaveCount(2);
 
     await page.getByRole('button', { name: 'Выбрать все' }).click();
     await page.getByRole('button', { name: 'Импортировать выбранные вкладки' }).click();
 
-    await expect(page.locator('.browser-import-message.success')).toBeVisible();
+    await expect(page.locator('.nx-browser-import-message.success')).toBeVisible();
     expect(await stored()).toBe(before + 2);
 
     // Импорт обязан дожить до следующего открытия вкладки: он пишет в
