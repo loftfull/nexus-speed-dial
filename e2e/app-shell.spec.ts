@@ -1264,6 +1264,47 @@ test.describe('Nexus shell', () => {
     await expect(tile.locator('.nx-tile-sub')).toHaveCount(0);
   });
 
+  /**
+   * Ручной импорт вкладок — запасной путь панели «Подключение браузера», и до
+   * этого теста он не был пройден ни одной браузерной проверкой.
+   *
+   * Запасной он потому, что расширения у пользователя может не быть, а вкладки
+   * перенести всё равно нужно: адреса вставляются руками. Это единственный
+   * способ воспользоваться панелью без расширения, и проверять его надо именно
+   * так — без расширения, как в любом прогоне тестов.
+   *
+   * Заодно проверяется честность состояния: пока подключение не проверяли,
+   * панель так и говорит, а не изображает подключённое расширение.
+   */
+  test('ручной импорт вкладок работает без расширения', async ({ page }) => {
+    await page.goto('/');
+    const stored = () => page.evaluate(
+      () => JSON.parse(localStorage.getItem('nexus-sites') || '[]').length as number);
+    const before = await stored();
+
+    await openSettings(page, 'Данные');
+    await expect(page.locator('.browser-status')).toHaveText(/Подключение не проверено/);
+
+    await page.getByLabel('URL для ручного импорта')
+      .fill('https://example.com/docs\nhttps://developer.mozilla.org/ru/');
+    await page.getByRole('button', { name: 'Подготовить URL' }).click();
+
+    const preview = page.locator('.browser-tabs-preview');
+    await expect(preview).toBeVisible();
+    await expect(preview.locator('.browser-tab-row')).toHaveCount(2);
+
+    await page.getByRole('button', { name: 'Выбрать все' }).click();
+    await page.getByRole('button', { name: 'Импортировать выбранные вкладки' }).click();
+
+    await expect(page.locator('.browser-import-message.success')).toBeVisible();
+    expect(await stored()).toBe(before + 2);
+
+    // Импорт обязан дожить до следующего открытия вкладки: он пишет в
+    // хранилище, а не только в состояние панели.
+    await page.reload();
+    expect(await stored()).toBe(before + 2);
+  });
+
   test('resetting a section puts its controls back', async ({ page }) => {
     await page.goto('/');
     await openSettings(page, 'Общие');
