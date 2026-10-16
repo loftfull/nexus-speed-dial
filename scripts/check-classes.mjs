@@ -40,7 +40,10 @@ const MARKERS = new Map([
  * общее для всего приложения, поэтому список закрытый.
  */
 const STATES = new Set([
-  'on', 'off', 'active', 'picked', 'open', 'ready', 'danger',
+  'on', 'off', 'active', 'picked', 'open', 'ready',
+  // `primary` и `danger` — пара вариантов главной кнопки диалога; они живут
+  // рядом в одном правиле и названы одинаково во всех окнах.
+  'primary', 'danger',
   'error', 'success', 'missing', 'checking', 'connected', 'unsupported',
 ]);
 
@@ -57,11 +60,6 @@ const STATES = new Set([
  * ним.
  */
 const OUTSIDE_NAMESPACE = new Set([
-  // src/components/AddSiteModal.tsx
-  'overlay', 'site-form', 'eyebrow', 'close', 'form-colors', 'form-error',
-  'metadata-status', 'reset', 'save',
-  // src/components/MobileSections.tsx
-  'mobile-sheet', 'mobile-sections-card', 'mobile-sections-label', 'mobile-project-add',
   // src/components/BrowserImportPanel.tsx — свой лист стилей
   'browser-extension-actions', 'browser-extension-row', 'browser-import-apply',
   'browser-import-card', 'browser-import-destination', 'browser-import-head',
@@ -69,7 +67,7 @@ const OUTSIDE_NAMESPACE = new Set([
   'browser-manual-import', 'browser-model-note', 'browser-option',
   'browser-preview-head', 'browser-project-fields', 'browser-session-name',
   'browser-status', 'browser-tab-copy', 'browser-tab-icon', 'browser-tab-row',
-  'browser-tabs-list', 'browser-tabs-preview',
+  'browser-tabs-list', 'browser-tabs-preview', 'save',
   // прочее
   'add', 'brand', 'outline',
 ]);

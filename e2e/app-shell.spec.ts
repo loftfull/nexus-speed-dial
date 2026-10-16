@@ -53,7 +53,7 @@ test.describe('Nexus shell', () => {
     await page.getByRole('button', { name: 'Добавить сайт' }).first().click();
     await page.getByLabel('Название').fill('GitHub issue 123');
     await page.getByLabel('Адрес сайта').fill('https://github.com/openai/openai/issues/123?tab=readme#top');
-    await page.locator('.site-form').getByRole('button', { name: 'Добавить сайт' }).click();
+    await page.locator('.nx-site-form').getByRole('button', { name: 'Добавить сайт' }).click();
 
     const destination = 'https://github.com/openai/openai/issues/123?tab=readme#top';
     await expect.poll(() => page.evaluate(title => {
@@ -138,7 +138,7 @@ test.describe('Nexus shell', () => {
   test('the add-site dialog is a centred card and closes with Escape', async ({ page }) => {
     await page.goto('/');
     await page.locator('.nx-dock').getByRole('button', { name: 'Добавить сайт' }).click();
-    const form = page.locator('.site-form');
+    const form = page.locator('.nx-site-form');
     await expect(form).toBeVisible();
 
     // It is a card, not a full-width band: its layout lived in a stylesheet that

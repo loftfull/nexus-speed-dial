@@ -104,7 +104,7 @@
 /* Обводка фокуса — для кнопок и ссылок. У полей ввода свой знак фокуса
    (рамка и мягкое кольцо), и вторая обводка поверх выглядела двойной. */
 .nx-root :focus-visible{outline:2px solid var(--nx-accent);outline-offset:2px}
-.site-form input:focus-visible,.site-form select:focus-visible,
+.nx-site-form input:focus-visible,.nx-site-form select:focus-visible,.nx-site-form textarea:focus-visible,
 .nx-action-field input:focus-visible,.nx-palette-field input:focus-visible{outline:none}
 .nx-root.panel-collapsed{--nx-panel-w:76px}
 .nx-label{font-size:var(--nx-fs-1);font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--nx-muted)}
@@ -715,35 +715,44 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 /* ── окно «Добавить сайт» ──────────────────────────────────────
    Раскладка этого окна жила в product-overrides.css и пропала вместе
    с ним, когда настройки переехали в свою панель. */
-.nx-root ~ .overlay,.overlay{position:fixed;inset:0;z-index:100;background:rgba(20,28,45,.42);
+/* Слой-подложка общий для формы сайта и мобильного листа разделов. У диалога
+   подтверждения свой слой, `.nx-dialog-layer`: он центрует окно иначе и
+   лежит выше. Сливать их значило бы менять поведение ради одного имени. */
+.nx-root ~ .nx-overlay,.nx-overlay{position:fixed;inset:0;z-index:100;background:rgba(20,28,45,.42);
  display:grid;place-items:center;padding:16px}
-.site-form{width:min(460px,100%);max-height:calc(100vh - 32px);overflow-y:auto;border:0;border-radius:var(--nx-r-lg);
+.nx-site-form{width:min(460px,100%);max-height:calc(100vh - 32px);overflow-y:auto;border:0;border-radius:var(--nx-r-lg);
  background:var(--nx-surface);box-shadow:var(--nx-shadow-lg);color:var(--nx-text);padding:0}
-.site-form header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px 14px;
+.nx-site-form header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px 14px;
  border-bottom:1px solid var(--nx-line)}
-.site-form .eyebrow{font-size:var(--nx-fs-1);font-weight:700;letter-spacing:1.3px;color:var(--nx-muted)}
-.site-form h2{font-size:var(--nx-fs-5);font-weight:700;margin:4px 0 3px;color:var(--nx-text)}
-.site-form header p{margin:0;font-size:var(--nx-fs-2);color:var(--nx-muted)}
-.site-form .close{width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:var(--nx-r-sm);
- background:var(--nx-sunken);color:var(--nx-muted)}
-.site-form .close:hover{color:var(--nx-accent)}
-.site-form>label{display:block;padding:12px 20px 0;font-size:var(--nx-fs-2);color:var(--nx-muted)}
-.site-form>label input,.site-form select{display:block;width:100%;margin-top:6px;padding:10px 11px;border-radius:var(--nx-r-sm);
- border:1px solid var(--nx-line);background:var(--nx-sunken);color:var(--nx-text);font:inherit;font-size:var(--nx-fs-3);outline:none}
-.site-form>label input:focus,.site-form select:focus{border-color:var(--nx-accent);box-shadow:0 0 0 3px var(--nx-accent-soft)}
-.site-form .form-error{display:block;margin-top:6px;font-size:var(--nx-fs-2);color:#c33547}
-:root[data-theme="dark"] .site-form .form-error{color:#ff9b9b}
-.site-form .form-colors{display:flex;flex-wrap:wrap;gap:8px;padding:12px 20px 0}
-.site-form .form-colors button{width:26px;height:26px;border-radius:50%;box-shadow:0 0 0 1px var(--nx-line)}
-.site-form .form-colors button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--nx-surface),0 0 0 4px var(--nx-accent)}
-.site-form .metadata-status{padding:10px 20px 0;margin:0;color:var(--nx-muted)}
-.site-form footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding:14px 20px;
+.nx-site-form h2{font-size:var(--nx-fs-5);font-weight:700;margin:4px 0 3px;color:var(--nx-text)}
+.nx-site-form header p{margin:0;font-size:var(--nx-fs-2);color:var(--nx-muted)}
+/* Кнопка закрытия — тот же `nx-icon-btn`, что в шапке настроек; здесь она
+   лишь чуть меньше, потому что шапка формы ниже. */
+.nx-site-form header .nx-icon-btn{width:32px;height:32px;border-radius:var(--nx-r-sm)}
+.nx-site-form>label{display:block;padding:12px 20px 0;font-size:var(--nx-fs-2);color:var(--nx-muted)}
+.nx-site-form>label input,.nx-site-form select,.nx-site-form textarea{display:block;width:100%;margin-top:6px;
+ padding:10px 11px;border-radius:var(--nx-r-sm);
+ border:1px solid var(--nx-line);background:var(--nx-surface);color:var(--nx-text);font:inherit;font-size:var(--nx-fs-3)}
+.nx-site-form textarea{resize:vertical;min-height:64px;line-height:1.45}
+.nx-site-form>label input:focus,.nx-site-form select:focus,.nx-site-form textarea:focus{
+ border-color:var(--nx-accent);box-shadow:0 0 0 3px var(--nx-accent-soft)}
+.nx-form-error{display:block;margin:6px 20px 0;font-size:var(--nx-fs-2);color:#c33547}
+:root[data-theme="dark"] .nx-form-error{color:#ff9b9b}
+.nx-site-form .nx-swatches{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.nx-site-form .nx-swatches button{width:26px;height:26px;border-radius:50%;box-shadow:0 0 0 1px var(--nx-line)}
+.nx-site-form .nx-swatches button.on{box-shadow:0 0 0 2px var(--nx-surface),0 0 0 4px var(--nx-accent)}
+.nx-site-form .nx-form-status{padding:10px 20px 0;margin:0;color:var(--nx-muted)}
+.nx-site-form footer{display:flex;align-items:center;justify-content:flex-end;gap:9px;margin-top:16px;padding:14px 20px;
  border-top:1px solid var(--nx-line)}
-.site-form .reset{font-size:var(--nx-fs-3);color:var(--nx-muted)}
-.site-form .reset:hover{color:var(--nx-text)}
-.site-form .save{padding:10px 16px;border-radius:var(--nx-r-sm);background:var(--nx-accent);color:var(--nx-surface);
- font-size:var(--nx-fs-3);font-weight:600}
-.site-form .save:disabled{opacity:.45;cursor:not-allowed}
+/* Пара кнопок внизу — та же, что у диалога подтверждения: одно поведение,
+   одни имена, одна высота. */
+.nx-site-form footer button{min-width:102px;height:40px;border-radius:var(--nx-r-md);padding:0 16px;
+ font-weight:700;font-size:var(--nx-fs-3)}
+.nx-site-form footer .nx-dialog-cancel{background:var(--nx-sunken);color:var(--nx-muted)}
+.nx-site-form footer .nx-dialog-cancel:hover{color:var(--nx-text)}
+.nx-site-form footer .primary{background:var(--nx-accent);color:#fff;
+ box-shadow:0 8px 22px color-mix(in srgb,var(--nx-accent) 24%,transparent)}
+.nx-site-form footer .primary:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
 
 
 /* ── action dialogs ── */
@@ -770,18 +779,18 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-action-dialog-actions button:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
 .nx-action-dialog-actions button:not(:disabled):active{transform:translateY(1px)}
 
-.nx-root .mobile-sections-card{width:min(440px,100%);max-height:min(78vh,720px);overflow-y:auto;
+.nx-root .nx-mobile-sections-card{width:min(440px,100%);max-height:min(78vh,720px);overflow-y:auto;
  border:1px solid var(--nx-line);border-radius:var(--nx-r-lg) var(--nx-r-lg) var(--nx-r-md) var(--nx-r-md);background:var(--nx-surface);
  box-shadow:var(--nx-shadow-lg);padding:12px;color:var(--nx-text)}
-.nx-root .mobile-sections-card header{display:flex;align-items:center;justify-content:space-between;padding:7px 7px 12px}
-.nx-root .mobile-sections-card header b{font-size:var(--nx-fs-5)}
-.nx-root .mobile-sections-card header button{width:34px;height:34px;display:grid;place-items:center;border-radius:var(--nx-r-sm);background:var(--nx-sunken);color:var(--nx-muted)}
-.nx-root .mobile-sections-card>button{width:100%;display:grid;grid-template-columns:22px minmax(0,1fr) 18px;align-items:center;gap:10px;
+.nx-root .nx-mobile-sections-card header{display:flex;align-items:center;justify-content:space-between;padding:7px 7px 12px}
+.nx-root .nx-mobile-sections-card header b{font-size:var(--nx-fs-5)}
+.nx-root .nx-mobile-sections-card header button{width:34px;height:34px;display:grid;place-items:center;border-radius:var(--nx-r-sm);background:var(--nx-sunken);color:var(--nx-muted)}
+.nx-root .nx-mobile-sections-card>button{width:100%;display:grid;grid-template-columns:22px minmax(0,1fr) 18px;align-items:center;gap:10px;
  min-height:44px;padding:9px 11px;border-radius:var(--nx-r-md);text-align:left;color:var(--nx-text)}
-.nx-root .mobile-sections-card>button:hover,.nx-root .mobile-sections-card>button.active{background:var(--nx-accent-soft);color:var(--nx-accent)}
-.nx-root .mobile-sections-label{display:block;margin:9px 5px 4px;padding-top:10px;border-top:1px solid var(--nx-line);
+.nx-root .nx-mobile-sections-card>button:hover,.nx-root .nx-mobile-sections-card>button.active{background:var(--nx-accent-soft);color:var(--nx-accent)}
+.nx-root .nx-mobile-sections-label{display:block;margin:9px 5px 4px;padding-top:10px;border-top:1px solid var(--nx-line);
  font-size:var(--nx-fs-1);font-weight:700;letter-spacing:1.25px;text-transform:uppercase;color:var(--nx-muted)}
-.nx-root .mobile-sections-card>button.mobile-project-add{color:var(--nx-accent)}
+.nx-root .nx-mobile-sections-card>button.nx-mobile-project-add{color:var(--nx-accent)}
 
 @media(max-width:680px){
  .nx-dialog-layer{align-items:end;padding:16px}
@@ -1244,18 +1253,18 @@ button.nx-rail-card:hover{transform:translateY(-2px);
 .nx-cal-dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--nx-accent)}
 .nx-cal-close{display:none}
 
-.metadata-status{display:flex;align-items:center;gap:6px;font-size:var(--nx-fs-2);color:var(--nx-muted)}
-.metadata-status svg{animation:metadata-spin .9s linear infinite}
-.metadata-status.ready{color:#1f8a63}
-.metadata-status.ready svg{display:none}
-:root[data-theme="dark"] .metadata-status.ready{color:#4fd0a4}
+.nx-form-status{display:flex;align-items:center;gap:6px;font-size:var(--nx-fs-2);color:var(--nx-muted)}
+.nx-form-status svg{animation:metadata-spin .9s linear infinite}
+.nx-form-status.ready{color:#1f8a63}
+.nx-form-status.ready svg{display:none}
+:root[data-theme="dark"] .nx-form-status.ready{color:#4fd0a4}
 @keyframes metadata-spin{to{transform:rotate(360deg)}}
 
-.mobile-sheet{align-items:end}
+.nx-mobile-sheet{align-items:end}
 @keyframes nx-panel-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-.site-form,.mobile-sections-card{animation:nx-panel-in .26s cubic-bezier(.22,1,.36,1) both}
+.nx-site-form,.nx-mobile-sections-card{animation:nx-panel-in .26s cubic-bezier(.22,1,.36,1) both}
 @media(prefers-reduced-motion:reduce){
- .site-form,.mobile-sections-card,.nx-settings{animation:none!important}
+ .nx-site-form,.nx-mobile-sections-card,.nx-settings{animation:none!important}
  /* Каскад — украшение: тем, кто просил меньше движения, он не нужен. */
  .nx-tile{animation-delay:0ms!important}
 }
@@ -1342,9 +1351,9 @@ button.nx-rail-card:hover{transform:translateY(-2px);
    Поэтому каждая поверхность приложения получает внутреннее кольцо, а тени
    остаются мелкими. */
 .nx-panel,.nx-quick,.nx-dock,.nx-palette,.nx-action-dialog,.nx-settings,
-.nx-card,.nx-favchip,.nx-mobile-top>*,.site-form,.nx-cal,.nx-forecast{
+.nx-card,.nx-favchip,.nx-mobile-top>*,.nx-site-form,.nx-cal,.nx-forecast{
  box-shadow:var(--nx-shadow-sm),inset 0 0 0 1px rgba(var(--nx-ring-rgb),.07)}
-.nx-palette,.nx-action-dialog,.site-form{
+.nx-palette,.nx-action-dialog,.nx-site-form{
  box-shadow:0 1px 1px rgba(var(--nx-shade-rgb),.04),0 8px 16px -4px rgba(var(--nx-shade-rgb),.07),
   0 24px 32px -8px rgba(var(--nx-shade-rgb),.09),inset 0 0 0 1px rgba(var(--nx-ring-rgb),.09)}
 

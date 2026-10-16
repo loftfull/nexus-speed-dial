@@ -39,8 +39,8 @@ export function MobileSections({
   };
 
   return (
-    <div className="overlay mobile-sheet">
-      <section className="mobile-sections-card" role="dialog" aria-label="Разделы и пространства">
+    <div className="nx-overlay nx-mobile-sheet">
+      <section className="nx-mobile-sections-card" role="dialog" aria-label="Разделы и пространства">
         <header>
           <b>Разделы и пространства</b>
           <button aria-label="Закрыть разделы" onClick={onClose}><X /></button>
@@ -50,7 +50,7 @@ export function MobileSections({
             <Icon size={18} />{label}<ChevronRight size={15} />
           </button>
         ))}
-        {(projects.length > 0 || onAddProject) && <span className="mobile-sections-label">Проекты</span>}
+        {(projects.length > 0 || onAddProject) && <span className="nx-mobile-sections-label">Проекты</span>}
         {projects.map(project => (
           <button
             className={activeProjectId === project.id ? 'active' : undefined}
@@ -62,7 +62,7 @@ export function MobileSections({
           </button>
         ))}
         {onAddProject && (
-          <button className="mobile-project-add" aria-label="Добавить пространство" onClick={() => { onAddProject(); onClose(); }}>
+          <button className="nx-mobile-project-add" aria-label="Добавить пространство" onClick={() => { onAddProject(); onClose(); }}>
             <Plus size={18} />Добавить пространство<ChevronRight size={15} />
           </button>
         )}
