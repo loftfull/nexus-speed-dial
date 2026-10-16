@@ -11,7 +11,7 @@ async function openSection(page: Page, info: TestInfo, name: string) {
     return;
   }
   await page.getByRole('button', { name: 'Разделы' }).click();
-  await page.locator('.mobile-sections-card').getByRole('button', { name, exact: true }).click();
+  await page.locator('.nx-mobile-sections-card').getByRole('button', { name, exact: true }).click();
 }
 
 /** Кнопка вызова поиска: в верхней строке на широком, в шапке на узком. */
@@ -979,7 +979,7 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-rail')).toBeHidden();
     await page.getByRole('button', { name: 'Разделы' }).click();
     await expect(page.getByText(/Разделы и (проекты|пространства)/)).toBeVisible();
-    await page.locator('.mobile-sections-card').getByRole('button', { name: 'Заметки', exact: true }).click();
+    await page.locator('.nx-mobile-sections-card').getByRole('button', { name: 'Заметки', exact: true }).click();
     await expect(page.locator('.nx-head h1')).toHaveText('Заметки');
   });
 
@@ -1002,7 +1002,7 @@ test.describe('Nexus shell', () => {
       await page.locator('.nx-panel').getByRole('button', { name: 'Добавить пространство' }).first().click();
     } else {
       await page.getByRole('button', { name: 'Разделы' }).click();
-      await page.locator('.mobile-sections-card').getByRole('button', { name: 'Добавить пространство' }).click();
+      await page.locator('.nx-mobile-sections-card').getByRole('button', { name: 'Добавить пространство' }).click();
     }
     const dialog = page.getByRole('dialog', { name: 'Новый проект' });
     await expect(dialog).toBeVisible();
@@ -1013,7 +1013,7 @@ test.describe('Nexus shell', () => {
       await expect(page.locator('.nx-panel').getByRole('button', { name: 'Пространство «Проект E2E»' })).toBeVisible();
     } else {
       await page.getByRole('button', { name: 'Разделы' }).click();
-      await expect(page.locator('.mobile-sections-card').getByRole('button', { name: /Проект E2E/ })).toBeVisible();
+      await expect(page.locator('.nx-mobile-sections-card').getByRole('button', { name: /Проект E2E/ })).toBeVisible();
     }
     expect(await page.evaluate(() => (window as typeof window & { __nexusNativePrompt?: boolean }).__nexusNativePrompt)).toBeFalsy();
   });

@@ -31,8 +31,20 @@ const ROOT = 'src';
  */
 const MARKERS = new Map([
   ['nx-tile-standard', 'обычная плитка — умолчание модели, своих правил у неё нет'],
-  ['active', 'состояние читается родителем: .mobile-sections-card>button.active'],
+  ['active', 'состояние читается родителем: .nx-mobile-sections-card>button.active'],
 ]);
+
+/**
+ * Проверки, после которых классу не обязательно существовать: спека называет
+ * имя ровно затем, чтобы доказать его отсутствие. Так написаны, например,
+ * «над сеткой не осталось органов выбора вида» (`.nx-seg` → `toHaveCount(0)`)
+ * и «мобильная оболочка прячет панель» (`.nx-rail` → `toBeHidden()`).
+ *
+ * Список закрытый и короткий намеренно: его задача — отличить доказательство
+ * отсутствия от забытого после переименования селектора, а не перечислить все
+ * способы что-то утверждать.
+ */
+const ABSENCE_CHECKS = [/toHaveCount\(\s*0\s*\)/, /toBeHidden\(/, /\.not\./];
 
 /**
  * Состояния пишутся без пространства имён — это модификаторы, а не блоки:
@@ -126,6 +138,79 @@ if (stale.length) {
     + `больше нет: ${stale.join(', ')}.\nВычеркните их из списка.`);
 }
 
+/**
+ * Третья проверка: класс, по которому ищет спека, должен существовать в
+ * разметке.
+ *
+ * Заведена по следу настоящей поломки. `ac2f55d` переименовал в компоненте
+ * `mobile-sections-card` в `nx-mobile-sections-card`, но четыре селектора в
+ * `e2e/app-shell.spec.ts` остались на старом имени — в том числе общий
+ * помощник перехода по разделам. Шесть мобильных тестов упали по таймауту
+ * ожидания несуществующего узла. Ни шкала, ни эта проверка, ни юнит-тесты,
+ * ни сборка этого не видели: переименование согласовано между разметкой и
+ * стилями, а спеки живут отдельно. Красноту показала только браузерная
+ * полоса CI — то есть самая долгая из всех.
+ *
+ * Разбираются постоянные части селекторов: строки в кавычках и шаблонные
+ * строки, отданные `locator`, `querySelector` и `querySelectorAll`.
+ *
+ * Сверяется имя не со строгим списком `used` выше, а с упоминанием в исходниках
+ * компонентов вообще. Причина в том, что класс доходит до разметки не только
+ * литералом в `className`: `nx-root` собирается в массиве `rootClass`, `filled`
+ * — склейкой в `SiteIcon`. Вопрос, на который отвечает эта проверка, слабее и
+ * потому надёжнее: встречается ли имя в слое разметки хоть где-нибудь. Имени,
+ * которого нет ни в одном компоненте, в селекторе взяться неоткуда. Сравнение
+ * идёт целыми словами, иначе `mobile-sections-card` сошёлся бы с
+ * `nx-mobile-sections-card` — именно та ошибка, по следу которой всё заведено.
+ */
+const SPEC_DIR = 'e2e';
+const LITERALS = /'([^'\n]*)'|"([^"\n]*)"|`([^`]*)`/g;
+
+const mentioned = new Set();
+for (const file of walk(ROOT)) {
+  const source = readFileSync(file, 'utf8');
+  for (const match of source.matchAll(LITERALS)) {
+    const text = (match[1] ?? match[2] ?? match[3] ?? '').replace(/\$\{[^}]*\}/g, ' ');
+    for (const token of text.split(/[^\w-]+/)) {
+      if (/^[A-Za-z][\w-]*$/.test(token)) mentioned.add(token);
+    }
+  }
+}
+
+const selected = new Map();
+for (const name of readdirSync(SPEC_DIR)) {
+  if (!name.endsWith('.ts')) continue;
+  const file = join(SPEC_DIR, name);
+  const source = readFileSync(file, 'utf8');
+  const calls = /(?:locator|querySelectorAll|querySelector)\(\s*(?:'([^']*)'|"([^"]*)"|`([^`]*)`)/g;
+  for (const match of source.matchAll(calls)) {
+    // Утверждение читается от селектора до конца выражения: проверка на
+    // отсутствие снимает требование существовать.
+    const statement = source.slice(match.index, source.indexOf(';', match.index) + 1 || match.index + 400);
+    if (ABSENCE_CHECKS.some(check => check.test(statement))) continue;
+    const selector = (match[1] ?? match[2] ?? match[3] ?? '').replace(/\$\{[^}]*\}/g, ' ');
+    for (const found of selector.matchAll(/\.([a-zA-Z][\w-]*)/g)) {
+      if (!selected.has(found[1])) selected.set(found[1], file);
+    }
+  }
+}
+
+// Склейка вида `'nx-tile-' + mode` оставляет в исходнике обрывок на дефисе;
+// спека при этом ищет собранное имя. Поэтому обрывки — разрешённые начала.
+const prefixes = [...mentioned].filter(name => name.endsWith('-'));
+const known = name => mentioned.has(name) || STATES.has(name) || MARKERS.has(name)
+  || prefixes.some(prefix => name.startsWith(prefix));
+
+const missing = [...selected].filter(([name]) => !known(name));
+if (missing.length) {
+  problems.push('Спеки ищут классы, которых в разметке нет:\n'
+    + missing.map(([name, file]) => `  ${name} — ${file}`).join('\n')
+    + '\n\nЧаще всего это забытый после переименования селектор: тест будет\n'
+    + 'ждать несуществующий узел до таймаута. Поправьте селектор. Если имя\n'
+    + 'названо затем, чтобы доказать отсутствие узла, проверка должна это\n'
+    + 'и утверждать — `toHaveCount(0)`, `toBeHidden()` или `not`.');
+}
+
 if (problems.length) {
   console.error(problems.join('\n\n'));
   process.exit(1);
@@ -133,3 +218,5 @@ if (problems.length) {
 const debt = [...used].filter(([name]) => OUTSIDE_NAMESPACE.has(name)).length;
 console.log(`Оформление на месте: ${used.size} классов в разметке, у каждого есть правило`
   + ` (меток: ${MARKERS.size}, вне пространства nx-: ${debt}).`);
+console.log(`Селекторы спек на месте: ${selected.size} классов ищут существующие узлы`
+  + ` (проверки на отсутствие не в счёт).`);
