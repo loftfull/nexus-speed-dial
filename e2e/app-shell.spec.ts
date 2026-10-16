@@ -272,6 +272,80 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-tile-name').filter({ hasText: now })).toHaveCount(1);
   });
 
+  /**
+   * Избранное обязано дожить до следующего открытия вкладки.
+   *
+   * До сих пор путь проверялся только юнит-тестом `Tile.test.tsx`: пункт меню
+   * вызывает `onFavorite`. Что метка доходит до раздела «Избранное» и до
+   * хранилища, не проверял никто, а это ровно то, что пользователь теряет
+   * молча.
+   *
+   * Счёт берётся относительный: в демонстрационном наборе избранные уже есть
+   * (Figma и Notion), и жёсткое число сломалось бы от правки набора.
+   */
+  test('сайт, добавленный в избранное, остаётся там после перезагрузки', async ({ page }, testInfo) => {
+    await page.goto('/');
+    await openSection(page, testInfo, 'Избранное');
+    const before = await page.locator('.nx-tile').count();
+
+    await openSection(page, testInfo, 'Быстрый доступ');
+    const first = page.locator('.nx-tile').first();
+    const title = (await first.locator('.nx-tile-name').textContent())?.trim();
+    expect(title).toBeTruthy();
+
+    await first.getByRole('button', { name: /Действия для/ }).click();
+    // На сетке быстрого доступа избранных нет, поэтому меню должно предлагать
+    // добавить, а не убрать. Если предложит обратное — набор изменился, и тест
+    // обязан упасть, а не тихо проверить не то.
+    const add = first.getByRole('menuitem', { name: 'В избранное' });
+    await expect(add).toBeVisible();
+    await add.click();
+
+    await openSection(page, testInfo, 'Избранное');
+    await expect(page.locator('.nx-tile')).toHaveCount(before + 1);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: title! })).toHaveCount(1);
+
+    await page.reload();
+    await openSection(page, testInfo, 'Избранное');
+    await expect(page.locator('.nx-tile')).toHaveCount(before + 1);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: title! })).toHaveCount(1);
+  });
+
+  /**
+   * Пустая корзина обещает: «Удалённые сайты можно восстановить отсюда».
+   * Кнопка «Восстановить» в ней есть, и до этого теста её не нажимал ни один
+   * тест — ни браузерный, ни юнит. Обещание держится здесь.
+   *
+   * Отмена удаления (тост и Ctrl+Z) — другой путь и проверяется отдельно: она
+   * работает сразу после удаления, а корзина нужна как раз тогда, когда момент
+   * упущен и вкладка успела закрыться.
+   */
+  test('удалённый сайт возвращается из корзины и остаётся после перезагрузки', async ({ page }, testInfo) => {
+    await page.goto('/');
+    const tiles = page.locator('.nx-tile');
+    const before = await tiles.count();
+    const first = tiles.first();
+    const title = (await first.locator('.nx-tile-name').textContent())?.trim();
+    expect(title).toBeTruthy();
+
+    await first.getByRole('button', { name: /Действия для/ }).click();
+    await first.getByRole('menuitem', { name: 'Удалить' }).click();
+    await expect(tiles).toHaveCount(before - 1);
+
+    await openSection(page, testInfo, 'Корзина');
+    const card = tiles.filter({ hasText: title! }).first();
+    await card.getByRole('button', { name: 'Восстановить' }).click();
+    await expect(tiles.filter({ hasText: title! })).toHaveCount(0);
+
+    await openSection(page, testInfo, 'Быстрый доступ');
+    await expect(tiles).toHaveCount(before);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: title! })).toHaveCount(1);
+
+    await page.reload();
+    await expect(tiles).toHaveCount(before);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: title! })).toHaveCount(1);
+  });
+
   test('site deletion offers immediate undo from the toast', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'Undo is proven once on the desktop shell.');
 
