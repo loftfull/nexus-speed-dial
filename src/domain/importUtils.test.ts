@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createBookmarkHtml, parseBookmarkHtml, withoutExistingDomains } from './importUtils';
+import { attachImportCategory, createBookmarkHtml, parseBookmarkHtml, withoutExistingDomains } from './importUtils';
+import type { SiteRecord } from './types';
 
 describe('import utilities', () => {
   it('parses browser bookmark HTML and preserves the full destination URL', () => {
@@ -59,5 +60,50 @@ describe('import utilities', () => {
       { title: 'Issue', domain: 'github.com', url: 'https://github.com/openai/openai/issues/123', desc: '', color: '#000', icon: 'G', category: 'Работа' } as any,
     ]);
     expect(html).toContain('HREF="https://github.com/openai/openai/issues/123"');
+  });
+});
+
+describe('attachImportCategory', () => {
+  const site = (over: Partial<SiteRecord> = {}): SiteRecord => ({
+    title: 'Example', desc: '', domain: 'example.com', url: 'https://example.com/',
+    color: '#111', icon: 'E', category: 'Личное', ...over,
+  });
+
+  it('привязывает импортированный сайт к существующей категории проекта', () => {
+    const categories = [
+      { id: 'cat-home-personal', name: 'Личное', projectId: 'project-home' },
+      { id: 'cat-work-personal', name: 'Личное', projectId: 'project-work' },
+    ];
+    const result = attachImportCategory([site()], categories, 'project-home');
+    expect(result.sites[0].categoryId).toBe('cat-home-personal');
+    expect(result.categories).toBe(categories);
+  });
+
+  it('создаёт категорию, если такой в проекте нет', () => {
+    const result = attachImportCategory([site({ category: 'Исследования' })], [], 'project-home');
+    expect(result.categories).toEqual([{ id: 'cat-project-home-исследования', name: 'Исследования', projectId: 'project-home' }]);
+    expect(result.sites[0].categoryId).toBe('cat-project-home-исследования');
+  });
+
+  it('не плодит одинаковые категории для пачки сайтов', () => {
+    const result = attachImportCategory(
+      [site({ domain: 'a.test' }), site({ domain: 'b.test' }), site({ domain: 'c.test', category: 'Работа' })],
+      [], 'project-home');
+    expect(result.categories).toHaveLength(2);
+    expect(result.sites[0].categoryId).toBe(result.sites[1].categoryId);
+    expect(result.sites[2].categoryId).not.toBe(result.sites[0].categoryId);
+  });
+
+  it('не трогает сайт, у которого категория уже проставлена', () => {
+    const categories = [{ id: 'cat-home-personal', name: 'Личное', projectId: 'project-home' }];
+    const result = attachImportCategory([site({ categoryId: 'cat-somewhere-else' })], categories, 'project-home');
+    expect(result.sites[0].categoryId).toBe('cat-somewhere-else');
+    expect(result.categories).toBe(categories);
+  });
+
+  it('без проекта ничего не меняет', () => {
+    const incoming = [site()];
+    const result = attachImportCategory(incoming, [], null);
+    expect(result.sites).toBe(incoming);
   });
 });

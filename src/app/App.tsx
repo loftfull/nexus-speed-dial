@@ -1665,6 +1665,7 @@ export function App() {
           groups={groups} setGroups={setGroups} ui={ui} setUi={setUi} tile={tile} setTile={setTile}
           appearance={appearance} setAppearance={setAppearance} projects={projects} setProjects={setProjects}
           sessions={sessions} setSessions={setSessions} initialSection={settingsSection}
+          activeProjectId={activeProjectId}
           onApplyBackup={backup => dispatch({ type: 'backup/apply', value: backup })} />
       )}
     </div>

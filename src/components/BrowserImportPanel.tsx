@@ -3,7 +3,8 @@ import { tabs as countTabs, plural } from '../domain/plural';
 const countNewSites=(n:number)=>plural(n,'новый сайт','новых сайта','новых сайтов');
 const countDomains=(n:number)=>plural(n,'новый домен','новых домена','новых доменов');
 import { CheckCircle2, FolderPlus, Monitor, RefreshCw, Save, Unplug } from '../app/icons.generated';
-import type { BrowserSession, Project, SiteRecord } from '../domain/types';
+import type { BrowserSession, Category, Project, SiteRecord } from '../domain/types';
+import { attachImportCategory } from '../domain/importUtils';
 import {
   checkBrowserExtension,
   isSupportedBrowserImportUrl,
@@ -22,6 +23,14 @@ type Props = {
   setProjects?: Setter<Project[]>;
   sessions: BrowserSession[];
   setSessions?: Setter<BrowserSession[]>;
+  /**
+   * Категории нужны, чтобы импортированные вкладки получили `categoryId`:
+   * без него сетка открытого проекта их не покажет, и «добавлено N» окажется
+   * правдой только в хранилище.
+   */
+  categories?: Category[];
+  setCategories?: Setter<Category[]>;
+  activeProjectId?: string | null;
 };
 
 type ConnectionState = 'idle' | 'checking' | 'connected' | 'missing';
@@ -47,7 +56,7 @@ function hostLabel(value: string) {
   }
 }
 
-export function BrowserImportPanel({ sites, setSites, projects, setProjects, sessions, setSessions }: Props) {
+export function BrowserImportPanel({ sites, setSites, projects, setProjects, sessions, setSessions, categories, setCategories, activeProjectId }: Props) {
   const [extensionId, setExtensionId] = useState(initialExtensionId);
   const [connection, setConnection] = useState<ConnectionState>('idle');
   const [error, setError] = useState('');
@@ -171,11 +180,18 @@ export function BrowserImportPanel({ sites, setSites, projects, setProjects, ses
       }
     }
 
-    const preparedSites = plan.newSites.map(site => ({
+    const namedSites = plan.newSites.map(site => ({
       ...site,
       category: importCategory || site.category,
       tags: Array.from(new Set([...(site.tags ?? []), importTag.trim()].filter(Boolean))),
     }));
+    // Складываем в тот проект, куда пользователь и просил: выбранный,
+    // создаваемый, иначе открытый. Без `categoryId` плитки не появятся на
+    // сетке до перезагрузки.
+    const destinationProjectId = targetProject?.id ?? newProject?.id ?? activeProjectId ?? null;
+    const attached = attachImportCategory(namedSites, categories ?? [], destinationProjectId);
+    const preparedSites = attached.sites;
+    if (setCategories && categories && attached.categories !== categories) setCategories(attached.categories);
     if (preparedSites.length) setSites([...preparedSites, ...sites]);
 
     let projectLabel = '';

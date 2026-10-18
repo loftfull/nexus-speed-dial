@@ -20,7 +20,7 @@ function setup(overrides: Partial<SettingsProps> = {}) {
     onClose: vi.fn(),
     sites: [], trash: [], history: [], setSites: vi.fn(), categories: [], setCategories: vi.fn(),
     groups: [], setGroups: vi.fn(), projects: [], setProjects: vi.fn(),
-    sessions: [], setSessions: vi.fn(),
+    sessions: [], setSessions: vi.fn(), activeProjectId: null,
     ui, setUi: vi.fn(), tile, setTile: vi.fn(), appearance, setAppearance: vi.fn(),
     onApplyBackup: vi.fn(),
     ...overrides,

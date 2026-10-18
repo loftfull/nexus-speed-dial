@@ -11,7 +11,7 @@ import { TILE_PRESETS, normalizeTileAppearance } from '../domain/tileAppearance'
 import { TileSettings } from './TileSettings';
 import { Card, Cell, Group, Pick, Switch, type ControlIcon } from './SettingControls';
 import { createBackup, parseBackup, type NexusBackup } from '../domain/backup';
-import { createBookmarkHtml, parseBookmarkHtml, withoutExistingDomains } from '../domain/importUtils';
+import { attachImportCategory, createBookmarkHtml, parseBookmarkHtml, withoutExistingDomains } from '../domain/importUtils';
 import { SEARCH_ENGINES } from '../domain/webSearch';
 import { sites as countSites } from '../domain/plural';
 import { dataUrlBytes, readWallpaperPhoto, saveWallpaperPhoto, shrinkImage } from '../domain/wallpaper';
@@ -73,6 +73,11 @@ export type SettingsProps = {
   categories: Category[]; setCategories: (value: Category[] | ((current: Category[]) => Category[])) => void;
   groups: SiteGroup[]; setGroups: (value: SiteGroup[] | ((current: SiteGroup[]) => SiteGroup[])) => void;
   projects: Project[]; setProjects: (value: Project[] | ((current: Project[]) => Project[])) => void;
+  /**
+   * Открытый проект. Импорт обязан складывать сайты в его категории: иначе
+   * сетка, которая отбирает плитки по категориям проекта, их не покажет.
+   */
+  activeProjectId: string | null;
   sessions: BrowserSession[]; setSessions: (value: BrowserSession[] | ((current: BrowserSession[]) => BrowserSession[])) => void;
   ui: UiState; setUi: (value: UiState | ((current: UiState) => UiState)) => void;
   tile: TileState; setTile: (value: TileState | ((current: TileState) => TileState)) => void;
@@ -396,7 +401,7 @@ export function SettingsPanel(props: SettingsProps) {
 
 
 
-function DataSection({ sites, trash, history, setSites, categories, groups, projects, setProjects, sessions, setSessions, ui, tile, appearance, onApplyBackup }: SettingsProps) {
+function DataSection({ sites, trash, history, setSites, categories, setCategories, groups, projects, setProjects, sessions, setSessions, ui, tile, appearance, onApplyBackup, activeProjectId }: SettingsProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   const [clearOpen, setClearOpen] = useState(false);
@@ -426,10 +431,15 @@ function DataSection({ sites, trash, history, setSites, categories, groups, proj
         }
 
         const incoming = parseBookmarkHtml(text);
-        const fresh = withoutExistingDomains(incoming, sites).map((site, index) => ({
+        const withIds = withoutExistingDomains(incoming, sites).map((site, index) => ({
           ...site,
           id: site.id || `site-${site.domain.replace(/[^a-z0-9]+/gi, '-')}-${Date.now()}-${index}`,
         }));
+        // Без `categoryId` сайт не попадёт на сетку открытого проекта и
+        // всплывёт только после перезагрузки, когда его привяжет миграция.
+        const attached = attachImportCategory(withIds, categories, activeProjectId);
+        const fresh = attached.sites;
+        if (attached.categories !== categories) setCategories(attached.categories);
         if (fresh.length) setSites(current => [...fresh, ...current]);
         const skipped = incoming.length - fresh.length;
         setMessage(fresh.length
@@ -444,7 +454,9 @@ function DataSection({ sites, trash, history, setSites, categories, groups, proj
 
   return (
     <>
-      <BrowserImportPanel sites={sites} setSites={setSites} projects={projects} setProjects={setProjects} sessions={sessions} setSessions={setSessions} />
+      <BrowserImportPanel sites={sites} setSites={setSites} projects={projects} setProjects={setProjects}
+        sessions={sessions} setSessions={setSessions}
+        categories={categories} setCategories={setCategories} activeProjectId={activeProjectId} />
       <Card title="Резервная копия" hint="Плитки, проекты, категории, корзина, история и настройки в одном файле.">
         <div className="nx-card-buttons">
           <button type="button" onClick={() => download(createBackup({ sites, trash, history, projects, categories, groups, sessions, settings: { ui, tile, appearance } }), 'application/json', 'nexus-backup.json')}>

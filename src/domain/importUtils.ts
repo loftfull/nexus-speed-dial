@@ -1,5 +1,48 @@
-import type { SiteRecord } from './types';
+import type { Category, SiteRecord } from './types';
 import { normalizeSiteAddress } from './siteUtils';
+import { makeCategoryId } from './hierarchy';
+
+/**
+ * Поставить импортированным сайтам `categoryId` — иначе их не видно на сетке.
+ *
+ * Оба пути импорта, закладки и открытые вкладки браузера, задавали только имя
+ * категории (`category: 'Личное'`), а идентификатор оставляли пустым. Сетка же
+ * отбирает сайты видом `ids.has(site.categoryId ?? '')` по категориям
+ * открытого проекта, и `activeProjectId` всегда задан — он падает на
+ * `projects[0].id`. Поэтому «добавлено два» было правдой, а плиток на экране
+ * не появлялось. Сайты всплывали только после перезагрузки: при обычной
+ * загрузке `migrateHierarchy` привязывает их к категории по имени.
+ *
+ * Здесь делается то же самое, но сразу: имя ищется среди категорий нужного
+ * проекта, а если такой нет — создаётся, с тем же `makeCategoryId`, что и в
+ * миграции. Сайт с уже заполненным `categoryId` не трогается.
+ */
+export function attachImportCategory<T extends SiteRecord>(
+  incoming: T[],
+  categories: Category[],
+  projectId: string | null,
+): { sites: T[]; categories: Category[] } {
+  if (!projectId) return { sites: incoming, categories };
+  const byName = new Map(categories
+    .filter(category => category.projectId === projectId)
+    .map(category => [category.name.trim().toLowerCase(), category]));
+  const added: Category[] = [];
+
+  const sites = incoming.map(site => {
+    if (site.categoryId) return site;
+    const name = (site.category ?? '').trim() || 'Личное';
+    const key = name.toLowerCase();
+    let category = byName.get(key);
+    if (!category) {
+      category = { id: makeCategoryId(name, projectId), name, projectId };
+      byName.set(key, category);
+      added.push(category);
+    }
+    return { ...site, categoryId: category.id, category: category.name };
+  });
+
+  return { sites, categories: added.length ? [...categories, ...added] : categories };
+}
 
 const colors = ['#3988ee', '#8b63e8', '#2aa879', '#e5a43a'];
 

@@ -1299,10 +1299,22 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-browser-import-message.success')).toBeVisible();
     expect(await stored()).toBe(before + 2);
 
+    // Записи в хранилище недостаточно: разбор кода показал, что импорт не
+    // ставит `categoryId`, а сетка отбирает сайты видом
+    // `ids.has(site.categoryId ?? '')` по категориям открытого проекта. То
+    // есть «добавлено два» могло быть правдой, а плиток на экране — нет.
+    // Прежняя версия этой проверки смотрела только счёт в хранилище и такую
+    // поломку пропускала.
+    await page.getByRole('button', { name: 'Закрыть настройки' }).click();
+    await expect(page.locator('.nx-settings')).toHaveCount(0);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: 'example.com' })).toHaveCount(1);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: 'developer.mozilla.org' })).toHaveCount(1);
+
     // Импорт обязан дожить до следующего открытия вкладки: он пишет в
     // хранилище, а не только в состояние панели.
     await page.reload();
     expect(await stored()).toBe(before + 2);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: 'example.com' })).toHaveCount(1);
   });
 
   test('resetting a section puts its controls back', async ({ page }) => {
