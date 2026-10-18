@@ -10,8 +10,15 @@ type Props = {
   onClose: () => void;
   onSave: (site: Site) => void;
   existing?: Site;
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; projectId?: string }[];
   groups?: { id: string; name: string; categoryId: string }[];
+  /**
+   * Открытый проект и список проектов. Нужны затем, чтобы новый сайт лёг в
+   * категорию того проекта, в котором пользователь стоит, а одноимённые
+   * категории разных проектов можно было различить в списке.
+   */
+  activeProjectId?: string | null;
+  projects?: { id: string; name: string }[];
   allowRemoteMetadata?: boolean;
   allowRemotePreview?: boolean;
 };
@@ -30,11 +37,17 @@ type Props = {
 export function AddSiteModal({
   onClose, onSave, existing, categories, groups = [],
   allowRemoteMetadata = false, allowRemotePreview = true,
+  activeProjectId = null, projects = [],
 }: Props) {
   const [title, setTitle] = useState(existing?.title || '');
   const [domain, setDomain] = useState(existing?.url || existing?.domain || '');
   const [desc, setDesc] = useState(existing?.desc || '');
-  const [categoryId, setCategoryId] = useState(existing?.categoryId || categories[0]?.id || '');
+  // Категория по умолчанию — из открытого проекта. Прежде бралась
+  // `categories[0]`, то есть первая категория первого проекта: сайт,
+  // добавленный из «Работы», попадал в «Дом» и на сетке не показывался.
+  const [categoryId, setCategoryId] = useState(existing?.categoryId
+    || categories.find(item => item.projectId === activeProjectId)?.id
+    || categories[0]?.id || '');
   const [groupId, setGroupId] = useState(existing?.groupId || '');
   const [note, setNote] = useState(existing?.note || '');
   const [tags, setTags] = useState((existing?.tags || []).join(', '));
@@ -49,6 +62,24 @@ export function AddSiteModal({
   const dialogRef = useFocusTrap<HTMLFormElement>(true);
 
   const groupOptions = groups.filter(group => group.categoryId === categoryId);
+
+  /**
+   * Список категорий для выбора: сначала открытый проект, потом остальные.
+   * Проект остаётся выбираемым — форма умеет переносить сайт в другой
+   * проект, — но подписан, чтобы перенос был осознанным, а не случайным.
+   */
+  const categoryOptions = (() => {
+    const known = new Map(projects.map(project => [project.id, project]));
+    const order = [
+      ...(activeProjectId && known.has(activeProjectId) ? [activeProjectId] : []),
+      ...projects.map(project => project.id).filter(id => id !== activeProjectId),
+    ];
+    const blocks = order
+      .map(id => ({ project: known.get(id)!, items: categories.filter(item => item.projectId === id) }))
+      .filter(block => block.items.length);
+    const loose = categories.filter(item => !item.projectId || !known.has(item.projectId));
+    return loose.length ? [...blocks, { project: null, items: loose }] : blocks;
+  })();
 
   useEffect(() => {
     if (existing || !allowRemoteMetadata || domain.trim().length < 4) return;
@@ -132,9 +163,16 @@ export function AddSiteModal({
 
         <label>Категория
           <select value={categoryId} onChange={event => { setCategoryId(event.target.value); setGroupId(''); }}>
-            {categories.length
-              ? categories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)
-              : <option value="">Нет категорий</option>}
+            {!categories.length && <option value="">Нет категорий</option>}
+            {categoryOptions.map(block => (block.project
+              // Проекты разбиты по группам: «Личное» есть и в «Доме», и в
+              // «Работе», и без подписи проекта их в списке не различить.
+              ? (
+                <optgroup key={block.project.id} label={block.project.name}>
+                  {block.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </optgroup>
+              )
+              : block.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)))}
           </select>
         </label>
 

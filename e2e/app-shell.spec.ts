@@ -67,6 +67,38 @@ test.describe('Nexus shell', () => {
     expect(opened?.[0]).toBe(destination);
   });
 
+  /**
+   * Сайт, добавленный не в первом проекте, появляется там, где его добавили.
+   *
+   * Форма получала все категории всех проектов и выбирала по умолчанию первую
+   * из них — то есть категорию первого проекта. Пользователь в «Работе»
+   * добавлял сайт, а тот уходил в «Дом» и на сетке не показывался: она
+   * отбирает плитки по категориям открытого проекта. Юнит-тест держит сам
+   * выбор по умолчанию, этот — проводку: `App` обязан передать форме
+   * открытый проект.
+   */
+  test('сайт добавляется в тот проект, в котором его добавляют', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Переключение проектов проверяется на широком экране.');
+    await page.goto('/');
+
+    // Уходим из проекта по умолчанию в соседний.
+    const other = page.locator('.nx-panel').getByRole('button', { name: /^Пространство «Работа»$/ });
+    await other.click();
+    await expect(page.getByRole('button', { name: 'Пространство: Работа' })).toBeVisible();
+    const before = await page.locator('.nx-tile').count();
+
+    await page.getByRole('button', { name: 'Добавить сайт' }).first().click();
+    const form = page.locator('.nx-site-form');
+    await form.getByLabel('Название').fill('Линейка задач');
+    await form.getByLabel('Адрес сайта').fill('linear.app');
+    await form.getByRole('button', { name: 'Добавить сайт' }).click();
+    await expect(form).toHaveCount(0);
+
+    // Плитка здесь же, без перезагрузки.
+    await expect(page.locator('.nx-tile')).toHaveCount(before + 1);
+    await expect(page.locator('.nx-tile-name').filter({ hasText: 'Линейка задач' })).toHaveCount(1);
+  });
+
   test('a pending site icon is invisible but still loads', async ({ page }) => {
     await page.goto('/');
     const mark = page.locator('.nx-mark').first();

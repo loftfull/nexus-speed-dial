@@ -61,6 +61,37 @@ describe('AddSiteModal', () => {
     }));
   });
 
+  /**
+   * Новый сайт обязан попадать в категорию открытого проекта.
+   *
+   * Находка разбора кода. Форма получала все категории всех проектов и
+   * выбирала по умолчанию `categories[0]` — первую категорию первого
+   * проекта. Пользователь, стоящий в «Работе», добавлял сайт и получал его в
+   * категории «Дома»: на сетке, которая отбирает плитки по категориям
+   * открытого проекта, он не появлялся вовсе. Тот же разрыв, что и у
+   * импорта, но на главном пути добавления.
+   */
+  it('по умолчанию выбирает категорию открытого проекта, а не первого', async () => {
+    const user = userEvent.setup(); const onSave = vi.fn();
+    render(<AddSiteModal onClose={vi.fn()} onSave={onSave}
+      activeProjectId="project-work"
+      projects={[{ id: 'project-home', name: 'Дом' }, { id: 'project-work', name: 'Работа' }]}
+      categories={[
+        { id: 'cat-home-personal', name: 'Личное', projectId: 'project-home' },
+        { id: 'cat-work-docs', name: 'Документы', projectId: 'project-work' },
+        { id: 'cat-work-tools', name: 'Инструменты', projectId: 'project-work' },
+      ]} />);
+
+    await user.type(screen.getByLabelText('Название'), 'Linear');
+    await user.type(screen.getByLabelText('Адрес сайта'), 'linear.app');
+    await user.click(screen.getByRole('button', { name: 'Добавить сайт' }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      categoryId: 'cat-work-docs',
+      category: 'Документы',
+    }));
+  });
+
   it('не сохраняет адрес, который не похож на домен', async () => {
     const user = userEvent.setup(); const onSave = vi.fn();
     render(<AddSiteModal categories={[{id:'c-personal',name:'Личное'}]} onClose={vi.fn()} onSave={onSave} />);

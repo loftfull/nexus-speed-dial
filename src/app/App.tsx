@@ -1545,6 +1545,8 @@ export function App() {
           existing={editing ?? undefined}
           categories={categories}
           groups={groups}
+          activeProjectId={activeProjectId}
+          projects={projects}
           allowRemotePreview={ui.remotePreviews === true}
           onClose={() => { setAddOpen(false); setEditing(null); }}
           onSave={site => {
