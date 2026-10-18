@@ -108,6 +108,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+/**
+ * Узел дерева без имени в состояние не пускается.
+ *
+ * При обычной загрузке это уже делает `migrateHierarchy` — `if (!item.name)
+ * continue`. Восстановление из копии ту проверку обходило: `parseBackup`
+ * смотрит только `Array.isArray(data.sites)`, а здесь проекты, категории,
+ * группы и сессии проходили через `isRecord` и приведение типа. Безымянный
+ * узел доезжал до разметки, где `NodeMark name={project.name}` зовёт
+ * `normalizeName(undefined).toLowerCase()` — исключение на отрисовке и пустая
+ * страница вместо приложения. Имя из одних пробелов отбрасывается тоже: оно
+ * не упадёт, но даст безымянную плашку в дереве.
+ */
+function named<T>(items: unknown[]): T[] {
+  return items.filter((item): item is T =>
+    isRecord(item) && typeof item.name === 'string' && item.name.trim().length > 0);
+}
+
 function mergeById<T extends { id?: string }>(incoming: T[], current: T[]): T[] {
   const incomingIds = new Set(incoming.map(item => item.id).filter((id): id is string => Boolean(id)));
   return [...incoming, ...current.filter(item => !item.id || !incomingIds.has(item.id))];
@@ -161,16 +178,16 @@ export function applyBackup(state: AppState, backup: NexusBackup): AppState {
   const remapExistingRefs = (references: string[]) => [...new Set(references.map(resolveSiteRef))];
 
   const projects = mergeById(
-    (backup.projects.filter(isRecord) as unknown as Project[]).map(project => ({
+    named<Project>(backup.projects).map(project => ({
       ...project,
       siteIds: Array.isArray(project.siteIds) ? project.siteIds.map(resolveSiteRef) : [],
     })),
     state.projects.map(project => ({ ...project, siteIds: remapExistingRefs(project.siteIds) })),
   );
-  const categories = mergeById(backup.categories.filter(isRecord) as unknown as Category[], state.categories);
-  const groups = mergeById(backup.groups.filter(isRecord) as unknown as SiteGroup[], state.groups);
+  const categories = mergeById(named<Category>(backup.categories), state.categories);
+  const groups = mergeById(named<SiteGroup>(backup.groups), state.groups);
   const sessions = mergeById(
-    (backup.sessions.filter(isRecord) as unknown as BrowserSession[]).map(session => ({
+    named<BrowserSession>(backup.sessions).map(session => ({
       ...session,
       siteIds: Array.isArray(session.siteIds) ? session.siteIds.map(resolveSiteRef) : [],
       noteSiteIds: Array.isArray(session.noteSiteIds) ? session.noteSiteIds.map(resolveSiteRef) : session.noteSiteIds,

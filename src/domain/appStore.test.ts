@@ -140,6 +140,57 @@ describe('app store reducer', () => {
     expect(second.history).toEqual(['deleted', 'missing']);
   });
 
+  /**
+   * Восстановление из копии обязано отбрасывать узлы без имени.
+   *
+   * Проверка заведена по следу находки разбора кода. `parseBackup` смотрит
+   * только `Array.isArray(data.sites)`, а `applyBackup` прогоняет через
+   * нормализацию только сайты и корзину: проекты, категории, группы и сессии
+   * проходят через `isRecord` и приведение типа. Безымянный узел попадает в
+   * состояние, и `NodeMark name={project.name}` зовёт
+   * `normalizeName(undefined).toLowerCase()` — исключение на отрисовке, то
+   * есть пустая страница вместо приложения.
+   *
+   * Защита уже есть в `migrateHierarchy` при обычной загрузке
+   * (`hierarchy.ts`: `if (!item.name) continue`), но восстановление её
+   * обходило.
+   */
+  it('отбрасывает из копии узлы без имени, а не пускает их в состояние', () => {
+    const next = appReducer(initial, { type: 'backup/apply', value: {
+      version: 1 as const, exportedAt: '2026-10-18T00:00:00.000Z',
+      sites: [],
+      projects: [
+        { id: 'p-good', name: 'Рабочее', color: '#111', icon: 'Р', siteIds: [], createdAt: 1, updatedAt: 1 },
+        { id: 'p-nameless', color: '#222', icon: 'X', siteIds: [], createdAt: 1, updatedAt: 1 },
+        { id: 'p-blank', name: '   ', color: '#333', icon: 'Y', siteIds: [], createdAt: 1, updatedAt: 1 },
+      ],
+      categories: [
+        { id: 'c-good', name: 'Документы', projectId: 'p-good' },
+        { id: 'c-nameless', projectId: 'p-good' },
+      ],
+      groups: [
+        { id: 'g-good', name: 'Чтение', categoryId: 'c-good' },
+        { id: 'g-nameless', categoryId: 'c-good' },
+      ],
+      sessions: [
+        { id: 's-good', name: 'Утро', siteIds: [], createdAt: 1 },
+        { id: 's-nameless', siteIds: [], createdAt: 1 },
+      ],
+    } as any });
+
+    // Годные узлы на месте.
+    expect(next.projects.some(project => project.id === 'p-good')).toBe(true);
+    expect(next.categories.some(category => category.id === 'c-good')).toBe(true);
+    expect(next.groups.some(group => group.id === 'g-good')).toBe(true);
+    expect(next.sessions.some(session => session.id === 's-good')).toBe(true);
+
+    // Безымянных нет ни одного — ни с отсутствующим именем, ни с пустым.
+    for (const project of next.projects) expect(typeof project.name === 'string' && project.name.trim()).toBeTruthy();
+    for (const category of next.categories) expect(typeof category.name === 'string' && category.name.trim()).toBeTruthy();
+    for (const group of next.groups) expect(typeof group.name === 'string' && group.name.trim()).toBeTruthy();
+    for (const session of next.sessions) expect(typeof session.name === 'string' && session.name.trim()).toBeTruthy();
+  });
+
   it('keeps a known mobile arrangement and rejects anything else', () => {
     expect(normalizeMobileMode('rows')).toBe('rows');
     expect(normalizeMobileMode('icons')).toBe('icons');
