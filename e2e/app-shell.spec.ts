@@ -129,6 +129,36 @@ test.describe('Nexus shell', () => {
     expect(await page.evaluate(() => localStorage.getItem('nexus-active-group'))).toBe('null');
   });
 
+  /**
+   * «Ещё N» называет столько пространств, сколько действительно скрыто.
+   *
+   * Находка разбора кода. В списке показываются первые пять, а если открытое
+   * пространство в пятёрку не попало — оно добавляется шестым. Подпись же
+   * считала по-своему: `projects.length - SPACES_SHOWN`, не считаясь с тем
+   * шестым. При семи пространствах и выбранном седьмом скрыто ровно одно, а
+   * подпись обещала два.
+   */
+  test('подпись «Ещё N» считает действительно скрытые пространства', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Список пространств живёт в боковом окне.');
+    await page.addInitScript(() => {
+      const projects = Array.from({ length: 7 }, (_, index) => ({
+        id: `space-${index}`, name: `Пространство ${index + 1}`,
+        color: '#3988ee', icon: String(index + 1), siteIds: [],
+        createdAt: index + 1, updatedAt: index + 1,
+      }));
+      localStorage.setItem('nexus-projects', JSON.stringify(projects));
+      // Выбрано седьмое — то, что в первую пятёрку не попадает.
+      localStorage.setItem('nexus-active-project', JSON.stringify('space-6'));
+    });
+    await page.goto('/');
+
+    const panel = page.locator('.nx-panel');
+    await expect(panel.getByRole('button', { name: 'Пространство «Пространство 7»' })).toBeVisible();
+    // Видно шесть: пятёрка плюс выбранное. Скрыто одно — шестое.
+    await expect(panel.getByRole('button', { name: /^Пространство «/ })).toHaveCount(6);
+    await expect(panel.getByRole('button', { name: /^Ещё / })).toHaveText(/Ещё 1$/);
+  });
+
   test('a pending site icon is invisible but still loads', async ({ page }) => {
     await page.goto('/');
     const mark = page.locator('.nx-mark').first();
@@ -1377,6 +1407,80 @@ test.describe('Nexus shell', () => {
     await page.reload();
     expect(await stored()).toBe(before + 2);
     await expect(page.locator('.nx-tile-name').filter({ hasText: 'example.com' })).toHaveCount(1);
+  });
+
+  /**
+   * Экспорт действительно отдаёт файл, а не обрывается.
+   *
+   * Разбор кода отметил, что `URL.revokeObjectURL` звался сразу после
+   * `click()`, в той же синхронной очереди: Chromium обычно успевает начать
+   * чтение blob, Firefox и Safari — нет. Сам обрыв здесь не проверить, WebKit
+   * в контейнере отсутствует; эта проверка держит другое — что путь выгрузки
+   * цел и файл доезжает с ожидаемым содержимым. Прежде экспорт не был покрыт
+   * ни одной проверкой вовсе.
+   */
+  test('экспорт отдаёт файл резервной копии', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Достаточно один раз: путь выгрузки общий.');
+    await page.goto('/');
+    await openSettings(page, 'Данные');
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Экспорт данных' }).click(),
+    ]);
+    expect(download.suggestedFilename()).toBe('nexus-backup.json');
+
+    const path = await download.path();
+    const text = await import('node:fs/promises').then(fs => fs.readFile(path, 'utf8'));
+    const parsed = JSON.parse(text);
+    expect(parsed.schema).toBe('nexus-speed-dial');
+    expect(Array.isArray(parsed.data.sites)).toBe(true);
+    expect(parsed.data.sites.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * «Очистить рабочие данные» не оставляет за собой невидимого хвоста.
+   *
+   * Находка разбора кода. Обработчик чистил `sites`, `projects` и `sessions` —
+   * ровно то, что обещал диалог, — но корзину, историю, категории и группы
+   * оставлял. Следствия видны не сразу: удалённые ранее сайты остаются
+   * восстановимыми, то есть «сайты удалены» не вся правда; а каждая категория
+   * продолжает ссылаться на удалённый проект и при следующей загрузке
+   * переписывается на `project-0` — проект с таким идентификатором не
+   * существует (`fallbackProjectId = input.projects[0]?.id ?? 'project-0'` в
+   * `hierarchy.ts`). Получается склад данных, которых в приложении не видно
+   * никогда.
+   */
+  test('очистка рабочих данных не оставляет корзину и осиротевшие категории', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Достаточно один раз: обработчик общий.');
+    await page.goto('/');
+
+    // Сначала наполним корзину — именно её прежде и оставляли.
+    const first = page.locator('.nx-tile').first();
+    await first.getByRole('button', { name: /Действия для/ }).click();
+    await first.getByRole('menuitem', { name: 'Удалить' }).click();
+    await expect.poll(() => page.evaluate(
+      () => JSON.parse(localStorage.getItem('nexus-trash') || '[]').length)).toBeGreaterThan(0);
+
+    await openSettings(page, 'Данные');
+    await page.getByRole('button', { name: 'Очистить рабочие данные' }).click();
+    const dialog = page.locator('.nx-action-dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Очистить данные' }).click();
+
+    const left = await page.evaluate(() => {
+      const read = (key: string) => JSON.parse(localStorage.getItem(key) || '[]');
+      return {
+        sites: read('nexus-sites').length,
+        projects: read('nexus-projects').length,
+        sessions: read('nexus-sessions').length,
+        trash: read('nexus-trash').length,
+        categories: read('nexus-categories').length,
+        groups: read('nexus-groups').length,
+        history: read('nexus-history').length,
+      };
+    });
+    expect(left).toEqual({ sites: 0, projects: 0, sessions: 0, trash: 0, categories: 0, groups: 0, history: 0 });
   });
 
   test('resetting a section puts its controls back', async ({ page }) => {

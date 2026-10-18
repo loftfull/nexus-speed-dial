@@ -1,5 +1,5 @@
 import type { Category, SiteRecord } from './types';
-import { normalizeSiteAddress } from './siteUtils';
+import { destinationKey, normalizeSiteAddress } from './siteUtils';
 import { makeCategoryId } from './hierarchy';
 
 /**
@@ -103,6 +103,9 @@ export function createBookmarkHtml(sites: SiteRecord[]) {
  * two different pages on the same hostname are independent bookmarks.
  */
 export function withoutExistingDomains(imported: SiteRecord[], existing: SiteRecord[]) {
-  const existingDestinations = new Set(existing.map(siteDestination));
-  return imported.filter(site => !existingDestinations.has(siteDestination(site)));
+  // Сверка по ключу, а не по самому адресу: иначе `www.` даёт дубль.
+  // `siteDestination` рядом остаётся — им пишется HREF при выгрузке закладок,
+  // и там нужен настоящий адрес перехода.
+  const existingDestinations = new Set(existing.map(destinationKey));
+  return imported.filter(site => !existingDestinations.has(destinationKey(site)));
 }

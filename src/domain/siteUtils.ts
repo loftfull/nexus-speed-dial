@@ -23,6 +23,30 @@ export function normalizeDomain(value: string): string {
   return normalizeSiteAddress(value)?.domain ?? '';
 }
 
+/**
+ * Ключ «это тот же сайт?» — для сверки, а не для перехода.
+ *
+ * `normalizeSiteAddress` чистит `www.` у домена, но оставляет его в `url`.
+ * Сверка шла по `url`, поэтому `https://www.youtube.com/` и
+ * `https://youtube.com/` считались разными сайтами: импорт закладок добавлял
+ * второй рядом с первым, а восстановление из копии не подменяло запись, а
+ * плодило дубль.
+ *
+ * Сам `url` при этом переписывать нельзя: иные сайты отдают на `www.` и без
+ * него разное, и адрес перехода должен остаться тем, что ввёл пользователь.
+ * Поэтому ключ отдельный: домен без `www.` плюс путь, параметры и якорь.
+ */
+export function destinationKey(site: SiteRecord): string {
+  const address = normalizeSiteAddress(site.url ?? site.domain);
+  if (!address) return site.domain;
+  try {
+    const parsed = new URL(address.url);
+    return `${address.domain}${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return address.url;
+  }
+}
+
 export type SiteScope = { projectId?: string | null; categoryId?: string | null; groupId?: string | null };
 
 /**

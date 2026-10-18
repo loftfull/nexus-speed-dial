@@ -1,5 +1,5 @@
 import type { SiteRecord, Project, BrowserSession, Category, SiteGroup } from './types';
-import { normalizeSiteAddress } from './siteUtils';
+import { normalizeSiteAddress, destinationKey } from './siteUtils';
 import { normalizeTileAppearance, type TileAppearance } from './tileAppearance';
 import { migrateHierarchy } from './hierarchy';
 import { seedCategories, seedGroups, seedProjects } from './seed';
@@ -159,26 +159,22 @@ function normalizeBackupSite(value: unknown, index: number): SiteRecord | null {
   };
 }
 
-function siteDestination(site: SiteRecord): string {
-  return normalizeSiteAddress(site.url ?? site.domain)?.url ?? site.domain;
-}
-
 export function applyBackup(state: AppState, backup: NexusBackup): AppState {
   const incomingSites = backup.sites
     .map(normalizeBackupSite)
     .filter((site): site is SiteRecord => Boolean(site));
   const incomingIds = new Set(incomingSites.map(site => site.id).filter((id): id is string => Boolean(id)));
-  const incomingByDestination = new Map(incomingSites.map(site => [siteDestination(site), site]));
+  const incomingByDestination = new Map(incomingSites.map(site => [destinationKey(site), site]));
   const replacedIds = new Map<string, string>();
   for (const site of state.sites) {
     const replacement = incomingSites.find(incoming => incoming.id === site.id)
-      ?? incomingByDestination.get(siteDestination(site));
+      ?? incomingByDestination.get(destinationKey(site));
     if (site.id && replacement?.id && site.id !== replacement.id) replacedIds.set(site.id, replacement.id);
   }
   const sites = [
     ...incomingSites,
     ...state.sites.filter(site =>
-      (!site.id || !incomingIds.has(site.id)) && !incomingByDestination.has(siteDestination(site))),
+      (!site.id || !incomingIds.has(site.id)) && !incomingByDestination.has(destinationKey(site))),
   ];
 
   const resolveSiteRef = (reference: string) =>

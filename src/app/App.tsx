@@ -1131,7 +1131,11 @@ export function App() {
               <button type="button" className="nx-link nx-link-ghost" aria-expanded={allSpaces}
                 onClick={() => setAllSpaces(value => !value)}>
                 <ChevronDown size={18} className={'nx-tree-caret' + (allSpaces ? ' open' : '')} aria-hidden="true" />
-                <span>{allSpaces ? 'Свернуть' : `Ещё ${projects.length - SPACES_SHOWN}`}</span>
+                {/* Считаем по тому, что на самом деле показано: открытое пространство
+                    добавляется шестым, если в первую пятёрку не попало, и
+                    вычитание `SPACES_SHOWN` его не учитывало — подпись
+                    обещала на одно больше, чем скрыто. */}
+                <span>{allSpaces ? 'Свернуть' : `Ещё ${projects.length - shownProjects.length}`}</span>
               </button>
             )}
           </div>
@@ -1679,7 +1683,22 @@ export function App() {
           appearance={appearance} setAppearance={setAppearance} projects={projects} setProjects={setProjects}
           sessions={sessions} setSessions={setSessions} initialSection={settingsSection}
           activeProjectId={activeProjectId}
-          onApplyBackup={backup => dispatch({ type: 'backup/apply', value: backup })} />
+          onApplyBackup={backup => dispatch({ type: 'backup/apply', value: backup })}
+          /* Чистим все семь наборов. Прежде обработчик в настройках брал
+             только сайты, проекты и сессии: корзина оставалась со
+             восстановимыми сайтами, а категории и группы продолжали ссылаться
+             на удалённые проекты и при следующей загрузке переписывались на
+             `project-0` — проекта с таким идентификатором не существует.
+             Получался склад данных, которых в приложении не видно никогда. */
+          onClearWorkspace={() => {
+            setSites([]);
+            setTrash([]);
+            setHistory([]);
+            setCategories([]);
+            setGroups([]);
+            setProjects([]);
+            setSessions([]);
+          }} />
       )}
     </div>
   );

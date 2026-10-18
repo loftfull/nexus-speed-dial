@@ -218,6 +218,28 @@ describe('app store reducer', () => {
     expect(fresh.trash.some(item => item.id === 'trash-kept')).toBe(true);
   });
 
+  /**
+   * Копия с адресом на `www.` подменяет запись, а не плодит дубль.
+   *
+   * Находка разбора кода: сверка «тот же сайт?» шла по `url`, в котором
+   * `www.` остаётся, хотя у домена он снимается. Теперь сверка идёт по
+   * отдельному ключу.
+   */
+  it('узнаёт тот же сайт по адресу с www и без него', () => {
+    const existing = {
+      ...initial,
+      sites: [{ ...initial.sites[0], id: 'old-id', domain: 'figma.com', url: 'https://figma.com/docs' }],
+    };
+    const next = appReducer(existing, { type: 'backup/apply', value: {
+      version: 1 as const, exportedAt: '2026-10-18T00:00:00.000Z',
+      sites: [{ ...existing.sites[0], id: 'new-id', url: 'https://www.figma.com/docs' }],
+      projects: [], categories: [], groups: [], sessions: [],
+    } as any });
+
+    expect(next.sites.filter(site => site.domain === 'figma.com')).toHaveLength(1);
+    expect(next.sites[0].id).toBe('new-id');
+  });
+
   it('keeps a known mobile arrangement and rejects anything else', () => {
     expect(normalizeMobileMode('rows')).toBe('rows');
     expect(normalizeMobileMode('icons')).toBe('icons');

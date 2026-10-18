@@ -22,7 +22,7 @@ function setup(overrides: Partial<SettingsProps> = {}) {
     groups: [], setGroups: vi.fn(), projects: [], setProjects: vi.fn(),
     sessions: [], setSessions: vi.fn(), activeProjectId: null,
     ui, setUi: vi.fn(), tile, setTile: vi.fn(), appearance, setAppearance: vi.fn(),
-    onApplyBackup: vi.fn(),
+    onApplyBackup: vi.fn(), onClearWorkspace: vi.fn(),
     ...overrides,
   };
   const view = render(<SettingsPanel {...props} />);
@@ -197,12 +197,26 @@ describe('SettingsPanel', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Очистить рабочие данные?' });
     expect(dialog).toBeInTheDocument();
-    expect(props.setSites).not.toHaveBeenCalled();
+    expect(props.onClearWorkspace).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: 'Очистить данные' }));
-    expect(props.setSites).toHaveBeenCalledWith([]);
-    expect(props.setProjects).toHaveBeenCalledWith([]);
-    expect(props.setSessions).toHaveBeenCalledWith([]);
+    // Сама очистка переехала в `App`: чистить надо все семь наборов, а
+    // половины из них у настроек нет на запись. Прежде здесь чистились только
+    // сайты, проекты и сессии — корзина, история, категории и группы
+    // оставались, и осиротевшие категории при следующей загрузке
+    // переписывались на несуществующий `project-0`.
+    expect(props.onClearWorkspace).toHaveBeenCalledTimes(1);
+  });
+
+  it('обещает в диалоге то же, что и чистит', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: 'Данные' }));
+    await user.click(screen.getByRole('button', { name: 'Очистить рабочие данные' }));
+    const dialog = screen.getByRole('dialog', { name: 'Очистить рабочие данные?' });
+    for (const named of ['сайты', 'корзина', 'история', 'категории', 'группы', 'проекты', 'сессии']) {
+      expect(dialog.textContent?.toLowerCase()).toContain(named);
+    }
   });
 
 

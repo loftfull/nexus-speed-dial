@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSite, filterSites, normalizeDomain, reorderSites } from './siteUtils';
+import { createSite, destinationKey, filterSites, normalizeDomain, reorderSites } from './siteUtils';
 import type { SiteRecord } from './types';
 
 const sites: SiteRecord[] = [
@@ -58,5 +58,36 @@ describe('site utilities', () => {
 
   it('ignores an id that is not in the list', () => {
     expect(reorderSites(sites, 'missing', 's-figma')).toBe(sites);
+  });
+});
+
+describe('ключ назначения не зависит от www', () => {
+  /**
+   * Находка разбора кода. `normalizeSiteAddress` чистит `www.` у домена, но
+   * оставляет его в `url`. Сверка «тот же сайт?» шла по `url`, поэтому
+   * `https://www.youtube.com/` и `https://youtube.com/` считались разными: в
+   * импорте закладок рядом с сайтом набора появлялся второй, а восстановление
+   * из копии не подменяло запись, а добавляло дубль.
+   *
+   * Сам `url` при этом не переписывается: иные сайты отдают разное на `www.`
+   * и без него, и менять адрес перехода нельзя. Поэтому для сверки заведён
+   * отдельный ключ.
+   */
+  const site = (url: string): SiteRecord => ({
+    title: 'X', desc: '', domain: 'x', url, color: '#111', icon: 'X', category: 'Личное',
+  });
+
+  it('сводит www и не-www к одному ключу', () => {
+    expect(destinationKey(site('https://www.youtube.com/'))).toBe(destinationKey(site('https://youtube.com/')));
+  });
+
+  it('но различает разные пути и параметры', () => {
+    expect(destinationKey(site('https://a.test/one'))).not.toBe(destinationKey(site('https://a.test/two')));
+    expect(destinationKey(site('https://a.test/p?x=1'))).not.toBe(destinationKey(site('https://a.test/p?x=2')));
+    expect(destinationKey(site('https://a.test/p#top'))).not.toBe(destinationKey(site('https://a.test/p#end')));
+  });
+
+  it('различает разные домены', () => {
+    expect(destinationKey(site('https://a.test/'))).not.toBe(destinationKey(site('https://b.test/')));
   });
 });

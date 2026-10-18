@@ -84,6 +84,11 @@ export type SettingsProps = {
   appearance: AppearanceState; setAppearance: (value: AppearanceState | ((current: AppearanceState) => AppearanceState)) => void;
   onApplyBackup: (backup: NexusBackup) => void;
   /**
+   * Очистка рабочих данных. Живёт в `App`, потому что чистить надо все семь
+   * наборов сразу, а половины из них у настроек нет на запись.
+   */
+  onClearWorkspace: () => void;
+  /**
    * Раздел, раскрытый при открытии. Панель «Инструменты» в боковом окне
    * ведёт прямо к нужному складню — «Резервная копия» должна открывать
    * «Данные», а не заставлять искать его глазами.
@@ -401,17 +406,34 @@ export function SettingsPanel(props: SettingsProps) {
 
 
 
-function DataSection({ sites, trash, history, setSites, categories, setCategories, groups, projects, setProjects, sessions, setSessions, ui, tile, appearance, onApplyBackup, activeProjectId }: SettingsProps) {
+function DataSection({ sites, trash, history, setSites, categories, setCategories, groups, projects, setProjects, sessions, setSessions, ui, tile, appearance, onApplyBackup, onClearWorkspace, activeProjectId }: SettingsProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   const [clearOpen, setClearOpen] = useState(false);
 
+  /**
+   * Выгрузка файла.
+   *
+   * Отзыв адреса отложен, и это не перестраховка. Прежде
+   * `URL.revokeObjectURL` стоял сразу после `click()`, в той же синхронной
+   * очереди: Chromium обычно успевает начать чтение blob, а Firefox и Safari
+   * — нет, и скачивание обрывается. Проверить этот обрыв в здешнем окружении
+   * я не могу: WebKit в контейнере отсутствует. Поэтому правка опирается на
+   * известное поведение браузеров, а не на замер; замером подтверждено лишь
+   * то, что путь в Chromium остался цел.
+   *
+   * Ссылка на время добавляется в документ: часть браузеров не выполняет
+   * `click()` у узла, которого нет в дереве.
+   */
   const download = (content: string, type: string, name: string) => {
+    const url = URL.createObjectURL(new Blob([content], { type }));
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(new Blob([content], { type }));
+    link.href = url;
     link.download = name;
+    document.body.append(link);
     link.click();
-    URL.revokeObjectURL(link.href);
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
   };
 
   const importFile = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -470,7 +492,7 @@ function DataSection({ sites, trash, history, setSites, categories, setCategorie
         </div>
         {message && <p className="nx-card-hint" role="status">{message}</p>}
       </Card>
-      <Card title="Опасная зона" hint="Удаляет сайты, проекты и сохранённые сессии. Настройки интерфейса останутся.">
+      <Card title="Опасная зона" hint="Удаляет сайты, корзину, историю, категории, группы, проекты и сессии. Настройки интерфейса останутся.">
         <div className="nx-card-buttons">
           <button type="button" className="danger" onClick={() => setClearOpen(true)}>
             <Trash2 size={15} /> Очистить рабочие данные
@@ -480,14 +502,12 @@ function DataSection({ sites, trash, history, setSites, categories, setCategorie
       {clearOpen && (
         <ActionDialog
           title="Очистить рабочие данные?"
-          description="Будут удалены сайты, проекты и сохранённые сессии. Настройки интерфейса останутся."
+          description="Будут удалены сайты, корзина, история, категории, группы, проекты и сессии. Настройки интерфейса останутся."
           confirmLabel="Очистить данные"
           danger
           onClose={() => setClearOpen(false)}
           onConfirm={() => {
-            setSites([]);
-            setProjects([]);
-            setSessions([]);
+            onClearWorkspace();
             setMessage('Рабочие данные очищены.');
             setClearOpen(false);
           }}
