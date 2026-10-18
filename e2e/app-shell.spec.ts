@@ -1372,6 +1372,11 @@ test.describe('Nexus shell', () => {
     await page.goto('/');
     const stored = () => page.evaluate(
       () => JSON.parse(localStorage.getItem('nexus-sites') || '[]').length as number);
+    // Счёт «до» берётся только после того, как приложение успело записать
+    // набор в хранилище. Без этого ожидания проверка зависела от скорости
+    // движка: в WebKit `before` успевал прочитаться нулём, и ожидание
+    // превращалось в «2» вместо «27». Chromium ту же гонку просто выигрывал.
+    await expect.poll(stored).toBeGreaterThan(0);
     const before = await stored();
 
     await openSettings(page, 'Данные');

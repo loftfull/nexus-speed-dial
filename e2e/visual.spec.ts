@@ -230,7 +230,11 @@ test.describe('Nexus visual baselines', () => {
     const explorer = page.locator('.nx-panel');
     await expect(explorer).toBeVisible();
     await expect(explorer.getByRole('button', { name: /Исследования и долгосрочные материалы/ })).toBeVisible();
-    const more = explorer.getByRole('button', { name: /Ещё 3/ });
+    // Восемь пространств: пять в начале списка плюс открытое восьмое шестым,
+    // значит скрыты два — шестое и седьмое. Прежде подпись считала
+    // `projects.length - SPACES_SHOWN` и обещала три, не считаясь с тем
+    // шестым; здесь стояло `/Ещё 3/` под ту самую ошибку.
+    const more = explorer.getByRole('button', { name: /Ещё 2/ });
     await expect(more).toBeVisible();
     await more.click();
     await expect(explorer.getByRole('button', { name: 'Свернуть', exact: true })).toBeVisible();
