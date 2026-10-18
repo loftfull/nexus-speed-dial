@@ -250,6 +250,13 @@ export function App() {
 
   useEffect(() => () => window.clearTimeout(swapTimer.current), []);
   useEffect(() => { if (categoryId && !activeCategory) setCategoryId(null); }, [categoryId, activeCategory]);
+  // То же для группы, и это не симметрия ради симметрии. Сетка отбирает
+  // плитки прямо по `groupId`, а чипы групп и крошка рисуются только при живой
+  // категории: отбор по осиротевшей группе давал пустой экран, на котором не
+  // было ни одного органа управления, объясняющего пустоту. Достижимо через
+  // хранилище — открытый проект, категория и группа лежат в трёх отдельных
+  // ключах, и никто не сверяет их друг с другом.
+  useEffect(() => { if (groupId && !activeGroup) setGroupId(null); }, [groupId, activeGroup]);
   useEffect(() => { persistAppState(state) || setToast('Не удалось сохранить: хранилище браузера переполнено'); }, [state]);
   useEffect(() => { writeStorage('nexus-active-project', activeProjectId); }, [activeProjectId]);
   useEffect(() => { writeStorage('nexus-active-category', categoryId); }, [categoryId]);
@@ -907,7 +914,11 @@ export function App() {
               </div>
               <button type="button" className="nx-more nx-restore" onClick={() => {
                 setSites(current => [site, ...current]);
-                setTrash(current => current.filter(item => item.id !== site.id));
+                // Отбор по самой записи, а не только по `id`: даже при
+                // выданном идентификаторе сравнение «не равно» вычистило бы
+                // все записи без него, попади такая сюда в обход загрузки.
+                setTrash(current => current.filter(item =>
+                  item === site ? false : !item.id || !site.id || item.id !== site.id));
                 setToast('Сайт восстановлен');
               }}><RotateCw size={14} /> Восстановить</button>
             </div>

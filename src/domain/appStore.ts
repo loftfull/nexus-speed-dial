@@ -92,7 +92,15 @@ export function createInitialAppState(initialSites: SiteRecord[]): AppState {
   const defaultUi: UiState = { sidebar: true, weather: true, compact: false, animations: true, newTab: true, searchLocal: true, searchSuggestions: true, searchEngine: 'Google', weatherCity: 'Москва', weatherUnits: 'Цельсий (°C)', weatherAuto: true, saveHistory: true, remotePreviews: false, siteIcons: true, projects: true, sidebarWidth: '292px', mobileMode: 'table', favoritesBar: true, favoritesCount: 8, favoritesLabels: true, panelRecent: true, panelRecentCount: 6, panelRecentLabels: true };
   return {
     sites: hierarchy.sites,
-    trash: readStorage<SiteRecord[]>('nexus-trash', []),
+    // Корзина читалась сырой, в отличие от сайтов. Запись без `id` ломала
+    // восстановление: обработчик отбирает остаток видом `item.id !== site.id`,
+    // и при двух таких записях `undefined !== undefined` ложно — из корзины
+    // вычищались все безымянные, а не одна восстановленная. Поэтому записи
+    // выдаётся идентификатор здесь же, как и сайту.
+    trash: readStorage<SiteRecord[]>('nexus-trash', []).map((site, index) => ({
+      ...site,
+      id: site.id || `trash-${(site.domain ?? 'site').replace(/[^a-z0-9]+/gi, '-')}-${index}`,
+    })),
     categories: hierarchy.categories,
     groups: hierarchy.groups,
     history: readStorage('nexus-history', []),

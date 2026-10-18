@@ -191,6 +191,33 @@ describe('app store reducer', () => {
     for (const session of next.sessions) expect(typeof session.name === 'string' && session.name.trim()).toBeTruthy();
   });
 
+  /**
+   * У записи в корзине обязан быть идентификатор.
+   *
+   * Находка разбора кода. Сайты при загрузке получают `id` («site.id ||
+   * сгенерированный»), а `nexus-trash` читался сырым. Запись без `id` ломала
+   * восстановление: обработчик отбирал остаток видом `item.id !== site.id`, и
+   * при двух безымянных записях `undefined !== undefined` ложно — из корзины
+   * вычищались все записи без `id`, а не одна восстановленная. В остальных
+   * местах проекта этот случай оговорён явно: `!item.id || !ids.has(item.id)`.
+   */
+  it('выдаёт идентификатор записи в корзине, как и сайту', () => {
+    localStorage.setItem('nexus-trash', JSON.stringify([
+      { title: 'Без id один', domain: 'one.test', desc: '', color: '#111', icon: 'О', category: 'Личное' },
+      { title: 'Без id два', domain: 'two.test', desc: '', color: '#222', icon: 'Д', category: 'Личное' },
+      { id: 'trash-kept', title: 'Со своим id', domain: 'three.test', desc: '', color: '#333', icon: 'С', category: 'Личное' },
+    ]));
+    const fresh = createInitialAppState([]);
+    localStorage.removeItem('nexus-trash');
+
+    expect(fresh.trash).toHaveLength(3);
+    for (const item of fresh.trash) expect(item.id).toBeTruthy();
+    // Идентификаторы разные — иначе отбор по `id` снова свалит их в одну.
+    expect(new Set(fresh.trash.map(item => item.id)).size).toBe(3);
+    // Свой идентификатор не переписывается.
+    expect(fresh.trash.some(item => item.id === 'trash-kept')).toBe(true);
+  });
+
   it('keeps a known mobile arrangement and rejects anything else', () => {
     expect(normalizeMobileMode('rows')).toBe('rows');
     expect(normalizeMobileMode('icons')).toBe('icons');

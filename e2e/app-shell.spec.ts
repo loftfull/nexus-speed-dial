@@ -99,6 +99,36 @@ test.describe('Nexus shell', () => {
     await expect(page.locator('.nx-tile-name').filter({ hasText: 'Линейка задач' })).toHaveCount(1);
   });
 
+  /**
+   * Отбор по группе не остаётся висеть, когда категория ушла.
+   *
+   * Находка разбора кода. Эффект сбрасывал `categoryId`, если такой категории
+   * больше нет, но `groupId` оставлял. А сетка отбирает плитки прямо по
+   * `groupId`, тогда как чипы групп и крошка рисуются только при живой
+   * категории. Получался пустой экран и ни одного органа управления, который
+   * бы объяснил, почему он пустой.
+   *
+   * Достижимо через хранилище: открытый проект, категория и группа лежат в
+   * трёх отдельных ключах, и никто не проверяет, что они друг другу
+   * соответствуют. Здесь выбран проект «Работа», а категория и группа — из
+   * «Дома».
+   */
+  test('отбор по группе не остаётся висеть без своей категории', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Чипы групп живут на широком экране.');
+    await page.addInitScript(() => {
+      localStorage.setItem('nexus-active-project', JSON.stringify('project-work'));
+      localStorage.setItem('nexus-active-category', JSON.stringify('cat-home-social'));
+      localStorage.setItem('nexus-active-group', JSON.stringify('grp-social-video'));
+    });
+    await page.goto('/');
+    await expect(page.getByRole('button', { name: 'Пространство: Работа' })).toBeVisible();
+
+    // Сайты проекта на месте: чужая группа их не отфильтровала.
+    await expect(page.locator('.nx-tile').first()).toBeVisible();
+    // И сам отбор снят, а не просто спрятан.
+    expect(await page.evaluate(() => localStorage.getItem('nexus-active-group'))).toBe('null');
+  });
+
   test('a pending site icon is invisible but still loads', async ({ page }) => {
     await page.goto('/');
     const mark = page.locator('.nx-mark').first();
